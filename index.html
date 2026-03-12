@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Photon Survey System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+
+        /* --- LOGO --- */
+        .logo-circle {
+            width: 32px; height: 32px; background: #0f172a; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid #ef4444; position: relative;
+        }
+        .logo-inner { width: 10px; height: 10px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+
+        /* --- GLOBAL UI --- */
+        .header-bar { 
+            background: #0f172a; padding: 12px; border-radius: 14px; 
+            display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.2fr; 
+            gap: 10px; margin-bottom: 15px; border: 1px solid #334155;
+        }
+        .mini-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; letter-spacing: 0.02em; }
+        .header-val { font-size: 10px; font-weight: 700; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .header-input { background: transparent; border: none; color: #60a5fa; font-size: 10px; font-weight: 700; width: 100%; outline: none; }
+
+        /* --- UPDATED 5-TAB NAV --- */
+        .nav-container { display: flex; gap: 4px; margin-bottom: 15px; }
+        .nav-btn { 
+            flex: 1; padding: 12px 1px; background: white; border: 1px solid #e2e8f0; 
+            border-bottom: 3px solid #cbd5e1; border-radius: 8px; font-size: 7px; 
+            font-weight: 900; color: #94a3b8; text-transform: uppercase; text-align: center;
+        }
+        .nav-btn.active { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; }
+
+        /* --- SAVE / CHANGE STYLING --- */
+        .tab-content-wrapper { transition: all 0.3s ease; }
+        .is-saved { background-color: #f0fdf4 !important; border: 2px solid #22c55e !important; }
+        .input-field:disabled { background-color: #f8fafc; color: #64748b; border-color: #e2e8f0; cursor: not-allowed; opacity: 0.7; }
+        
+        .action-btn { font-size: 11px; font-weight: 900; text-transform: uppercase; padding: 0 15px; border-radius: 10px; transition: 0.2s; height: 56px; white-space: nowrap; }
+        .btn-save { background: #22c55e; color: white; }
+        .btn-change { background: white; color: #22c55e; border: 2px solid #22c55e; }
+
+        /* --- DASHBOARD STYLING --- */
+        .job-card { background: white; border-radius: 16px; padding: 20px; border-left: 8px solid #cbd5e1; cursor: pointer; transition: transform 0.1s; position: relative; }
+        .status-active { border-left-color: #3b82f6 !important; }
+        .status-pending { border-left-color: #f59e0b !important; }
+        .pill { font-size: 8px; font-weight: 900; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .pill-active { background: #dbeafe; color: #1e40af; }
+        .pill-pending { background: #fef3c7; color: #92400e; }
+        .pill-manual { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; margin-left: 4px; }
+        
+        .pill-new { background: #7e22ce !important; color: white !important; margin-left: 4px; }
+        .notes-preview { font-size: 10px; color: #64748b; font-style: italic; margin-top: 8px; padding-left: 8px; border-left: 2px solid #cbd5e1; line-height: 1.2; }
+
+        /* --- UPDATED CRM BUTTON --- */
+        .btn-crm-upload {
+            background: #3b82f6; color: white; border-bottom: 4px solid #1d4ed8;
+            border-radius: 12px; padding: 8px 12px; transition: all 0.1s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .btn-crm-upload:active { border-bottom-width: 0px; transform: translateY(4px); }
+
+        .btn-upload-glow {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white; font-weight: 900; text-transform: uppercase;
+            box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.4); border: none;
+            width: 100px; height: 44px; display: flex; align-items: center; justify-content: center;
+        }
+
+        .seq-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #f8fafc; padding: 6px 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #e2e8f0;
+        }
+
+        /* --- GRID SYSTEM --- */
+        .prop-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 10px; }
+        .col-12 { grid-column: span 12; }
+        .col-7 { grid-column: span 7; }
+        .col-6 { grid-column: span 6; }
+        .col-5 { grid-column: span 5; }
+        .col-3 { grid-column: span 3; }
+        
+        .input-field { width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 14px; font-weight: 700; outline: none; background: #fff; }
+        
+        #manual-entry-area { display: none; background: white; border: 3px solid #3b82f6; border-radius: 20px; padding: 20px; margin-bottom: 24px; }
+        .add-stop-btn { font-size: 9px; font-weight: 900; color: #3b82f6; text-transform: uppercase; padding: 4px 8px; border: 1px dashed #3b82f6; border-radius: 6px; margin-top: 5px; display: inline-block; }
+
+        @keyframes uiPulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); border-color: #22c55e; }
+            100% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); border-color: #e2e8f0; }
+        }
+        .pulse-new { animation: uiPulse 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .add-property-btn {
+            background: #3b82f6; color: white; border-radius: 10px; transition: 0.2s;
+            height: 56px; display: flex; align-items: center; padding: 0 20px;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-plus-icon { font-size: 18px; font-weight: 400; width: 30px; }
+        .btn-text-block { display: flex; flex-direction: column; text-align: left; }
+        .btn-text-upper { font-weight: 900; font-size: 11px; text-transform: uppercase; line-height: 1.1; }
+        .btn-text-lower { font-weight: 900; font-size: 11px; text-transform: uppercase; line-height: 1.1; }
+
+        /* --- INVENTORY SPECIFIC UI --- */
+        .inv-header-select { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; font-weight: 900; font-size: 11px; text-transform: uppercase; height: 38px; width: 100%; }
+        .inv-tool-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-size: 9px; font-weight: 900; text-transform: uppercase; padding: 8px 4px; text-align: center; }
+        .inv-room-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-size: 8px; font-weight: 900; text-transform: uppercase; padding: 12px 2px; text-align: center; flex: 1; }
+        .inv-room-btn.active { background: #3b82f6; color: white; border-color: #2563eb; }
+        .item-btn { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; height: 75px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #0f172a; padding: 5px; }
+        .item-btn-blue { background: #f0f9ff; color: #0f172a; border: 1px solid #e0f2fe; }
+        .log-bar { background: #e2e8f0; border: 1.5px solid #94a3b8; border-radius: 6px; padding: 8px 12px; font-size: 11px; font-weight: 900; font-style: italic; color: #1e293b; }
+        .vol-box { border: 2.5px solid #fca5a5; border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .total-vol-box { background: #3b82f6; color: white; border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body class="p-4 pb-12">
+
+    <main id="view-dashboard">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="logo-circle"><div class="logo-inner"></div></div>
+                <div>
+                    <h1 class="text-2xl font-black text-slate-900 leading-none tracking-tighter uppercase">Photon</h1>
+                    <p class="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mt-1">Survey System</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="downloadFromCloud()" class="btn-crm-upload">
+                    <span class="text-[7px] font-black uppercase opacity-70">Import</span>
+                    <span class="text-[9px] font-black uppercase whitespace-nowrap">Upload from CRM</span>
+                </button>
+                <button onclick="toggleManualArea()" class="bg-blue-600 text-white p-3 rounded-xl shadow-lg active:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M12 4v16m8-8H4" /></svg></button>
+            </div>
+        </div>
+
+        <section id="manual-entry-area" class="shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-sm font-black text-slate-900 uppercase italic">New Manual Survey</h2>
+                <div id="timestamp-val" class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded"></div>
+            </div>
+            <div class="space-y-3">
+                <input type="text" id="m-name" class="input-field border-2" placeholder="CLIENT NAME">
+                <input type="text" id="m-ref" class="input-field border-2" placeholder="REFERENCE">
+                <div class="flex gap-2">
+                    <button onclick="toggleManualArea()" class="flex-1 py-3 text-[9px] font-black uppercase text-slate-400">Cancel</button>
+                    <button onclick="createManualJob()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg text-[9px] font-black uppercase">Create File</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="mb-6"><input type="text" id="fileSearch" onkeyup="filterFiles()" placeholder="Filter..." class="w-full bg-white border-2 border-slate-200 rounded-xl p-4 shadow-sm outline-none font-bold"></div>
+        <div id="job-list" class="space-y-4"></div>
+    </main>
+
+    <main id="view-editor" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+            <button onclick="exitToDashboard()" class="text-[10px] font-black uppercase text-blue-600">← Back to Dashboard</button>
+            <div class="text-[10px] font-black text-slate-400 uppercase italic">Active Survey Entry</div>
+        </div>
+
+        <div class="header-bar">
+            <div><label class="mini-label !text-slate-400">Client</label><div id="hdr-name" class="header-val uppercase">---</div></div>
+            <div><label class="mini-label !text-slate-400">Ref</label><div id="hdr-ref" class="header-val uppercase">---</div></div>
+            <div><label class="mini-label !text-blue-400">Contact Tel</label><input type="tel" id="hdr-tel" class="header-input" oninput="updateHeaderData('tel', this.value)"></div>
+            <div><label class="mini-label !text-blue-400">E-mail</label><input type="email" id="hdr-email" class="header-input" oninput="updateHeaderData('email', this.value)"></div>
+        </div>
+
+        <nav class="nav-container">
+            <button onclick="switchTab('address')" id="nav-address" class="nav-btn active">1. Addresses</button>
+            <button onclick="switchTab('sequence')" id="nav-sequence" class="nav-btn">2. Sequence</button>
+            <button onclick="switchTab('inventory')" id="nav-inventory" class="nav-btn">3. Inventory</button>
+            <button onclick="switchTab('quote')" id="nav-quote" class="nav-btn">4. Quote</button>
+            <button onclick="switchTab('listed')" id="nav-listed" class="nav-btn">5. Listed Inv</button>
+        </nav>
+
+        <section id="content-address" class="tab-content tab-content-wrapper bg-white p-5 rounded-2xl shadow-inner">
+            <div class="flex gap-2 mb-6 items-center justify-between">
+                <select id="prop-selector" onchange="loadProperty(this.value)" class="input-field border-2 border-blue-500 bg-blue-50 flex-grow h-14 text-blue-900 font-bold transition-all"></select>
+                <button id="btn-save-address" onclick="toggleSaveState('address')" class="action-btn btn-save">Save</button>
+                <button onclick="addProperty()" class="add-property-btn shadow-md">
+                    <span class="btn-plus-icon">+</span>
+                    <span class="btn-text-block">
+                        <span class="btn-text-upper">ADD</span>
+                        <span class="btn-text-lower">PROPERTY</span>
+                    </span>
+                </button>
+            </div>
+            <div id="address-editor-ui" class="space-y-6"></div>
+        </section>
+        
+        <section id="content-sequence" class="tab-content hidden tab-content-wrapper bg-white p-5 rounded-2xl shadow-inner">
+            <div class="flex gap-2 items-center mb-6 bg-slate-900 p-3 rounded-xl overflow-x-auto">
+                <div class="flex-grow min-w-[150px]">
+                    <select id="seq-switcher" onchange="loadSequence(this.value)" class="w-full bg-slate-800 text-white border-none rounded-lg h-12 px-3 font-black text-xs outline-none"></select>
+                </div>
+                <button id="btn-save-sequence" onclick="toggleSaveState('sequence')" class="action-btn !h-12 !px-6 btn-save">Save</button>
+                <button onclick="addSequence()" class="action-btn !h-12 !px-6 bg-blue-600 text-white">New Sequence</button>
+                <button id="btn-copy-seq" onclick="copySequence()" class="action-btn !h-12 !px-6 bg-slate-700 text-white">Copy Current</button>
+                <button id="btn-del-seq" onclick="deleteSequence()" class="action-btn !h-12 !px-6 bg-red-900 text-red-200">Delete</button>
+            </div>
+            <div id="active-sequence-ui" class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-6 space-y-6"></div>
+        </section>
+
+        <section id="content-inventory" class="tab-content hidden">
+            <div class="grid grid-cols-12 gap-2 mb-3">
+                <div class="col-span-4">
+                    <label class="mini-label">Seq</label>
+                    <select class="inv-header-select"><option>STORAGE</option></select>
+                </div>
+                <div class="col-span-4">
+                    <label class="mini-label">Floor</label>
+                    <select class="inv-header-select"><option>Ground</option></select>
+                </div>
+                <div class="col-span-4">
+                    <label class="mini-label">Room</label>
+                    <select class="inv-header-select"><option>Hallway</option></select>
+                </div>
+            </div>
+
+            <div class="flex gap-1 mb-3">
+                <button class="inv-room-btn active">Full List</button>
+                <button class="inv-room-btn">Upstairs</button>
+                <button class="inv-room-btn">Downstairs</button>
+                <button class="inv-room-btn">Kitchen</button>
+                <button class="inv-room-btn">Outside</button>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1 mb-3">
+                <button class="inv-tool-btn">Dismantle</button>
+                <button class="inv-tool-btn">Exp Wrap</button>
+                <button class="inv-tool-btn">Crate Tool</button>
+                <button class="inv-tool-btn">Damage</button>
+                <button class="inv-tool-btn">Exclude</button>
+                <button class="inv-tool-btn">Note</button>
+                <button class="inv-tool-btn">Misc</button>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <div class="flex-grow log-bar">2 X SOFA 3 SEAT [EXC]</div>
+                <div class="w-20 vol-box"><span class="mini-label !mb-0 text-red-400">Vol</span><span class="text-sm font-black">50</span></div>
+                <button class="w-20 total-vol-box bg-red-100 !text-red-500 font-black text-xs uppercase">Undo</button>
+            </div>
+
+            <div class="grid grid-cols-5 gap-2">
+                <div class="col-span-4 grid grid-cols-4 gap-2">
+                    <button class="item-btn">AC Unit</button>
+                    <button class="item-btn">Armchair</button>
+                    <button class="item-btn">Sofa 2 Seat</button>
+                    <button class="item-btn">Sofa 3 Seat</button>
+                    <button class="item-btn">Bed (Single)</button>
+                    <button class="item-btn">Bed (Double)</button>
+                    <button class="item-btn">Fridge</button>
+                    <button class="item-btn">Garden Bench</button>
+                    <button class="item-btn">Chest Drawers</button>
+                    <button class="item-btn">Dining Table</button>
+                    <button class="item-btn">Desk</button>
+                    <button class="item-btn">Bookcase</button>
+                </div>
+                <div class="col-span-1 flex flex-col gap-2">
+                    <button class="item-btn !h-[75px] bg-red-50 text-red-500 border-red-100 flex-col"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg><span class="text-[8px]">VOICE</span><span class="text-[7px] opacity-60">0 CLIPS</span></button>
+                    <button class="item-btn item-btn-blue">AP</button>
+                    <button class="item-btn item-btn-blue">CG</button>
+                    <button class="item-btn item-btn-blue">BOOK</button>
+                    <button class="item-btn item-btn-blue">LINEN</button>
+                    <button class="item-btn item-btn-blue">W/R</button>
+                </div>
+            </div>
+        </section>
+        
+        <section id="content-quote" class="tab-content hidden">
+            <div class="p-12 text-center text-slate-400 font-bold italic uppercase">Move Plan & Pricing</div>
+        </section>
+
+        <section id="content-listed" class="tab-content hidden"><div class="p-12 text-center text-slate-400 font-bold italic uppercase">Final List</div></section>
+    </main>
+
+    <script>
+        const PROPERTY_TYPES = ["House", "Apartment", "Bungalow", "Office", "Shop"];
+        const VEHICLE_TYPES = ["Shuttle van", "Transit van", "Luton / Low Loader", "7.5 tonne", "12 tonne", "15 tonne", "18 tonne", "20ft container", "40ft container"];
+        const MOVE_TYPES = ["Dom-local", "Dom-Distance", "Dom-To Store", "Dom-Ex Store", "Dom-Direct/Store", "GPG", "LCL", "FCL"];
+        const PACK_OPTIONS = ["Owner Pack", "Fragile (china & Glassware) pack", "Full Packing", "Full Export Pack and Wrap", "Fragile & Kitchenware Pack"];
+
+        let jobs = JSON.parse(localStorage.getItem('photon_jobs')) || [{ 
+            id: 101, 
+            name: "Smith, Jonathan", 
+            ref: "#UK-22901", 
+            date: "22 Feb 2026", 
+            time: "08:30", 
+            status: "active", 
+            isNew: true,
+            notes: "Client has large piano in basement. Handle with care.",
+            tel: "07700 900456", 
+            email: "j.smith@example.com", 
+            properties: createDefaultProperties(), 
+            sequences: [] 
+        }];
+        
+        let currentJob = null; let activePropId = null; let activeSeqId = null;
+
+        function saveToDevice() {
+            localStorage.setItem('photon_jobs', JSON.stringify(jobs));
+        }
+
+        function toTitleCase(str) { return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()); }
+        function createDefaultProperties() {
+            const now = Date.now();
+            return [
+                { id: now, label: "Collection Address", line1: "10 Downing Street", country: "United Kingdom", isCore: true, isSaved: false },
+                { id: now+1, label: "Delivery Address", line1: "42 Wallaby Way", country: "United Kingdom", isCore: true, isSaved: false },
+                { id: now+2, label: "Store", line1: "The Vaults, Unit B", country: "United Kingdom", isCore: true, isSaved: false }
+            ];
+        }
+
+        function toggleSaveState(type) {
+            if (type === 'address') {
+                const prop = currentJob.properties.find(p => p.id === activePropId);
+                prop.isSaved = !prop.isSaved; 
+                renderAddressUI();
+            } else {
+                const seq = currentJob.sequences.find(s => s.id == activeSeqId);
+                seq.isSaved = !seq.isSaved; 
+                renderSequenceUI();
+            }
+            saveToDevice();
+        }
+
+        function openJob(id) {
+            currentJob = jobs.find(j => j.id === id);
+            currentJob.isNew = false;
+            document.getElementById('hdr-name').innerText = currentJob.name;
+            document.getElementById('hdr-ref').innerText = currentJob.ref;
+            document.getElementById('hdr-tel').value = currentJob.tel || "";
+            document.getElementById('hdr-email').value = currentJob.email || "";
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-editor').classList.remove('hidden');
+            activePropId = currentJob.properties[0].id;
+            if(!currentJob.sequences || currentJob.sequences.length === 0) addSequence();
+            else activeSeqId = currentJob.sequences[0].id;
+            renderAddressUI();
+            saveToDevice();
+        }
+
+        function renderAddressUI() {
+            const prop = currentJob.properties.find(p => p.id === activePropId);
+            const isSaved = prop.isSaved;
+            const status = isSaved ? 'disabled' : '';
+            const wrapper = document.getElementById('content-address');
+            isSaved ? wrapper.classList.add('is-saved') : wrapper.classList.remove('is-saved');
+
+            const saveBtn = document.getElementById('btn-save-address');
+            saveBtn.innerText = isSaved ? 'Change' : 'Save';
+            saveBtn.className = `action-btn ${isSaved ? 'btn-change' : 'btn-save'}`;
+
+            document.getElementById('prop-selector').innerHTML = currentJob.properties.map(p => `<option value="${p.id}" ${p.id === activePropId ? 'selected' : ''}>${toTitleCase(p.label)}</option>`).join('');
+            
+            document.getElementById('address-editor-ui').innerHTML = `
+                <div class="bg-slate-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
+                    <div class="flex-grow"><label class="mini-label text-blue-600">Property Label</label><input type="text" ${status} oninput="updatePropLabel(this.value)" class="w-full bg-transparent text-xl font-black outline-none text-blue-900" value="${toTitleCase(prop.label)}"></div>
+                    ${(!prop.isCore && !isSaved) ? `<button onclick="deleteProperty(${prop.id})" class="text-red-600 text-[9px] font-black uppercase">Delete Address</button>` : ''}
+                </div>
+                <div class="prop-grid">
+                    <div class="col-7"><label class="mini-label">1st line</label><input type="text" ${status} oninput="updatePropData('line1', this.value)" class="input-field" value="${prop.line1 || ''}"></div>
+                    <div class="col-5"><label class="mini-label">Road</label><input type="text" ${status} oninput="updatePropData('road', this.value)" class="input-field" value="${prop.road || ''}"></div>
+                    <div class="col-3"><label class="mini-label">Town</label><input type="text" ${status} oninput="updatePropData('city', this.value)" class="input-field" value="${prop.city || ''}"></div>
+                    <div class="col-3"><label class="mini-label">County</label><input type="text" ${status} oninput="updatePropData('county', this.value)" class="input-field" value="${prop.county || ''}"></div>
+                    <div class="col-3"><label class="mini-label">Postcode</label><input type="text" ${status} oninput="updatePropData('postcode', this.value)" class="input-field uppercase" value="${prop.postcode || ''}"></div>
+                    <div class="col-3"><label class="mini-label">Country</label><input type="text" ${status} oninput="updatePropData('country', this.value)" class="input-field" value="${prop.country || 'United Kingdom'}"></div>
+                    <div class="col-6"><label class="mini-label">Type</label><select ${status} onchange="updatePropData('type', this.value)" class="input-field"><option value="">-Select-</option>${PROPERTY_TYPES.map(t => `<option ${prop.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+                    <div class="col-6"><label class="mini-label">Vehicle Access</label><select ${status} onchange="updatePropData('access', this.value)" class="input-field"><option value="">-Select-</option>${VEHICLE_TYPES.map(v => `<option ${prop.access===v?'selected':''}>${v}</option>`).join('')}</select></div>
+                    <div class="col-3"><label class="mini-label">Floor</label><input type="text" ${status} oninput="updatePropData('floor', this.value)" class="input-field" value="${prop.floor || ''}"></div>
+                    <div class="col-3"><label class="mini-label">Stairs</label><input type="text" ${status} oninput="updatePropData('stairs', this.value)" class="input-field" value="${prop.stairs || ''}"></div>
+                    <div class="col-3"><label class="mini-label">Lift</label><input type="text" ${status} oninput="updatePropData('lift', this.value)" class="input-field" value="${prop.lift || ''}"></div>
+                    <div class="col-3"><label class="mini-label">Dist (m)</label><input type="number" ${status} oninput="updatePropData('distance', this.value)" class="input-field" value="${prop.distance || ''}"></div>
+                    <div class="col-12"><label class="mini-label">Parking & Instructions</label><textarea ${status} oninput="updatePropData('parking', this.value)" class="input-field h-20">${prop.parking || ''}</textarea></div>
+                </div>`;
+            triggerPulse('address-editor-ui');
+        }
+
+        function renderSequenceUI() {
+            const seq = currentJob.sequences.find(s => s.id == activeSeqId);
+            const isSaved = seq.isSaved;
+            const status = isSaved ? 'disabled' : '';
+            const wrapper = document.getElementById('content-sequence');
+            isSaved ? wrapper.classList.add('is-saved') : wrapper.classList.remove('is-saved');
+
+            const saveBtn = document.getElementById('btn-save-sequence');
+            saveBtn.innerText = isSaved ? 'Change' : 'Save';
+            saveBtn.className = `action-btn !h-12 !px-6 ${isSaved ? 'btn-change' : 'btn-save'}`;
+
+            document.getElementById('seq-switcher').innerHTML = currentJob.sequences.map((s, idx) => {
+                const label = s.moveType ? `Seq #${idx+1}: ${s.moveType}` : `Seq #${idx+1}: New Sequence`;
+                return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
+            }).join('');
+            
+            document.getElementById('active-sequence-ui').innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="mini-label">Move Type</label>
+                        <select ${status} onchange="updateSeqField('moveType', this.value)" class="input-field border-2">
+                            <option value="">-- Move Type --</option>
+                            ${MOVE_TYPES.map(m => `<option value="${m}" ${seq.moveType===m?'selected':''}>${m}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mini-label">Packing</label>
+                        <select ${status} onchange="updateSeqField('packOption', this.value)" class="input-field border-2">
+                            <option value="">-- Packing --</option>
+                            ${PACK_OPTIONS.map(p => `<option value="${p}" ${seq.packOption===p?'selected':''}>${p}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-6 pt-4 border-t border-slate-200">
+                    <div><label class="mini-label !text-blue-500 font-black">Collection Points</label>
+                        ${seq.collections.map((cId, i) => `<div class="flex gap-2 mb-2"><select ${status} onchange="updateStop('collections', ${i}, this.value)" class="input-field bg-blue-50">${currentJob.properties.map(p => `<option value="${p.id}" ${cId==p.id?'selected':''}>${p.label}</option>`).join('')}</select>${i>0&&!isSaved?`<button onclick="removeStop('collections',${i})" class="px-2 text-red-500">×</button>`:''}</div>`).join('')}
+                        ${!isSaved ? `<button onclick="addStop('collections')" class="add-stop-btn">+ Add Collection Stop</button>` : ''}
+                    </div>
+                    <div><label class="mini-label !text-green-600 font-black">Delivery Points</label>
+                        ${seq.deliveries.map((dId, i) => `<div class="flex gap-2 mb-2"><select ${status} onchange="updateStop('deliveries', ${i}, this.value)" class="input-field bg-green-50">${currentJob.properties.map(p => `<option value="${p.id}" ${dId==p.id?'selected':''}>${p.label}</option>`).join('')}</select>${i>0&&!isSaved?`<button onclick="removeStop('deliveries',${i})" class="px-2 text-red-500">×</button>`:''}</div>`).join('')}
+                        ${!isSaved ? `<button onclick="addStop('deliveries')" class="add-stop-btn">+ Add Delivery Stop</button>` : ''}
+                    </div>
+                </div>`;
+            triggerPulse('active-sequence-ui');
+        }
+
+        function renderDashboard() {
+            document.getElementById('job-list').innerHTML = jobs.map(j => {
+                let seqBreakdown = j.sequences.length > 0 ? j.sequences.map(s => `
+                    <div class="seq-row">
+                        <div class="flex flex-col">
+                            <span class="text-[9px] font-black uppercase italic leading-none">${s.moveType || 'New Seq'}</span>
+                            <span class="text-[8px] font-bold text-slate-400 uppercase mt-0.5">${s.packOption || 'No Packing Set'}</span>
+                        </div>
+                        <span class="text-[10px] font-black text-blue-600">${s.vol || 0} ft³</span>
+                    </div>`).join('') : `<div class="text-[8px] text-slate-300 italic mt-2 uppercase font-bold">No sequences</div>`;
+                
+                return `
+                <div class="job-card status-${j.status}" onclick="openJob(${j.id})">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-grow">
+                            <span class="pill pill-${j.status}">${j.status}</span>
+                            ${j.isManual?'<span class="pill pill-manual">Manual</span>':''}
+                            ${j.isNew?'<span class="pill pill-new">New</span>':''}
+                            <h3 class="text-xl font-black text-slate-800 uppercase leading-none mt-1">${j.name}</h3>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Ref: ${j.ref}</p>
+                            ${j.notes ? `<div class="notes-preview">${j.notes}</div>` : ''}
+                            <div class="mt-4 border-t pt-2">${seqBreakdown}</div>
+                        </div>
+                        <div class="flex flex-col gap-2 items-end">
+                            <button onclick="event.stopPropagation(); uploadToCloud(${j.id})" class="btn-upload-glow rounded-xl text-[10px]">Upload ↑</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function addSequence() {
+            const id = Date.now();
+            currentJob.sequences.push({ id: id, moveType: "", packOption: "", vol: 0, isSaved: false, collections: [currentJob.properties[0].id], deliveries: [currentJob.properties[1] ? currentJob.properties[1].id : currentJob.properties[0].id] });
+            activeSeqId = id; renderSequenceUI();
+            saveToDevice();
+        }
+        function copySequence() {
+            const original = currentJob.sequences.find(s => s.id == activeSeqId);
+            const copy = JSON.parse(JSON.stringify(original));
+            copy.id = Date.now(); copy.isSaved = false;
+            currentJob.sequences.push(copy); activeSeqId = copy.id; renderSequenceUI();
+            saveToDevice();
+        }
+        function deleteSequence() {
+            if(currentJob.sequences.length <= 1) return;
+            currentJob.sequences = currentJob.sequences.filter(s => s.id != activeSeqId);
+            activeSeqId = currentJob.sequences[0].id; renderSequenceUI();
+            saveToDevice();
+        }
+        function addProperty() {
+            const newId = Date.now();
+            currentJob.properties.push({ id: newId, label: "Add Address", line1: "", country: "United Kingdom", isCore: false, isSaved: false });
+            activePropId = newId; renderAddressUI();
+            saveToDevice();
+        }
+        function deleteProperty(id) {
+            currentJob.properties = currentJob.properties.filter(p => p.id !== id);
+            activePropId = currentJob.properties[0].id; renderAddressUI();
+            saveToDevice();
+        }
+        function updateSeqField(f, v) { currentJob.sequences.find(s => s.id == activeSeqId)[f] = v; renderSequenceUI(); }
+        function updateStop(type, idx, val) { currentJob.sequences.find(s => s.id == activeSeqId)[type][idx] = val; }
+        function addStop(type) { currentJob.sequences.find(s => s.id == activeSeqId)[type].push(currentJob.properties[0].id); renderSequenceUI(); }
+        function removeStop(type, idx) { currentJob.sequences.find(s => s.id == activeSeqId)[type].splice(idx, 1); renderSequenceUI(); }
+        function updatePropLabel(v) { currentJob.properties.find(p => p.id === activePropId).label = v; }
+        function updatePropData(f, v) { currentJob.properties.find(p => p.id === activePropId)[f] = v; }
+        function updateHeaderData(f, v) { currentJob[f] = v; saveToDevice(); }
+        function loadProperty(id) { activePropId = parseInt(id); renderAddressUI(); }
+        function loadSequence(id) { activeSeqId = id; renderSequenceUI(); }
+        function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
+        
+        function switchTab(t) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('content-' + t).classList.remove('hidden');
+            document.getElementById('nav-' + t).classList.add('active');
+            if(t === 'sequence') renderSequenceUI();
+            if(t === 'address') renderAddressUI();
+        }
+
+        function toggleManualArea() { const area = document.getElementById('manual-entry-area'); area.style.display = (area.style.display === "block") ? "none" : "block"; document.getElementById('timestamp-val').innerText = new Date().toLocaleString('en-GB'); }
+        function createManualJob() {
+            const name = document.getElementById('m-name').value; if(!name) return;
+            jobs.unshift({ 
+                id: Date.now(), 
+                name: name.toUpperCase(), 
+                ref: document.getElementById('m-ref').value || "M-" + Math.floor(Math.random()*900), 
+                date: new Date().toLocaleDateString('en-GB'), 
+                status: "pending", 
+                isNew: true,
+                notes: "New manually created survey.",
+                properties: createDefaultProperties(), 
+                sequences: [], 
+                isManual: true 
+            });
+            saveToDevice();
+            renderDashboard(); toggleManualArea();
+        }
+        function exitToDashboard() { document.getElementById('view-editor').classList.add('hidden'); document.getElementById('view-dashboard').classList.remove('hidden'); renderDashboard(); }
+
+        window.onload = renderDashboard;
+    </script>
+</body>
+</html>

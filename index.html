@@ -176,6 +176,7 @@
             <button onclick="switchTab('inventory')" id="nav-inventory" class="nav-btn">3. Inventory</button>
             <button onclick="switchTab('quote')" id="nav-quote" class="nav-btn">4. Quote</button>
             <button onclick="switchTab('listed')" id="nav-listed" class="nav-btn">5. Listed Inv</button>
+            <button onclick="switchTab('schedule')" id="nav-schedule" class="nav-btn">6. Schedule</button> 
         </nav>
 
         <section id="content-address" class="tab-content tab-content-wrapper bg-white p-5 rounded-2xl shadow-inner">
@@ -277,6 +278,73 @@
         </section>
 
         <section id="content-listed" class="tab-content hidden"><div class="p-12 text-center text-slate-400 font-bold italic uppercase">Final List</div></section>
+   <section id="content-schedule" class="tab-content hidden bg-white p-6 rounded-2xl shadow-inner">
+
+<div class="grid grid-cols-2 gap-4 mb-6">
+
+<div>
+<label class="mini-label">Move Date</label>
+<input type="date" id="move-date" class="input-field">
+</div>
+
+<div>
+<label class="mini-label">Crew Size</label>
+<select id="crew-size" class="input-field">
+<option>2 Men</option>
+<option>3 Men</option>
+<option>4 Men</option>
+<option>5 Men</option>
+</select>
+</div>
+
+<div>
+<label class="mini-label">Vehicle</label>
+<select id="vehicle-type" class="input-field">
+<option>Transit</option>
+<option>Luton</option>
+<option>7.5 Tonne</option>
+<option>12 Tonne</option>
+</select>
+</div>
+
+<div>
+<label class="mini-label">Estimated Hours</label>
+<input type="number" id="move-hours" class="input-field" value="8">
+</div>
+
+</div>
+
+<div class="border-t pt-6 grid grid-cols-2 gap-4">
+
+<div>
+<label class="mini-label">Crew Cost (£)</label>
+<input type="number" id="crew-cost" class="input-field" value="0">
+</div>
+
+<div>
+<label class="mini-label">Vehicle Cost (£)</label>
+<input type="number" id="vehicle-cost" class="input-field" value="0">
+</div>
+
+<div>
+<label class="mini-label">Other Costs (£)</label>
+<input type="number" id="other-costs" class="input-field" value="0">
+</div>
+
+<div>
+<label class="mini-label">Total Job Cost (£)</label>
+<input type="number" id="total-cost" class="input-field bg-slate-100" readonly>
+</div>
+
+</div>
+
+<div class="mt-6">
+<button onclick="calculateMoveCost()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm uppercase">
+Calculate Cost
+</button>
+</div>
+
+</section>
     </main>
 
     <script>
@@ -527,8 +595,19 @@
             renderDashboard(); toggleManualArea();
         }
         function exitToDashboard() { document.getElementById('view-editor').classList.add('hidden'); document.getElementById('view-dashboard').classList.remove('hidden'); renderDashboard(); }
+function calculateMoveCost(){
 
+let crew = parseFloat(document.getElementById("crew-cost").value) || 0;
+let vehicle = parseFloat(document.getElementById("vehicle-cost").value) || 0;
+let other = parseFloat(document.getElementById("other-costs").value) || 0;
+
+let total = crew + vehicle + other;
+
+document.getElementById("total-cost").value = total;
+
+}
         window.onload = renderDashboard;
     </script>
 </body>
+
 </html>

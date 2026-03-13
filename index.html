@@ -63,19 +63,20 @@
             border-radius: 12px; padding: 8px 12px; transition: all 0.1s;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .btn-crm-upload:active { border-bottom-width: 0px; transform: translateY(4px); }
+      .btn-crm-upload {
+    background: #10b981; color: white; border-bottom: 4px solid #047857;
+    border-radius: 12px; padding: 8px 12px; transition: all 0.1s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+    min-width: 120px; height: 56px;
+}
 .btn-add-blank {
-   background: #10b981; color: white; border-bottom: 4px solid #047857;
+    background: #3b82f6; color: white; border-bottom: 4px solid #1d4ed8;
     border-radius: 12px; padding: 8px 12px; transition: all 0.1s;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-width: 120px; height: 56px;
 }
 .btn-add-blank:active { border-bottom-width: 0px; transform: translateY(4px); }
-        .btn-upload-glow {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white; font-weight: 900; text-transform: uppercase;
-            box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.4); border: none;
-            width: 100px; height: 44px; display: flex; align-items: center; justify-content: center;
         }
 
         .seq-row {
@@ -135,7 +136,7 @@
                     <p class="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mt-1">Survey System</p>
                 </div>
             </div>
-           <div class="flex gap-2">
+          <div class="flex gap-2">
     <button onclick="downloadFromCloud()" class="btn-crm-upload">
         <span class="text-[7px] font-black uppercase opacity-70">Import</span>
         <span class="text-[9px] font-black uppercase whitespace-nowrap">Import from CRM</span>

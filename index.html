@@ -249,18 +249,18 @@
 
             <div class="grid grid-cols-5 gap-2">
                 <div class="col-span-4 grid grid-cols-4 gap-2">
-                    <button class="item-btn">AC Unit</button>
-                    <button class="item-btn">Armchair</button>
-                    <button class="item-btn">Sofa 2 Seat</button>
-                    <button class="item-btn">Sofa 3 Seat</button>
-                    <button class="item-btn">Bed (Single)</button>
-                    <button class="item-btn">Bed (Double)</button>
-                    <button class="item-btn">Fridge</button>
-                    <button class="item-btn">Garden Bench</button>
-                    <button class="item-btn">Chest Drawers</button>
-                    <button class="item-btn">Dining Table</button>
-                    <button class="item-btn">Desk</button>
-                    <button class="item-btn">Bookcase</button>
+                   <button class="item-btn" onclick="addInventoryItem('AC Unit')">AC Unit</button>
+<button class="item-btn" onclick="addInventoryItem('Armchair')">Armchair</button>
+<button class="item-btn" onclick="addInventoryItem('Sofa 2 Seat')">Sofa 2 Seat</button>
+<button class="item-btn" onclick="addInventoryItem('Sofa 3 Seat')">Sofa 3 Seat</button>
+<button class="item-btn" onclick="addInventoryItem('Bed (Single)')">Bed (Single)</button>
+<button class="item-btn" onclick="addInventoryItem('Bed (Double)')">Bed (Double)</button>
+<button class="item-btn" onclick="addInventoryItem('Fridge')">Fridge</button>
+<button class="item-btn" onclick="addInventoryItem('Garden Bench')">Garden Bench</button>
+<button class="item-btn" onclick="addInventoryItem('Chest Drawers')">Chest Drawers</button>
+<button class="item-btn" onclick="addInventoryItem('Dining Table')">Dining Table</button>
+<button class="item-btn" onclick="addInventoryItem('Desk')">Desk</button>
+<button class="item-btn" onclick="addInventoryItem('Bookcase')">Bookcase</button>
                 </div>
                 <div class="col-span-1 flex flex-col gap-2">
                     <button class="item-btn !h-[75px] bg-red-50 text-red-500 border-red-100 flex-col"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg><span class="text-[8px]">VOICE</span><span class="text-[7px] opacity-60">0 CLIPS</span></button>
@@ -352,7 +352,20 @@ Calculate Cost
         const VEHICLE_TYPES = ["Shuttle van", "Transit van", "Luton / Low Loader", "7.5 tonne", "12 tonne", "15 tonne", "18 tonne", "20ft container", "40ft container"];
         const MOVE_TYPES = ["Dom-local", "Dom-Distance", "Dom-To Store", "Dom-Ex Store", "Dom-Direct/Store", "GPG", "LCL", "FCL"];
         const PACK_OPTIONS = ["Owner Pack", "Fragile (china & Glassware) pack", "Full Packing", "Full Export Pack and Wrap", "Fragile & Kitchenware Pack"];
-
+        const furnitureDB = [
+    {item:"AC Unit", volume:10},
+    {item:"Armchair", volume:20},
+    {item:"Sofa 2 Seat", volume:35},
+    {item:"Sofa 3 Seat", volume:50},
+    {item:"Bed (Single)", volume:40},
+    {item:"Bed (Double)", volume:60},
+    {item:"Fridge", volume:25},
+    {item:"Garden Bench", volume:15},
+    {item:"Chest Drawers", volume:45},
+    {item:"Dining Table", volume:40},
+    {item:"Desk", volume:20},
+    {item:"Bookcase", volume:40}
+];
         let jobs = JSON.parse(localStorage.getItem('photon_jobs')) || [{ 
             id: 101, 
             name: "Smith, Jonathan", 
@@ -369,7 +382,8 @@ Calculate Cost
         }];
         
         let currentJob = null; let activePropId = null; let activeSeqId = null;
-
+let inventoryItems = [];
+let totalVolume = 0;
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
         }
@@ -605,6 +619,44 @@ let total = crew + vehicle + other;
 
 document.getElementById("total-cost").value = total;
 
+}
+      function addInventoryItem(itemName) {
+    let item = furnitureDB.find(i => i.item === itemName);
+
+    if (!item) return;
+
+    let existing = inventoryItems.find(i => i.item === itemName);
+
+    if (existing) {
+        existing.qty += 1;
+    } else {
+        inventoryItems.push({
+            item: item.item,
+            volume: item.volume,
+            qty: 1
+        });
+    }
+
+    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+
+    updateInventoryDisplay();
+}
+
+function updateInventoryDisplay() {
+    let log = document.querySelector(".log-bar");
+    let volValue = document.querySelector(".vol-box span:last-child");
+
+    if (!log || !volValue) return;
+
+    if (inventoryItems.length === 0) {
+        log.innerText = "No items added";
+        volValue.innerText = "0";
+        return;
+    }
+
+    let lastItem = inventoryItems[inventoryItems.length - 1];
+    log.innerText = `${lastItem.qty} X ${lastItem.item.toUpperCase()}`;
+    volValue.innerText = totalVolume;
 }
         window.onload = renderDashboard;
     </script>

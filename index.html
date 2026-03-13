@@ -59,24 +59,33 @@
 
         /* --- UPDATED CRM BUTTON --- */
         .btn-crm-upload {
-            background: #3b82f6; color: white; border-bottom: 4px solid #1d4ed8;
+            background: #10b981; color: white; border-bottom: 4px solid #047857;
             border-radius: 12px; padding: 8px 12px; transition: all 0.1s;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-      .btn-crm-upload {
-    background: #10b981; color: white; border-bottom: 4px solid #047857;
-    border-radius: 12px; padding: 8px 12px; transition: all 0.1s;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+        .btn-crm-upload:active { border-bottom-width: 0px; transform: translateY(4px); }
+.btn-add-file {
+    background: #3b82f6;
+    color: white;
+    border-bottom: 4px solid #1d4ed8;
+    border-radius: 12px;
+    padding: 8px 12px;
+    transition: all 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
-    min-width: 120px; height: 56px;
+
+.btn-add-file:active {
+    border-bottom-width: 0px;
+    transform: translateY(4px);
 }
-.btn-add-blank {
-    background: #3b82f6; color: white; border-bottom: 4px solid #1d4ed8;
-    border-radius: 12px; padding: 8px 12px; transition: all 0.1s;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    min-width: 120px; height: 56px;
-}
-.btn-add-blank:active { border-bottom-width: 0px; transform: translateY(4px); }
+        .btn-upload-glow {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white; font-weight: 900; text-transform: uppercase;
+            box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.4); border: none;
+            width: 100px; height: 44px; display: flex; align-items: center; justify-content: center;
         }
 
         .seq-row {
@@ -136,23 +145,23 @@
                     <p class="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mt-1">Survey System</p>
                 </div>
             </div>
-          <div class="flex gap-2">
-    <button onclick="downloadFromCloud()" class="btn-crm-upload">
-        <span class="text-[7px] font-black uppercase opacity-70">Import</span>
-        <span class="text-[9px] font-black uppercase whitespace-nowrap">Import from CRM</span>
-    </button>
-
-    <button onclick="toggleManualArea()" class="btn-add-blank">
-        <span class="flex items-center gap-2">
-            <span class="text-lg font-black leading-none">+</span>
-            <span class="text-[9px] font-black uppercase whitespace-nowrap">Add Blank Survey</span>
-        </span>
-    </button>
-</div>
+            <div class="flex gap-2">
+                <button onclick="downloadFromCloud()" class="btn-crm-upload">
+                    <span class="text-[7px] font-black uppercase opacity-70">Import</span>
+                   <span class="text-[9px] font-black uppercase whitespace-nowrap">Import from CRM</span>
+                </button>
+              <button onclick="toggleManualArea()" class="btn-add-file">
+<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M12 4v16m8-8H4" />
+</svg>
+<span class="text-[9px] font-black uppercase whitespace-nowrap">Add Blank File</span>
+</button>
+            </div>
+        </div>
 
         <section id="manual-entry-area" class="shadow-xl">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-black text-slate-900 uppercase italic">Add Blank Survey</h2>
+                <h2 class="text-sm font-black text-slate-900 uppercase italic">New Manual Survey</h2>
                 <div id="timestamp-val" class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded"></div>
             </div>
             <div class="space-y-3">
@@ -160,7 +169,7 @@
                 <input type="text" id="m-ref" class="input-field border-2" placeholder="REFERENCE">
                 <div class="flex gap-2">
                     <button onclick="toggleManualArea()" class="flex-1 py-3 text-[9px] font-black uppercase text-slate-400">Cancel</button>
-                  <button onclick="createManualJob()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg text-[9px] font-black uppercase">Create Survey</button>
+                    <button onclick="createManualJob()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg text-[9px] font-black uppercase">Create File</button>
                 </div>
             </div>
         </section>
@@ -675,3 +684,5 @@ function updateInventoryDisplay() {
 </body>
 
 </html>
+       
+       

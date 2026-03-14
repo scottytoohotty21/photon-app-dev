@@ -415,12 +415,14 @@ let totalVolume = 0;
             const now = Date.now();
             return [
             { 
+{ 
     id: now, 
     label: "Collection Address", 
     line1: "10 Downing Street", 
     country: "United Kingdom", 
     salutation: "",
-    clientName: "",
+    firstName: "",
+    surname: "",
     homePhone: "",
     mobilePhone: "",
     email: "",
@@ -482,32 +484,38 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
     </div>
 
     ${isCollectionAddress ? `
-    <div class="bg-white border border-slate-200 rounded-xl p-4">
-        <div class="grid grid-cols-12 gap-3">
-            <div class="col-3">
-                <label class="mini-label">Salutation</label>
-                <select ${status} onchange="updatePropData('salutation', this.value)" class="input-field">
-                    <option value="">-Select-</option>
-                    ${SALUTATIONS.map(s => `<option value="${s}" ${prop.salutation===s?'selected':''}>${s}</option>`).join('')}
-                </select>
-            </div>
-            <div class="col-9">
-                <label class="mini-label">Client Name</label>
-                <input type="text" ${status} oninput="updatePropData('clientName', this.value)" class="input-field" value="${prop.clientName || ''}">
-            </div>
-            <div class="col-4">
-                <label class="mini-label">Home Phone</label>
-                <input type="text" ${status} oninput="updatePropData('homePhone', this.value)" class="input-field" value="${prop.homePhone || ''}">
-            </div>
-            <div class="col-4">
-                <label class="mini-label">Mobile Phone</label>
-                <input type="text" ${status} oninput="updatePropData('mobilePhone', this.value)" class="input-field" value="${prop.mobilePhone || ''}">
-            </div>
-            <div class="col-4">
-                <label class="mini-label">Email</label>
-                <input type="email" ${status} oninput="updatePropData('email', this.value)" class="input-field" value="${prop.email || ''}">
-            </div>
+<div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="grid grid-cols-12 gap-3">
+        <div class="col-span-2">
+            <label class="mini-label">Salutation</label>
+            <select ${status} onchange="updatePropData('salutation', this.value)" class="input-field">
+                <option value="">-Select-</option>
+                ${SALUTATIONS.map(s => `<option value="${s}" ${prop.salutation===s?'selected':''}>${s}</option>`).join('')}
+            </select>
         </div>
+        <div class="col-span-5">
+            <label class="mini-label">First Name</label>
+            <input type="text" ${status} oninput="updatePropData('firstName', this.value)" class="input-field" value="${prop.firstName || ''}">
+        </div>
+        <div class="col-span-5">
+            <label class="mini-label">Surname</label>
+            <input type="text" ${status} oninput="updatePropData('surname', this.value)" class="input-field" value="${prop.surname || ''}">
+        </div>
+
+        <div class="col-span-4">
+            <label class="mini-label">Home Phone</label>
+            <input type="text" ${status} oninput="updatePropData('homePhone', this.value)" class="input-field" value="${prop.homePhone || ''}">
+        </div>
+        <div class="col-span-4">
+            <label class="mini-label">Mobile Phone</label>
+            <input type="text" ${status} oninput="updatePropData('mobilePhone', this.value)" class="input-field" value="${prop.mobilePhone || ''}">
+        </div>
+        <div class="col-span-4">
+            <label class="mini-label">Email</label>
+            <input type="email" ${status} oninput="updatePropData('email', this.value)" class="input-field" value="${prop.email || ''}">
+        </div>
+    </div>
+</div>
     </div>
     ` : ''}
 

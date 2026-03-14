@@ -432,8 +432,26 @@ let totalVolume = 0;
     isCore: true, 
     isSaved: false 
 },
-                { id: now+1, label: "Delivery Address", line1: "42 Wallaby Way", country: "United Kingdom", isCore: true, isSaved: false },
-                { id: now+2, label: "Store", line1: "The Vaults, Unit B", country: "United Kingdom", isCore: true, isSaved: false }
+{ 
+    id: now+1, 
+    label: "Delivery Address", 
+    line1: "42 Wallaby Way", 
+    country: "United Kingdom", 
+    contactName: "",
+    contactPhone: "",
+    isCore: true, 
+    isSaved: false 
+},
+{ 
+    id: now+2, 
+    label: "Store", 
+    line1: "The Vaults, Unit B", 
+    country: "United Kingdom", 
+    contactName: "",
+    contactPhone: "",
+    isCore: true, 
+    isSaved: false 
+}
             ];
         }
 
@@ -534,6 +552,16 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
                     <div class="col-3"><label class="mini-label">Lift</label><input type="text" ${status} oninput="updatePropData('lift', this.value)" class="input-field" value="${prop.lift || ''}"></div>
                     <div class="col-3"><label class="mini-label">Dist (m)</label><input type="number" ${status} oninput="updatePropData('distance', this.value)" class="input-field" value="${prop.distance || ''}"></div>
                     <div class="col-12"><label class="mini-label">Parking & Instructions</label><textarea ${status} oninput="updatePropData('parking', this.value)" class="input-field h-20">${prop.parking || ''}</textarea></div>
+                ${!isCollectionAddress ? `
+    <div class="col-6">
+        <label class="mini-label">Contact Name</label>
+        <input type="text" ${status} oninput="updatePropData('contactName', this.value)" class="input-field" value="${prop.contactName || ''}">
+    </div>
+    <div class="col-6">
+        <label class="mini-label">Contact Phone No.</label>
+        <input type="text" ${status} oninput="updatePropData('contactPhone', this.value)" class="input-field" value="${prop.contactPhone || ''}">
+    </div>
+` : ''}
                 </div>`;
             triggerPulse('address-editor-ui');
         }
@@ -634,12 +662,22 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
             activeSeqId = currentJob.sequences[0].id; renderSequenceUI();
             saveToDevice();
         }
-        function addProperty() {
-            const newId = Date.now();
-            currentJob.properties.push({ id: newId, label: "Add Address", line1: "", country: "United Kingdom", isCore: false, isSaved: false });
-            activePropId = newId; renderAddressUI();
-            saveToDevice();
-        }
+    function addProperty() {
+    const newId = Date.now();
+    currentJob.properties.push({ 
+        id: newId, 
+        label: "Add Address", 
+        line1: "", 
+        country: "United Kingdom", 
+        contactName: "",
+        contactPhone: "",
+        isCore: false, 
+        isSaved: false 
+    });
+    activePropId = newId; 
+    renderAddressUI();
+    saveToDevice();
+}
         function deleteProperty(id) {
             currentJob.properties = currentJob.properties.filter(p => p.id !== id);
             activePropId = currentJob.properties[0].id; renderAddressUI();
@@ -650,7 +688,30 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
         function addStop(type) { currentJob.sequences.find(s => s.id == activeSeqId)[type].push(currentJob.properties[0].id); renderSequenceUI(); }
         function removeStop(type, idx) { currentJob.sequences.find(s => s.id == activeSeqId)[type].splice(idx, 1); renderSequenceUI(); }
         function updatePropLabel(v) { currentJob.properties.find(p => p.id === activePropId).label = v; }
-        function updatePropData(f, v) { currentJob.properties.find(p => p.id === activePropId)[f] = v; }
+       function updatePropData(f, v) {
+    const prop = currentJob.properties.find(p => p.id === activePropId);
+    prop[f] = v;
+
+    const isCollectionAddress = activePropId === currentJob.properties[0].id;
+
+    if (isCollectionAddress && (f === 'firstName' || f === 'surname')) {
+        const firstName = (prop.firstName || '').trim();
+        const surname = (prop.surname || '').trim();
+
+        if (surname && firstName) {
+            currentJob.name = `${surname}, ${firstName}`.toUpperCase();
+        } else if (surname) {
+            currentJob.name = surname.toUpperCase();
+        } else if (firstName) {
+            currentJob.name = firstName.toUpperCase();
+        } else {
+            currentJob.name = '';
+        }
+
+        const hdrName = document.getElementById('hdr-name');
+        if (hdrName) hdrName.innerText = currentJob.name;
+    }
+}
         function updateHeaderData(f, v) { currentJob[f] = v; saveToDevice(); }
         function loadProperty(id) { activePropId = parseInt(id); renderAddressUI(); }
         function loadSequence(id) { activeSeqId = id; renderSequenceUI(); }

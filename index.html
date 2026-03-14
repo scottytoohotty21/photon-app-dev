@@ -235,7 +235,7 @@ Enter as: Surname, First Name
             <div class="grid grid-cols-12 gap-2 mb-3">
                 <div class="col-span-4">
                     <label class="mini-label">Seq</label>
-                    <select class="inv-header-select"><option>STORAGE</option></select>
+                   <select id="inv-seq-select" class="inv-header-select"></select>
                 </div>
                 <div class="col-span-4">
                     <label class="mini-label">Floor</label>
@@ -480,8 +480,9 @@ let totalVolume = 0;
             activePropId = currentJob.properties[0].id;
             if(!currentJob.sequences || currentJob.sequences.length === 0) addSequence();
             else activeSeqId = currentJob.sequences[0].id;
-            renderAddressUI();
-            saveToDevice();
+           renderAddressUI();
+renderInventorySequenceDropdown();
+saveToDevice();
         }
 
         function renderAddressUI() {
@@ -565,9 +566,17 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
                 </div>`;
             triggerPulse('address-editor-ui');
         }
+function renderInventorySequenceDropdown() {
+    const dropdown = document.getElementById('inv-seq-select');
+    if (!dropdown || !currentJob) return;
 
+    dropdown.innerHTML = currentJob.sequences.map((s, idx) => {
+        const label = s.moveType ? `Seq #${idx + 1}: ${s.moveType}` : `Seq #${idx + 1}: New Sequence`;
+        return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+}
         function renderSequenceUI() {
-            const seq = currentJob.sequences.find(s => s.id == activeSeqId);
+    const seq = currentJob.sequences.find(s => s.id == activeSeqId); 
             const isSaved = seq.isSaved;
             const status = isSaved ? 'disabled' : '';
             const wrapper = document.getElementById('content-sequence');
@@ -646,21 +655,28 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
         function addSequence() {
             const id = Date.now();
             currentJob.sequences.push({ id: id, moveType: "", packOption: "", vol: 0, isSaved: false, collections: [currentJob.properties[0].id], deliveries: [currentJob.properties[1] ? currentJob.properties[1].id : currentJob.properties[0].id] });
-            activeSeqId = id; renderSequenceUI();
-            saveToDevice();
+            activeSeqId = id;
+renderSequenceUI();
+renderInventorySequenceDropdown();
+saveToDevice();
         }
         function copySequence() {
             const original = currentJob.sequences.find(s => s.id == activeSeqId);
             const copy = JSON.parse(JSON.stringify(original));
             copy.id = Date.now(); copy.isSaved = false;
-            currentJob.sequences.push(copy); activeSeqId = copy.id; renderSequenceUI();
-            saveToDevice();
+            currentJob.sequences.push(copy);
+activeSeqId = copy.id;
+renderSequenceUI();
+renderInventorySequenceDropdown();
+saveToDevice();
         }
         function deleteSequence() {
             if(currentJob.sequences.length <= 1) return;
             currentJob.sequences = currentJob.sequences.filter(s => s.id != activeSeqId);
-            activeSeqId = currentJob.sequences[0].id; renderSequenceUI();
-            saveToDevice();
+           activeSeqId = currentJob.sequences[0].id;
+renderSequenceUI();
+renderInventorySequenceDropdown();
+saveToDevice();
         }
     function addProperty() {
     const newId = Date.now();

@@ -576,7 +576,7 @@ function renderInventorySequenceDropdown() {
         const label = `Seq #${idx + 1}: ${moveLabel} / ${packLabel}`;
         return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
     }).join('');
-}
+
 }
         function renderSequenceUI() {
     const seq = currentJob.sequences.find(s => s.id == activeSeqId); 

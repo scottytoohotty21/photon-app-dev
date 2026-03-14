@@ -571,9 +571,12 @@ function renderInventorySequenceDropdown() {
     if (!dropdown || !currentJob) return;
 
     dropdown.innerHTML = currentJob.sequences.map((s, idx) => {
-        const label = s.moveType ? `Seq #${idx + 1}: ${s.moveType}` : `Seq #${idx + 1}: New Sequence`;
+        const moveLabel = s.moveType || 'New Sequence';
+        const packLabel = s.packOption || 'No Packing Set';
+        const label = `Seq #${idx + 1}: ${moveLabel} / ${packLabel}`;
         return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
     }).join('');
+}
 }
         function renderSequenceUI() {
     const seq = currentJob.sequences.find(s => s.id == activeSeqId); 

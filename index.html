@@ -664,29 +664,62 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
             if(t === 'sequence') renderSequenceUI();
             if(t === 'address') renderAddressUI();
         }
+function splitManualName(fullName) {
+    const cleaned = (fullName || "").trim();
 
+    if (!cleaned) {
+        return { surname: "", firstName: "" };
+    }
+
+    if (cleaned.includes(",")) {
+        const parts = cleaned.split(",");
+        return {
+            surname: (parts[0] || "").trim(),
+            firstName: (parts.slice(1).join(",") || "").trim()
+        };
+    }
+
+    // fallback if user forgets the comma
+    const words = cleaned.split(/\s+/);
+    return {
+        surname: words[0] || "",
+        firstName: words.slice(1).join(" ")
+    };
+}
         function toggleManualArea() { const area = document.getElementById('manual-entry-area'); area.style.display = (area.style.display === "block") ? "none" : "block"; document.getElementById('timestamp-val').innerText = new Date().toLocaleString('en-GB'); }
-        function createManualJob() {
-            const name = document.getElementById('m-name').value; if(!name) return;
-            jobs.unshift({ 
-                id: Date.now(), 
-                name: name.toUpperCase(), 
-                ref: document.getElementById('m-ref').value || "M-" + Math.floor(Math.random()*900), 
-                date: new Date().toLocaleDateString('en-GB'), 
-                status: "pending", 
-                isNew: true,
-                notes: "New manually created survey.",
-                properties: createDefaultProperties(), 
-                sequences: [], 
-                isManual: true 
-            });
-            saveToDevice();
-renderDashboard();
+function createManualJob() {
+    const name = document.getElementById('m-name').value.trim();
+    if (!name) return;
 
-document.getElementById('m-name').value = "";
-document.getElementById('m-ref').value = "";
+    const parsedName = splitManualName(name);
+    const newProperties = createDefaultProperties();
 
-toggleManualArea();
+    // populate Collection Address contact name fields
+    newProperties[0].firstName = parsedName.firstName;
+    newProperties[0].surname = parsedName.surname;
+    newProperties[0].clientName = name;
+
+    jobs.unshift({ 
+        id: Date.now(), 
+        name: name.toUpperCase(), 
+        ref: document.getElementById('m-ref').value || "M-" + Math.floor(Math.random() * 900), 
+        date: new Date().toLocaleDateString('en-GB'), 
+        status: "pending", 
+        isNew: true,
+        notes: "New manually created survey.",
+        properties: newProperties, 
+        sequences: [], 
+        isManual: true 
+    });
+
+    saveToDevice();
+    renderDashboard();
+
+    document.getElementById('m-name').value = "";
+    document.getElementById('m-ref').value = "";
+
+    toggleManualArea();
+}
         }
         function exitToDashboard() { document.getElementById('view-editor').classList.add('hidden'); document.getElementById('view-dashboard').classList.remove('hidden'); renderDashboard(); }
 function calculateMoveCost(){

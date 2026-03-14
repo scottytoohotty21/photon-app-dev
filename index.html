@@ -475,12 +475,43 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
 
             document.getElementById('prop-selector').innerHTML = currentJob.properties.map(p => `<option value="${p.id}" ${p.id === activePropId ? 'selected' : ''}>${toTitleCase(p.label)}</option>`).join('');
             
-            document.getElementById('address-editor-ui').innerHTML = `
-                <div class="bg-slate-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
-                    <div class="flex-grow"><label class="mini-label text-blue-600">Property Label</label><input type="text" ${status} oninput="updatePropLabel(this.value)" class="w-full bg-transparent text-xl font-black outline-none text-blue-900" value="${toTitleCase(prop.label)}"></div>
-                    ${(!prop.isCore && !isSaved) ? `<button onclick="deleteProperty(${prop.id})" class="text-red-600 text-[9px] font-black uppercase">Delete Address</button>` : ''}
-                </div>
-                <div class="prop-grid">
+           document.getElementById('address-editor-ui').innerHTML = `
+    <div class="bg-slate-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
+        <div class="flex-grow"><label class="mini-label text-blue-600">Property Label</label><input type="text" ${status} oninput="updatePropLabel(this.value)" class="w-full bg-transparent text-xl font-black outline-none text-blue-900" value="${toTitleCase(prop.label)}"></div>
+        ${(!prop.isCore && !isSaved) ? `<button onclick="deleteProperty(${prop.id})" class="text-red-600 text-[9px] font-black uppercase">Delete Address</button>` : ''}
+    </div>
+
+    ${isCollectionAddress ? `
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+        <div class="grid grid-cols-12 gap-3">
+            <div class="col-3">
+                <label class="mini-label">Salutation</label>
+                <select ${status} onchange="updatePropData('salutation', this.value)" class="input-field">
+                    <option value="">-Select-</option>
+                    ${SALUTATIONS.map(s => `<option value="${s}" ${prop.salutation===s?'selected':''}>${s}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-9">
+                <label class="mini-label">Client Name</label>
+                <input type="text" ${status} oninput="updatePropData('clientName', this.value)" class="input-field" value="${prop.clientName || ''}">
+            </div>
+            <div class="col-4">
+                <label class="mini-label">Home Phone</label>
+                <input type="text" ${status} oninput="updatePropData('homePhone', this.value)" class="input-field" value="${prop.homePhone || ''}">
+            </div>
+            <div class="col-4">
+                <label class="mini-label">Mobile Phone</label>
+                <input type="text" ${status} oninput="updatePropData('mobilePhone', this.value)" class="input-field" value="${prop.mobilePhone || ''}">
+            </div>
+            <div class="col-4">
+                <label class="mini-label">Email</label>
+                <input type="email" ${status} oninput="updatePropData('email', this.value)" class="input-field" value="${prop.email || ''}">
+            </div>
+        </div>
+    </div>
+    ` : ''}
+
+    <div class="prop-grid">
                     <div class="col-7"><label class="mini-label">1st line</label><input type="text" ${status} oninput="updatePropData('line1', this.value)" class="input-field" value="${prop.line1 || ''}"></div>
                     <div class="col-5"><label class="mini-label">Road</label><input type="text" ${status} oninput="updatePropData('road', this.value)" class="input-field" value="${prop.road || ''}"></div>
                     <div class="col-3"><label class="mini-label">Town</label><input type="text" ${status} oninput="updatePropData('city', this.value)" class="input-field" value="${prop.city || ''}"></div>

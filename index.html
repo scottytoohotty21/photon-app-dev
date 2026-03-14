@@ -702,7 +702,12 @@ saveToDevice();
             activePropId = currentJob.properties[0].id; renderAddressUI();
             saveToDevice();
         }
-        function updateSeqField(f, v) { currentJob.sequences.find(s => s.id == activeSeqId)[f] = v; renderSequenceUI(); }
+       function updateSeqField(f, v) {
+    currentJob.sequences.find(s => s.id == activeSeqId)[f] = v;
+    renderSequenceUI();
+    renderInventorySequenceDropdown();
+    saveToDevice();
+}
         function updateStop(type, idx, val) { currentJob.sequences.find(s => s.id == activeSeqId)[type][idx] = val; }
         function addStop(type) { currentJob.sequences.find(s => s.id == activeSeqId)[type].push(currentJob.properties[0].id); renderSequenceUI(); }
         function removeStop(type, idx) { currentJob.sequences.find(s => s.id == activeSeqId)[type].splice(idx, 1); renderSequenceUI(); }

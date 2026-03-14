@@ -165,7 +165,10 @@
                 <div id="timestamp-val" class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded"></div>
             </div>
             <div class="space-y-3">
-                <input type="text" id="m-name" class="input-field border-2" placeholder="CLIENT NAME">
+                <input type="text" id="m-name" class="input-field border-2" placeholder="SURNAME, FIRST NAME">
+<div class="text-[9px] font-bold text-slate-400 uppercase px-1">
+Enter as: Surname, First Name
+</div>
                 <input type="text" id="m-ref" class="input-field border-2" placeholder="REFERENCE">
                 <div class="flex gap-2">
                     <button onclick="toggleManualArea()" class="flex-1 py-3 text-[9px] font-black uppercase text-slate-400">Cancel</button>
@@ -678,7 +681,12 @@ const isCollectionAddress = prop.id === currentJob.properties[0].id;
                 isManual: true 
             });
             saveToDevice();
-            renderDashboard(); toggleManualArea();
+renderDashboard();
+
+document.getElementById('m-name').value = "";
+document.getElementById('m-ref').value = "";
+
+toggleManualArea();
         }
         function exitToDashboard() { document.getElementById('view-editor').classList.add('hidden'); document.getElementById('view-dashboard').classList.remove('hidden'); renderDashboard(); }
 function calculateMoveCost(){

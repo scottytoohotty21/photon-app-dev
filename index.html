@@ -373,6 +373,7 @@ Calculate Cost
         const VEHICLE_TYPES = ["Shuttle van", "Transit van", "Luton / Low Loader", "7.5 tonne", "12 tonne", "15 tonne", "18 tonne", "20ft container", "40ft container"];
         const MOVE_TYPES = ["Dom-local", "Dom-Distance", "Dom-To Store", "Dom-Ex Store", "Dom-Direct/Store", "GPG", "LCL", "FCL"];
         const PACK_OPTIONS = ["Owner Pack", "Fragile (china & Glassware) pack", "Full Packing", "Full Export Pack and Wrap", "Fragile & Kitchenware Pack"];
+        const SALUTATIONS = ["Mr", "Miss", "Mrs", "Ms", "Other"];
         const furnitureDB = [
     {item:"AC Unit", volume:10},
     {item:"Armchair", volume:20},
@@ -413,7 +414,19 @@ let totalVolume = 0;
         function createDefaultProperties() {
             const now = Date.now();
             return [
-                { id: now, label: "Collection Address", line1: "10 Downing Street", country: "United Kingdom", isCore: true, isSaved: false },
+            { 
+    id: now, 
+    label: "Collection Address", 
+    line1: "10 Downing Street", 
+    country: "United Kingdom", 
+    salutation: "",
+    clientName: "",
+    homePhone: "",
+    mobilePhone: "",
+    email: "",
+    isCore: true, 
+    isSaved: false 
+},
                 { id: now+1, label: "Delivery Address", line1: "42 Wallaby Way", country: "United Kingdom", isCore: true, isSaved: false },
                 { id: now+2, label: "Store", line1: "The Vaults, Unit B", country: "United Kingdom", isCore: true, isSaved: false }
             ];
@@ -449,9 +462,10 @@ let totalVolume = 0;
         }
 
         function renderAddressUI() {
-            const prop = currentJob.properties.find(p => p.id === activePropId);
-            const isSaved = prop.isSaved;
-            const status = isSaved ? 'disabled' : '';
+         const prop = currentJob.properties.find(p => p.id === activePropId);
+const isSaved = prop.isSaved;
+const status = isSaved ? 'disabled' : '';
+const isCollectionAddress = prop.id === currentJob.properties[0].id;
             const wrapper = document.getElementById('content-address');
             isSaved ? wrapper.classList.add('is-saved') : wrapper.classList.remove('is-saved');
 

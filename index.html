@@ -317,7 +317,18 @@ Enter as: Surname, First Name
     </div>
     <div class="col-span-1">
         <label class="mini-label">Qty</label>
-        <input type="number" id="inv-qty" class="inv-header-select inv-top-field text-center" value="1" min="1">
+     <input
+    type="number"
+    id="inv-qty"
+    class="inv-header-select inv-top-field text-center"
+    value="1"
+    min="1"
+    step="1"
+    inputmode="numeric"
+    pattern="[0-9]*"
+    onclick="this.select()"
+    onfocus="this.select()"
+>
     </div>
     <div class="col-span-2">
         <label class="mini-label">Total Vol</label>

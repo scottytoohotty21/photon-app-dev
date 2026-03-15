@@ -670,20 +670,35 @@ const inventoryCategories = {
         ...overrides
     };
 }
-        let jobs = JSON.parse(localStorage.getItem('photon_jobs')) || [{ 
-            id: 101, 
-            name: "Smith, Jonathan", 
-            ref: "#UK-22901", 
-            date: "22 Feb 2026", 
-            time: "08:30", 
-            status: "active", 
+   let jobs = JSON.parse(localStorage.getItem('photon_jobs')) || [
+    createEmptyJob({
+        id: 101,
+        ref: "#UK-22901",
+        name: "SMITH, JONATHAN",
+        status: "active",
+        isNew: true,
+        notes: "Client has large piano in basement. Handle with care.",
+        tel: "07700 900456",
+        email: "j.smith@example.com",
+        customer: {
+            displayName: "SMITH, JONATHAN",
+            firstName: "Jonathan",
+            surname: "Smith",
+            salutation: "",
+            homePhone: "",
+            mobilePhone: "07700 900456",
+            email: "j.smith@example.com"
+        },
+        survey: {
+            status: "active",
             isNew: true,
-            notes: "Client has large piano in basement. Handle with care.",
-            tel: "07700 900456", 
-            email: "j.smith@example.com", 
-            properties: createDefaultProperties(), 
-            sequences: [] 
-        }];
+            isManual: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            notes: "Client has large piano in basement. Handle with care."
+        }
+    })
+];
         
         let currentJob = null; let activePropId = null; let activeSeqId = null;
 let inventoryItems = [];

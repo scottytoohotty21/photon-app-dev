@@ -317,13 +317,11 @@ Enter as: Surname, First Name
     </div>
     <div class="col-span-1">
         <label class="mini-label">Qty</label>
-     <input
-    type="number"
+   <input
+    type="text"
     id="inv-qty"
     class="inv-header-select inv-top-field text-center"
     value="1"
-    min="1"
-    step="1"
     inputmode="numeric"
     pattern="[0-9]*"
     onclick="this.select()"
@@ -1061,7 +1059,9 @@ document.getElementById("total-cost").value = total;
 
 function addVolume(amount) {
     const qtyInput = document.getElementById("inv-qty");
-    const qty = parseInt(qtyInput?.value) || 1;
+   let qty = parseInt(qtyInput?.value, 10);
+if (isNaN(qty) || qty < 1) qty = 1;
+qtyInput.value = qty;
 
     currentItemVolume = amount * qty;
     totalVolume += currentItemVolume;
@@ -1074,7 +1074,9 @@ function addInventoryItem(itemName) {
     if (!item) return;
 
     const qtyInput = document.getElementById("inv-qty");
-    const qty = parseInt(qtyInput?.value) || 1;
+    let qty = parseInt(qtyInput?.value, 10);
+if (isNaN(qty) || qty < 1) qty = 1;
+qtyInput.value = qty;
 
     let existing = inventoryItems.find(i => i.item === itemName);
 

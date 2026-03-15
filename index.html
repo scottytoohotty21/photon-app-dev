@@ -1067,6 +1067,9 @@ qtyInput.value = qty;
     totalVolume += currentItemVolume;
 
     updateInventoryDisplay(`+ ${qty} x ${amount} CUFT`);
+// reset qty back to 1 for next item
+const qtyInput = document.getElementById("inv-qty");
+if (qtyInput) qtyInput.value = 1;
 }
 
 function addInventoryItem(itemName) {
@@ -1094,8 +1097,10 @@ qtyInput.value = qty;
     totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
 
     updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
+// reset qty back to 1 for next item
+const qtyInput = document.getElementById("inv-qty");
+if (qtyInput) qtyInput.value = 1;
 }
-
 
 function updateInventoryDisplay(logText = "No items added") {
     let log = document.querySelector(".log-bar");

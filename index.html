@@ -591,6 +591,85 @@ const inventoryCategories = {
         "Dustbin"
     ]
 };
+        function createEmptyJob(overrides = {}) {
+    const now = new Date().toISOString();
+    const defaultProperties = createDefaultProperties();
+    const collection = defaultProperties[0] || {};
+
+    return {
+        id: Date.now(),
+        ref: "",
+
+        customer: {
+            displayName: "",
+            firstName: collection.firstName || "",
+            surname: collection.surname || "",
+            salutation: collection.salutation || "",
+            homePhone: collection.homePhone || "",
+            mobilePhone: collection.mobilePhone || "",
+            email: collection.email || ""
+        },
+
+        survey: {
+            status: "pending",
+            isNew: true,
+            isManual: false,
+            createdAt: now,
+            updatedAt: now,
+            notes: ""
+        },
+
+        addresses: defaultProperties,
+        sequences: [],
+
+        inventory: {
+            activeSequenceId: null,
+            activeFloor: "Ground",
+            activeRoomName: "",
+            activeCategory: "Full List",
+            items: [],
+            exclusions: [],
+            voiceNotes: [],
+            totals: {
+                currentItemVolume: 0,
+                totalVolume: 0
+            }
+        },
+
+        planner: {
+            moveDate: "",
+            crewSize: "",
+            vehicleType: "",
+            estimatedHours: 0
+        },
+
+        costing: {
+            crewCost: 0,
+            vehicleCost: 0,
+            otherCosts: 0,
+            totalCost: 0
+        },
+
+        sync: {
+            uploaded: false,
+            lastUploadedAt: "",
+            cloudId: "",
+            crmId: ""
+        },
+
+        // current app compatibility
+        name: "",
+        status: "pending",
+        isNew: true,
+        isManual: false,
+        notes: "",
+        properties: defaultProperties,
+        tel: "",
+        email: "",
+
+        ...overrides
+    };
+}
         let jobs = JSON.parse(localStorage.getItem('photon_jobs')) || [{ 
             id: 101, 
             name: "Smith, Jonathan", 

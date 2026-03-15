@@ -1059,17 +1059,17 @@ document.getElementById("total-cost").value = total;
 
 function addVolume(amount) {
     const qtyInput = document.getElementById("inv-qty");
-   let qty = parseInt(qtyInput?.value, 10);
-if (isNaN(qty) || qty < 1) qty = 1;
-qtyInput.value = qty;
+    let qty = parseInt(qtyInput?.value, 10);
+    if (isNaN(qty) || qty < 1) qty = 1;
+    qtyInput.value = qty;
 
     currentItemVolume = amount * qty;
     totalVolume += currentItemVolume;
 
     updateInventoryDisplay(`+ ${qty} x ${amount} CUFT`);
-// reset qty back to 1 for next item
-const qtyInput = document.getElementById("inv-qty");
-if (qtyInput) qtyInput.value = 1;
+
+    // reset qty back to 1 for next item
+    qtyInput.value = 1;
 }
 
 function addInventoryItem(itemName) {
@@ -1078,8 +1078,8 @@ function addInventoryItem(itemName) {
 
     const qtyInput = document.getElementById("inv-qty");
     let qty = parseInt(qtyInput?.value, 10);
-if (isNaN(qty) || qty < 1) qty = 1;
-qtyInput.value = qty;
+    if (isNaN(qty) || qty < 1) qty = 1;
+    qtyInput.value = qty;
 
     let existing = inventoryItems.find(i => i.item === itemName);
 
@@ -1097,11 +1097,10 @@ qtyInput.value = qty;
     totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
 
     updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
-// reset qty back to 1 for next item
-const qtyInput = document.getElementById("inv-qty");
-if (qtyInput) qtyInput.value = 1;
-}
 
+    // reset qty back to 1 for next item
+    qtyInput.value = 1;
+}
 function updateInventoryDisplay(logText = "No items added") {
     let log = document.querySelector(".log-bar");
     let volValue = document.querySelector(".vol-box span:last-child");

@@ -1115,23 +1115,42 @@ function createManualJob() {
     const parsedName = splitManualName(name);
     const newProperties = createDefaultProperties();
 
-    // populate Collection Address contact name fields
     newProperties[0].firstName = parsedName.firstName;
     newProperties[0].surname = parsedName.surname;
     newProperties[0].clientName = name;
 
-    jobs.unshift({ 
-        id: Date.now(), 
-        name: name.toUpperCase(), 
-        ref: document.getElementById('m-ref').value || "M-" + Math.floor(Math.random() * 900), 
-        date: new Date().toLocaleDateString('en-GB'), 
-        status: "pending", 
+    const ref = document.getElementById('m-ref').value || "M-" + Math.floor(Math.random() * 900);
+    const displayName = name.toUpperCase();
+
+    const newJob = createEmptyJob({
+        ref: ref,
+        name: displayName,
+        status: "pending",
         isNew: true,
+        isManual: true,
         notes: "New manually created survey.",
-        properties: newProperties, 
-        sequences: [], 
-        isManual: true 
+        properties: newProperties,
+        addresses: newProperties,
+        customer: {
+            displayName: displayName,
+            firstName: parsedName.firstName,
+            surname: parsedName.surname,
+            salutation: "",
+            homePhone: "",
+            mobilePhone: "",
+            email: ""
+        },
+        survey: {
+            status: "pending",
+            isNew: true,
+            isManual: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            notes: "New manually created survey."
+        }
     });
+
+    jobs.unshift(newJob);
 
     saveToDevice();
     renderDashboard();

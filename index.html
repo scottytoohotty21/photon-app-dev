@@ -317,7 +317,7 @@ Enter as: Surname, First Name
     </div>
     <div class="col-span-1">
         <label class="mini-label">Qty</label>
-   <input
+  <input
     type="text"
     id="inv-qty"
     class="inv-header-select inv-top-field text-center"
@@ -326,6 +326,7 @@ Enter as: Surname, First Name
     pattern="[0-9]*"
     onclick="this.select()"
     onfocus="this.select()"
+    oninput="updateLastItemQty(this.value)"
 >
     </div>
     <div class="col-span-2">
@@ -700,11 +701,12 @@ const inventoryCategories = {
     })
 ];
         
-        let currentJob = null; let activePropId = null; let activeSeqId = null;
+       let currentJob = null; let activePropId = null; let activeSeqId = null;
 let inventoryItems = [];
 let currentItemVolume = 0;
 let totalVolume = 0;
 let currentInventoryCategory = "Full List";
+let lastAddedItemName = null;
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -786,9 +788,11 @@ document.getElementById('hdr-ref').innerText =
         activeSeqId = currentJob.sequences[0].id;
     }
 
-       currentItemVolume = 0;
-    totalVolume = 0;
+    currentItemVolume = 0;
+totalVolume = 0;
 currentInventoryCategory = "Full List";
+lastAddedItemName = null;
+inventoryItems = [];
             
     renderAddressUI();
 renderInventorySequenceDropdown();
@@ -1199,22 +1203,44 @@ function addInventoryItem(itemName) {
     let item = furnitureDB.find(i => i.item === itemName);
     if (!item) return;
 
-    const qtyInput = document.getElementById("inv-qty");
-    let qty = parseInt(qtyInput?.value, 10);
-    if (isNaN(qty) || qty < 1) qty = 1;
-    qtyInput.value = qty;
+    lastAddedItemName = itemName;
 
     let existing = inventoryItems.find(i => i.item === itemName);
 
     if (existing) {
-        existing.qty += qty;
+        existing.qty += 1;
     } else {
         inventoryItems.push({
             item: item.item,
             volume: item.volume,
-            qty: qty
+            qty: 1
         });
     }
+
+    currentItemVolume = item.volume;
+    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+
+    updateInventoryDisplay(`1 X ${item.item.toUpperCase()}`);
+
+    const qtyInput = document.getElementById("inv-qty");
+    if (qtyInput) qtyInput.value = 1;
+}
+       function updateLastItemQty(newQty) {
+    if (!lastAddedItemName) return;
+
+    let item = inventoryItems.find(i => i.item === lastAddedItemName);
+    if (!item) return;
+
+    let qty = parseInt(newQty, 10);
+    if (isNaN(qty) || qty < 1) qty = 1;
+
+    item.qty = qty;
+
+    currentItemVolume = item.volume * qty;
+    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+
+    updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
+} 
 
     currentItemVolume = item.volume * qty;
     totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);

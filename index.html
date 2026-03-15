@@ -1217,6 +1217,32 @@ function addInventoryItem(itemName) {
         });
     }
 
+ function addInventoryItem(itemName) {
+    let item = furnitureDB.find(i => i.item === itemName);
+    if (!item) return;
+
+    lastAddedItemName = itemName;
+
+    let existing = inventoryItems.find(i => i.item === itemName);
+
+    if (existing) {
+        existing.qty = 1;
+    } else {
+        inventoryItems.push({
+            item: item.item,
+            volume: item.volume,
+            qty: 1
+        });
+    }
+
+    currentItemVolume = item.volume;
+    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+
+    updateInventoryDisplay(`1 X ${item.item.toUpperCase()}`);
+
+    const qtyInput = document.getElementById("inv-qty");
+    if (qtyInput) qtyInput.value = 1;
+}
     function updateLastItemQty(newQty) {
     if (!lastAddedItemName) return;
 
@@ -1232,15 +1258,6 @@ function addInventoryItem(itemName) {
     totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
 
     updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
-} 
-
-    currentItemVolume = item.volume * qty;
-    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
-
-    updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
-
-    // reset qty back to 1 for next item
-    qtyInput.value = 1;
 }
 function updateInventoryDisplay(logText = "No items added") {
     let log = document.querySelector(".log-bar");

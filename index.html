@@ -326,13 +326,13 @@ Enter as: Surname, First Name
 </div>
 
 
-            <div class="flex gap-1 mb-3">
-                <button class="inv-room-btn active">Full List</button>
-                <button class="inv-room-btn">Upstairs</button>
-                <button class="inv-room-btn">Downstairs</button>
-                <button class="inv-room-btn">Kitchen</button>
-                <button class="inv-room-btn">Outside</button>
-            </div>
+           <div class="flex gap-1 mb-3">
+    <button class="inv-room-btn active" onclick="setInventoryCategory('Full List', this)">Full List</button>
+    <button class="inv-room-btn" onclick="setInventoryCategory('Upstairs', this)">Upstairs</button>
+    <button class="inv-room-btn" onclick="setInventoryCategory('Downstairs', this)">Downstairs</button>
+    <button class="inv-room-btn" onclick="setInventoryCategory('Kitchen', this)">Kitchen</button>
+    <button class="inv-room-btn" onclick="setInventoryCategory('Outside', this)">Outside</button>
+</div>
 
             <div class="grid grid-cols-7 gap-1 mb-3">
                 <button class="inv-tool-btn">Dismantle</button>
@@ -351,70 +351,25 @@ Enter as: Surname, First Name
             </div>
 
             <div class="grid grid-cols-5 gap-1">
-            <div class="col-span-4 grid grid-cols-4 gap-1">
-    <button class="item-btn" onclick="addInventoryItem('AC Unit')">AC Unit</button>
-    <button class="item-btn" onclick="addInventoryItem('Armchair')">Armchair</button>
-    <button class="item-btn" onclick="addInventoryItem('Sofa 2 Seat')">Sofa 2 Seat</button>
-    <button class="item-btn" onclick="addInventoryItem('Sofa 3 Seat')">Sofa 3 Seat</button>
+    <div id="inventory-button-grid" class="col-span-4 grid grid-cols-4 gap-1"></div>
 
-    <button class="item-btn" onclick="addInventoryItem('Bed (Single)')">Bed (Single)</button>
-    <button class="item-btn" onclick="addInventoryItem('Bed (Double)')">Bed (Double)</button>
-    <button class="item-btn" onclick="addInventoryItem('Fridge')">Fridge</button>
-    <button class="item-btn" onclick="addInventoryItem('Garden Bench')">Garden Bench</button>
+    <div class="col-span-1 grid grid-cols-1 gap-1">
+        <button class="item-btn bg-red-50 text-red-500 border-red-100 flex-col">
+            VOICE
+            <span class="text-[7px] opacity-60">0 CLIPS</span>
+        </button>
 
-    <button class="item-btn" onclick="addInventoryItem('Chest Drawers')">Chest Drawers</button>
-    <button class="item-btn" onclick="addInventoryItem('Dining Table')">Dining Table</button>
-    <button class="item-btn" onclick="addInventoryItem('Desk')">Desk</button>
-    <button class="item-btn" onclick="addInventoryItem('Bookcase')">Bookcase</button>
+        <button class="item-btn item-btn-blue" onclick="addVolume(1)">1 CUFT</button>
+        <button class="item-btn item-btn-blue" onclick="addVolume(5)">5 CUFT</button>
+        <button class="item-btn item-btn-blue" onclick="addVolume(10)">10 CUFT</button>
 
-    <button class="item-btn" onclick="addInventoryItem('Barstool')">Barstool</button>
-    <button class="item-btn" onclick="addInventoryItem('Kitchen Bin')">Kitchen Bin</button>
-    <button class="item-btn" onclick="addInventoryItem('Butchers Block')">Butchers Block</button>
-    <button class="item-btn" onclick="addInventoryItem('Clothes Rack (Dryer)')">Clothes Rack (Dryer)</button>
-
-    <button class="item-btn" onclick="addInventoryItem('Clothes Rail')">Clothes Rail</button>
-    <button class="item-btn" onclick="addInventoryItem('Coffee Machine')">Coffee Machine</button>
-    <button class="item-btn" onclick="addInventoryItem('Cooker')">Cooker</button>
-    <button class="item-btn" onclick="addInventoryItem('Dining Chair')">Dining Chair</button>
-
-    <button class="item-btn" onclick="addInventoryItem('Dishwasher')">Dishwasher</button>
-    <button class="item-btn" onclick="addInventoryItem('Dog Bed')">Dog Bed</button>
-    <button class="item-btn" onclick="addInventoryItem('Dresser')">Dresser</button>
-    <button class="item-btn" onclick="addInventoryItem('Dryer')">Dryer</button>
-
-    <button class="item-btn" onclick="addInventoryItem('Dustbin')">Dustbin</button>
-    <button class="item-btn" onclick="addInventoryItem('Fridge (American)')">Fridge (American)</button>
-    <button class="item-btn" onclick="addInventoryItem('Fridge / Freezer (Regular)')">Fridge / Freezer (Regular)</button>
-    <button class="item-btn" onclick="addInventoryItem('Fridge / Freezer (Small)')">Fridge / Freezer (Small)</button>
-
-    <button class="item-btn" onclick="addInventoryItem('Ironing Board')">Ironing Board</button>
-    <button class="item-btn" onclick="addInventoryItem('Kitchen Table')">Kitchen Table</button>
-    <button class="item-btn" onclick="addInventoryItem('Microwave')">Microwave</button>
-    <button class="item-btn" onclick="addInventoryItem('Mop / Bucket')">Mop / Bucket</button>
-
-    <button class="item-btn" onclick="addInventoryItem('Tumble Dryer')">Tumble Dryer</button>
-    <button class="item-btn" onclick="addInventoryItem('Washing Machine')">Washing Machine</button>
-    <button class="item-btn" onclick="addInventoryItem('Welsh Dresser')">Welsh Dresser</button>
+        <button class="item-btn item-btn-blue">AP</button>
+        <button class="item-btn item-btn-blue">CG</button>
+        <button class="item-btn item-btn-blue">BOOK</button>
+        <button class="item-btn item-btn-blue">LINEN</button>
+        <button class="item-btn item-btn-blue">W/R</button>
+    </div>
 </div>
- <div class="col-span-1 grid grid-cols-1 gap-1">
-
-<button class="item-btn bg-red-50 text-red-500 border-red-100 flex-col">
-VOICE
-<span class="text-[7px] opacity-60">0 CLIPS</span>
-</button>
-
-<button class="item-btn item-btn-blue" onclick="addVolume(1)">1 CUFT</button>
-<button class="item-btn item-btn-blue" onclick="addVolume(5)">5 CUFT</button>
-<button class="item-btn item-btn-blue" onclick="addVolume(10)">10 CUFT</button>
-
-<button class="item-btn item-btn-blue">AP</button>
-<button class="item-btn item-btn-blue">CG</button>
-<button class="item-btn item-btn-blue">BOOK</button>
-<button class="item-btn item-btn-blue">LINEN</button>
-<button class="item-btn item-btn-blue">W/R</button>
-
-</div>
-            </div>
         </section>
         
         <section id="content-quote" class="tab-content hidden">
@@ -498,44 +453,96 @@ Calculate Cost
         const PACK_OPTIONS = ["Owner Pack", "Fragile (china & Glassware) pack", "Full Packing", "Full Export Pack and Wrap", "Fragile & Kitchenware Pack"];
         const SALUTATIONS = ["Mr", "Miss", "Mrs", "Ms", "Other"];
 const furnitureDB = [
-    {item:"AC Unit", volume:10},
-    {item:"Armchair", volume:20},
-    {item:"Sofa 2 Seat", volume:35},
-    {item:"Sofa 3 Seat", volume:50},
-    {item:"Bed (Single)", volume:40},
-    {item:"Bed (Double)", volume:60},
-    {item:"Fridge", volume:25},
-    {item:"Garden Bench", volume:15},
-    {item:"Chest Drawers", volume:45},
-    {item:"Dining Table", volume:40},
-    {item:"Desk", volume:20},
-    {item:"Bookcase", volume:40},
+    const inventoryCategories = {
+    "Full List": [
+        "AC Unit",
+        "Armchair",
+        "Sofa 2 Seat",
+        "Sofa 3 Seat",
+        "Bed (Single)",
+        "Bed (Double)",
+        "Fridge",
+        "Garden Bench",
+        "Chest Drawers",
+        "Dining Table",
+        "Desk",
+        "Bookcase",
+        "Barstool",
+        "Kitchen Bin",
+        "Butchers Block",
+        "Clothes Rack (Dryer)",
+        "Clothes Rail",
+        "Coffee Machine",
+        "Cooker",
+        "Dining Chair",
+        "Dishwasher",
+        "Dog Bed",
+        "Dresser",
+        "Dryer",
+        "Dustbin",
+        "Fridge (American)",
+        "Fridge / Freezer (Regular)",
+        "Fridge / Freezer (Small)",
+        "Ironing Board",
+        "Kitchen Table",
+        "Microwave",
+        "Mop / Bucket",
+        "Tumble Dryer",
+        "Washing Machine",
+        "Welsh Dresser"
+    ],
 
-    {item:"Barstool", volume:10},
-    {item:"Kitchen Bin", volume:10},
-    {item:"Butchers Block", volume:10},
-    {item:"Clothes Rack (Dryer)", volume:10},
-    {item:"Clothes Rail", volume:10},
-    {item:"Coffee Machine", volume:10},
-    {item:"Cooker", volume:10},
-    {item:"Dining Chair", volume:10},
-    {item:"Dining Table", volume:10},
-    {item:"Dishwasher", volume:10},
-    {item:"Dog Bed", volume:10},
-    {item:"Dresser", volume:10},
-    {item:"Dryer", volume:10},
-    {item:"Dustbin", volume:10},
-    {item:"Fridge (American)", volume:10},
-    {item:"Fridge / Freezer (Regular)", volume:10},
-    {item:"Fridge / Freezer (Small)", volume:10},
-    {item:"Ironing Board", volume:10},
-    {item:"Kitchen Table", volume:10},
-    {item:"Microwave", volume:10},
-    {item:"Mop / Bucket", volume:10},
-    {item:"Tumble Dryer", volume:10},
-    {item:"Washing Machine", volume:10},
-    {item:"Welsh Dresser", volume:10}
-];
+    "Upstairs": [
+        "Bed (Single)",
+        "Bed (Double)",
+        "Chest Drawers",
+        "Desk",
+        "Bookcase",
+        "Clothes Rail",
+        "Clothes Rack (Dryer)",
+        "Ironing Board",
+        "Dog Bed",
+        "Dresser"
+    ],
+
+    "Downstairs": [
+        "Armchair",
+        "Sofa 2 Seat",
+        "Sofa 3 Seat",
+        "Dining Table",
+        "Dining Chair",
+        "Desk",
+        "Bookcase",
+        "Dog Bed",
+        "Barstool"
+    ],
+
+    "Kitchen": [
+        "Fridge",
+        "Fridge (American)",
+        "Fridge / Freezer (Regular)",
+        "Fridge / Freezer (Small)",
+        "Cooker",
+        "Dishwasher",
+        "Microwave",
+        "Coffee Machine",
+        "Kitchen Table",
+        "Dining Chair",
+        "Kitchen Bin",
+        "Dustbin",
+        "Butchers Block",
+        "Mop / Bucket",
+        "Washing Machine",
+        "Tumble Dryer",
+        "Dryer"
+    ],
+
+    "Outside": [
+        "Garden Bench",
+        "Dog Bed",
+        "Dustbin"
+    ]
+};
         let jobs = JSON.parse(localStorage.getItem('photon_jobs')) || [{ 
             id: 101, 
             name: "Smith, Jonathan", 
@@ -555,6 +562,7 @@ const furnitureDB = [
 let inventoryItems = [];
 let currentItemVolume = 0;
 let totalVolume = 0;
+let currentInventoryCategory = "Full List";
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -635,11 +643,13 @@ let totalVolume = 0;
 
        currentItemVolume = 0;
     totalVolume = 0;
-
+currentInventoryCategory = "Full List";
+            
     renderAddressUI();
-    renderInventorySequenceDropdown();
-    updateInventoryDisplay();
-    saveToDevice();
+renderInventorySequenceDropdown();
+renderInventoryButtons();
+updateInventoryDisplay();
+saveToDevice();
 }
 
         function renderAddressUI() {
@@ -734,6 +744,25 @@ function renderInventorySequenceDropdown() {
         return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
     }).join('');
 
+}
+       function renderInventoryButtons() {
+    const grid = document.getElementById('inventory-button-grid');
+    if (!grid) return;
+
+    const itemsToShow = inventoryCategories[currentInventoryCategory] || [];
+
+    grid.innerHTML = itemsToShow.map(itemName => {
+        return `<button class="item-btn" onclick="addInventoryItem('${itemName.replace(/'/g, "\\'")}')">${itemName}</button>`;
+    }).join('');
+}
+
+function setInventoryCategory(category, btn) {
+    currentInventoryCategory = category;
+
+    document.querySelectorAll('.inv-room-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    renderInventoryButtons();
 }
         function renderSequenceUI() {
     const seq = currentJob.sequences.find(s => s.id == activeSeqId); 
@@ -897,14 +926,20 @@ saveToDevice();
         function loadSequence(id) { activeSeqId = id; renderSequenceUI(); }
         function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
         
-        function switchTab(t) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('content-' + t).classList.remove('hidden');
-            document.getElementById('nav-' + t).classList.add('active');
-            if(t === 'sequence') renderSequenceUI();
-            if(t === 'address') renderAddressUI();
-        }
+  function switchTab(t) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('content-' + t).classList.remove('hidden');
+    document.getElementById('nav-' + t).classList.add('active');
+
+    if (t === 'sequence') renderSequenceUI();
+    if (t === 'address') renderAddressUI();
+    if (t === 'inventory') {
+        renderInventorySequenceDropdown();
+        renderInventoryButtons();
+        updateInventoryDisplay();
+    }
+}
 function splitManualName(fullName) {
     const cleaned = (fullName || "").trim();
 

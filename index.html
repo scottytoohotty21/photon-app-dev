@@ -1217,15 +1217,7 @@ function addInventoryItem(itemName) {
         });
     }
 
-    currentItemVolume = item.volume;
-    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
-
-    updateInventoryDisplay(`1 X ${item.item.toUpperCase()}`);
-
-    const qtyInput = document.getElementById("inv-qty");
-    if (qtyInput) qtyInput.value = 1;
-}
-       function updateLastItemQty(newQty) {
+    function updateLastItemQty(newQty) {
     if (!lastAddedItemName) return;
 
     let item = inventoryItems.find(i => i.item === lastAddedItemName);

@@ -1195,29 +1195,10 @@ function addVolume(amount) {
 
     updateInventoryDisplay(`+ ${qty} x ${amount} CUFT`);
 
-    // reset qty back to 1 for next item
     qtyInput.value = 1;
 }
 
 function addInventoryItem(itemName) {
-    let item = furnitureDB.find(i => i.item === itemName);
-    if (!item) return;
-
-    lastAddedItemName = itemName;
-
-    let existing = inventoryItems.find(i => i.item === itemName);
-
-    if (existing) {
-        existing.qty += 1;
-    } else {
-        inventoryItems.push({
-            item: item.item,
-            volume: item.volume,
-            qty: 1
-        });
-    }
-
- function addInventoryItem(itemName) {
     let item = furnitureDB.find(i => i.item === itemName);
     if (!item) return;
 
@@ -1243,7 +1224,8 @@ function addInventoryItem(itemName) {
     const qtyInput = document.getElementById("inv-qty");
     if (qtyInput) qtyInput.value = 1;
 }
-    function updateLastItemQty(newQty) {
+
+function updateLastItemQty(newQty) {
     if (!lastAddedItemName) return;
 
     let item = inventoryItems.find(i => i.item === lastAddedItemName);
@@ -1259,6 +1241,7 @@ function addInventoryItem(itemName) {
 
     updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
 }
+
 function updateInventoryDisplay(logText = "No items added") {
     let log = document.querySelector(".log-bar");
     let volValue = document.querySelector(".vol-box span:last-child");
@@ -1276,7 +1259,6 @@ function updateInventoryDisplay(logText = "No items added") {
         totalVolBox.innerText = totalVolume;
     }
 }
-
         window.onload = renderDashboard;
     </script>
 </body>

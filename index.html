@@ -123,15 +123,77 @@
         .btn-text-lower { font-weight: 900; font-size: 11px; text-transform: uppercase; line-height: 1.1; }
 
         /* --- INVENTORY SPECIFIC UI --- */
-        .inv-header-select { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; font-weight: 900; font-size: 11px; text-transform: uppercase; height: 38px; width: 100%; }
-        .inv-tool-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-size: 9px; font-weight: 900; text-transform: uppercase; padding: 8px 4px; text-align: center; }
+.inv-header-select { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; font-weight: 900; font-size: 11px; text-transform: uppercase; height: 38px; width: 100%; }
+
+.inv-top-field {
+    height: 64px !important;
+}
+
+.inv-tool-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-size: 9px; font-weight: 900; text-transform: uppercase; padding: 8px 4px; text-align: center; }
+
         .inv-room-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-size: 8px; font-weight: 900; text-transform: uppercase; padding: 12px 2px; text-align: center; flex: 1; }
         .inv-room-btn.active { background: #3b82f6; color: white; border-color: #2563eb; }
-        .item-btn { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; height: 75px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #0f172a; padding: 5px; }
+      .item-btn {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #0f172a;
+    padding: 5px;
+}
         .item-btn-blue { background: #f0f9ff; color: #0f172a; border: 1px solid #e0f2fe; }
         .log-bar { background: #e2e8f0; border: 1.5px solid #94a3b8; border-radius: 6px; padding: 8px 12px; font-size: 11px; font-weight: 900; font-style: italic; color: #1e293b; }
-        .vol-box { border: 2.5px solid #fca5a5; border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .total-vol-box { background: #3b82f6; color: white; border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.vol-box { border: 2.5px solid #fca5a5; border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.total-vol-box { background: #3b82f6; color: white; border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+/* --- NEW JOB HEADER --- */
+
+.job-header {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.job-client {
+    font-size: 16px;
+    font-weight: 900;
+    color: white;
+    text-transform: uppercase;
+    line-height: 1.1;
+}
+
+.job-subline {
+    font-size: 10px;
+    font-weight: 800;
+    color: #60a5fa;
+    text-transform: uppercase;
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+}
+
+.job-status-pill {
+    background: #1e293b;
+    border: 1px solid #475569;
+    color: #93c5fd;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
     </style>
 </head>
 <body class="p-4 pb-12">
@@ -187,12 +249,16 @@ Enter as: Surname, First Name
             <div class="text-[10px] font-black text-slate-400 uppercase italic">Active Survey Entry</div>
         </div>
 
-        <div class="header-bar">
-            <div><label class="mini-label !text-slate-400">Client</label><div id="hdr-name" class="header-val uppercase">---</div></div>
-            <div><label class="mini-label !text-slate-400">Ref</label><div id="hdr-ref" class="header-val uppercase">---</div></div>
-            <div><label class="mini-label !text-blue-400">Contact Tel</label><input type="tel" id="hdr-tel" class="header-input" oninput="updateHeaderData('tel', this.value)"></div>
-            <div><label class="mini-label !text-blue-400">E-mail</label><input type="email" id="hdr-email" class="header-input" oninput="updateHeaderData('email', this.value)"></div>
-        </div>
+       <div class="job-header">
+    <div>
+        <div id="hdr-name" class="job-client">---</div>
+        <div class="job-subline">REF: <span id="hdr-ref">---</span></div>
+    </div>
+
+    <div class="job-status-pill">
+        Survey Live
+    </div>
+</div>
 
         <nav class="nav-container">
             <button onclick="switchTab('address')" id="nav-address" class="nav-btn active">1. Addresses</button>
@@ -232,20 +298,33 @@ Enter as: Surname, First Name
         </section>
 
         <section id="content-inventory" class="tab-content hidden">
-            <div class="grid grid-cols-12 gap-2 mb-3">
-                <div class="col-span-4">
-                    <label class="mini-label">Seq</label>
-                   <select id="inv-seq-select" class="inv-header-select"></select>
-                </div>
-                <div class="col-span-4">
-                    <label class="mini-label">Floor</label>
-                    <select class="inv-header-select"><option>Ground</option></select>
-                </div>
-                <div class="col-span-4">
-                    <label class="mini-label">Room</label>
-                    <select class="inv-header-select"><option>Hallway</option></select>
-                </div>
-            </div>
+          <div class="grid grid-cols-12 gap-2 mb-3">
+    <div class="col-span-3">
+        <label class="mini-label">Seq</label>
+        <select id="inv-seq-select" class="inv-header-select inv-top-field"></select>
+    </div>
+    <div class="col-span-3">
+        <label class="mini-label">Floor</label>
+        <select class="inv-header-select inv-top-field">
+            <option>Ground</option>
+        </select>
+    </div>
+    <div class="col-span-3">
+        <label class="mini-label">Room</label>
+        <select class="inv-header-select inv-top-field">
+            <option>Hallway</option>
+        </select>
+    </div>
+    <div class="col-span-1">
+        <label class="mini-label">Qty</label>
+        <input type="number" id="inv-qty" class="inv-header-select inv-top-field text-center" value="1" min="1">
+    </div>
+    <div class="col-span-2">
+        <label class="mini-label">Total Vol</label>
+        <div id="inv-total-volume" class="total-vol-box inv-top-field text-lg font-black">0</div>
+    </div>
+</div>
+
 
             <div class="flex gap-1 mb-3">
                 <button class="inv-room-btn active">Full List</button>
@@ -271,29 +350,70 @@ Enter as: Surname, First Name
                 <button class="w-20 total-vol-box bg-red-100 !text-red-500 font-black text-xs uppercase">Undo</button>
             </div>
 
-            <div class="grid grid-cols-5 gap-2">
-                <div class="col-span-4 grid grid-cols-4 gap-2">
-                   <button class="item-btn" onclick="addInventoryItem('AC Unit')">AC Unit</button>
-<button class="item-btn" onclick="addInventoryItem('Armchair')">Armchair</button>
-<button class="item-btn" onclick="addInventoryItem('Sofa 2 Seat')">Sofa 2 Seat</button>
-<button class="item-btn" onclick="addInventoryItem('Sofa 3 Seat')">Sofa 3 Seat</button>
-<button class="item-btn" onclick="addInventoryItem('Bed (Single)')">Bed (Single)</button>
-<button class="item-btn" onclick="addInventoryItem('Bed (Double)')">Bed (Double)</button>
-<button class="item-btn" onclick="addInventoryItem('Fridge')">Fridge</button>
-<button class="item-btn" onclick="addInventoryItem('Garden Bench')">Garden Bench</button>
-<button class="item-btn" onclick="addInventoryItem('Chest Drawers')">Chest Drawers</button>
-<button class="item-btn" onclick="addInventoryItem('Dining Table')">Dining Table</button>
-<button class="item-btn" onclick="addInventoryItem('Desk')">Desk</button>
-<button class="item-btn" onclick="addInventoryItem('Bookcase')">Bookcase</button>
-                </div>
-                <div class="col-span-1 flex flex-col gap-2">
-                    <button class="item-btn !h-[75px] bg-red-50 text-red-500 border-red-100 flex-col"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg><span class="text-[8px]">VOICE</span><span class="text-[7px] opacity-60">0 CLIPS</span></button>
-                    <button class="item-btn item-btn-blue">AP</button>
-                    <button class="item-btn item-btn-blue">CG</button>
-                    <button class="item-btn item-btn-blue">BOOK</button>
-                    <button class="item-btn item-btn-blue">LINEN</button>
-                    <button class="item-btn item-btn-blue">W/R</button>
-                </div>
+            <div class="grid grid-cols-5 gap-1">
+            <div class="col-span-4 grid grid-cols-4 gap-1">
+    <button class="item-btn" onclick="addInventoryItem('AC Unit')">AC Unit</button>
+    <button class="item-btn" onclick="addInventoryItem('Armchair')">Armchair</button>
+    <button class="item-btn" onclick="addInventoryItem('Sofa 2 Seat')">Sofa 2 Seat</button>
+    <button class="item-btn" onclick="addInventoryItem('Sofa 3 Seat')">Sofa 3 Seat</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Bed (Single)')">Bed (Single)</button>
+    <button class="item-btn" onclick="addInventoryItem('Bed (Double)')">Bed (Double)</button>
+    <button class="item-btn" onclick="addInventoryItem('Fridge')">Fridge</button>
+    <button class="item-btn" onclick="addInventoryItem('Garden Bench')">Garden Bench</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Chest Drawers')">Chest Drawers</button>
+    <button class="item-btn" onclick="addInventoryItem('Dining Table')">Dining Table</button>
+    <button class="item-btn" onclick="addInventoryItem('Desk')">Desk</button>
+    <button class="item-btn" onclick="addInventoryItem('Bookcase')">Bookcase</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Barstool')">Barstool</button>
+    <button class="item-btn" onclick="addInventoryItem('Kitchen Bin')">Kitchen Bin</button>
+    <button class="item-btn" onclick="addInventoryItem('Butchers Block')">Butchers Block</button>
+    <button class="item-btn" onclick="addInventoryItem('Clothes Rack (Dryer)')">Clothes Rack (Dryer)</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Clothes Rail')">Clothes Rail</button>
+    <button class="item-btn" onclick="addInventoryItem('Coffee Machine')">Coffee Machine</button>
+    <button class="item-btn" onclick="addInventoryItem('Cooker')">Cooker</button>
+    <button class="item-btn" onclick="addInventoryItem('Dining Chair')">Dining Chair</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Dishwasher')">Dishwasher</button>
+    <button class="item-btn" onclick="addInventoryItem('Dog Bed')">Dog Bed</button>
+    <button class="item-btn" onclick="addInventoryItem('Dresser')">Dresser</button>
+    <button class="item-btn" onclick="addInventoryItem('Dryer')">Dryer</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Dustbin')">Dustbin</button>
+    <button class="item-btn" onclick="addInventoryItem('Fridge (American)')">Fridge (American)</button>
+    <button class="item-btn" onclick="addInventoryItem('Fridge / Freezer (Regular)')">Fridge / Freezer (Regular)</button>
+    <button class="item-btn" onclick="addInventoryItem('Fridge / Freezer (Small)')">Fridge / Freezer (Small)</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Ironing Board')">Ironing Board</button>
+    <button class="item-btn" onclick="addInventoryItem('Kitchen Table')">Kitchen Table</button>
+    <button class="item-btn" onclick="addInventoryItem('Microwave')">Microwave</button>
+    <button class="item-btn" onclick="addInventoryItem('Mop / Bucket')">Mop / Bucket</button>
+
+    <button class="item-btn" onclick="addInventoryItem('Tumble Dryer')">Tumble Dryer</button>
+    <button class="item-btn" onclick="addInventoryItem('Washing Machine')">Washing Machine</button>
+    <button class="item-btn" onclick="addInventoryItem('Welsh Dresser')">Welsh Dresser</button>
+</div>
+ <div class="col-span-1 grid grid-cols-1 gap-1">
+
+<button class="item-btn bg-red-50 text-red-500 border-red-100 flex-col">
+VOICE
+<span class="text-[7px] opacity-60">0 CLIPS</span>
+</button>
+
+<button class="item-btn item-btn-blue" onclick="addVolume(1)">1 CUFT</button>
+<button class="item-btn item-btn-blue" onclick="addVolume(5)">5 CUFT</button>
+<button class="item-btn item-btn-blue" onclick="addVolume(10)">10 CUFT</button>
+
+<button class="item-btn item-btn-blue">AP</button>
+<button class="item-btn item-btn-blue">CG</button>
+<button class="item-btn item-btn-blue">BOOK</button>
+<button class="item-btn item-btn-blue">LINEN</button>
+<button class="item-btn item-btn-blue">W/R</button>
+
+</div>
             </div>
         </section>
         
@@ -377,7 +497,7 @@ Calculate Cost
         const MOVE_TYPES = ["Dom-local", "Dom-Distance", "Dom-To Store", "Dom-Ex Store", "Dom-Direct/Store", "GPG", "LCL", "FCL"];
         const PACK_OPTIONS = ["Owner Pack", "Fragile (china & Glassware) pack", "Full Packing", "Full Export Pack and Wrap", "Fragile & Kitchenware Pack"];
         const SALUTATIONS = ["Mr", "Miss", "Mrs", "Ms", "Other"];
-        const furnitureDB = [
+const furnitureDB = [
     {item:"AC Unit", volume:10},
     {item:"Armchair", volume:20},
     {item:"Sofa 2 Seat", volume:35},
@@ -389,7 +509,32 @@ Calculate Cost
     {item:"Chest Drawers", volume:45},
     {item:"Dining Table", volume:40},
     {item:"Desk", volume:20},
-    {item:"Bookcase", volume:40}
+    {item:"Bookcase", volume:40},
+
+    {item:"Barstool", volume:10},
+    {item:"Kitchen Bin", volume:10},
+    {item:"Butchers Block", volume:10},
+    {item:"Clothes Rack (Dryer)", volume:10},
+    {item:"Clothes Rail", volume:10},
+    {item:"Coffee Machine", volume:10},
+    {item:"Cooker", volume:10},
+    {item:"Dining Chair", volume:10},
+    {item:"Dining Table", volume:10},
+    {item:"Dishwasher", volume:10},
+    {item:"Dog Bed", volume:10},
+    {item:"Dresser", volume:10},
+    {item:"Dryer", volume:10},
+    {item:"Dustbin", volume:10},
+    {item:"Fridge (American)", volume:10},
+    {item:"Fridge / Freezer (Regular)", volume:10},
+    {item:"Fridge / Freezer (Small)", volume:10},
+    {item:"Ironing Board", volume:10},
+    {item:"Kitchen Table", volume:10},
+    {item:"Microwave", volume:10},
+    {item:"Mop / Bucket", volume:10},
+    {item:"Tumble Dryer", volume:10},
+    {item:"Washing Machine", volume:10},
+    {item:"Welsh Dresser", volume:10}
 ];
         let jobs = JSON.parse(localStorage.getItem('photon_jobs')) || [{ 
             id: 101, 
@@ -408,7 +553,9 @@ Calculate Cost
         
         let currentJob = null; let activePropId = null; let activeSeqId = null;
 let inventoryItems = [];
+let currentItemVolume = 0;
 let totalVolume = 0;
+
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
         }
@@ -469,21 +616,31 @@ let totalVolume = 0;
         }
 
         function openJob(id) {
-            currentJob = jobs.find(j => j.id === id);
-            currentJob.isNew = false;
-            document.getElementById('hdr-name').innerText = currentJob.name;
-            document.getElementById('hdr-ref').innerText = currentJob.ref;
-            document.getElementById('hdr-tel').value = currentJob.tel || "";
-            document.getElementById('hdr-email').value = currentJob.email || "";
-            document.getElementById('view-dashboard').classList.add('hidden');
-            document.getElementById('view-editor').classList.remove('hidden');
-            activePropId = currentJob.properties[0].id;
-            if(!currentJob.sequences || currentJob.sequences.length === 0) addSequence();
-            else activeSeqId = currentJob.sequences[0].id;
-           renderAddressUI();
-renderInventorySequenceDropdown();
-saveToDevice();
-        }
+    currentJob = jobs.find(j => j.id === id);
+    currentJob.isNew = false;
+
+    document.getElementById('hdr-name').innerText = currentJob.name;
+    document.getElementById('hdr-ref').innerText = currentJob.ref;
+
+    document.getElementById('view-dashboard').classList.add('hidden');
+    document.getElementById('view-editor').classList.remove('hidden');
+
+    activePropId = currentJob.properties[0].id;
+
+    if (!currentJob.sequences || currentJob.sequences.length === 0) {
+        addSequence();
+    } else {
+        activeSeqId = currentJob.sequences[0].id;
+    }
+
+       currentItemVolume = 0;
+    totalVolume = 0;
+
+    renderAddressUI();
+    renderInventorySequenceDropdown();
+    updateInventoryDisplay();
+    saveToDevice();
+}
 
         function renderAddressUI() {
          const prop = currentJob.properties.find(p => p.id === activePropId);
@@ -736,7 +893,6 @@ saveToDevice();
         if (hdrName) hdrName.innerText = currentJob.name;
     }
 }
-        function updateHeaderData(f, v) { currentJob[f] = v; saveToDevice(); }
         function loadProperty(id) { activePropId = parseInt(id); renderAddressUI(); }
         function loadSequence(id) { activeSeqId = id; renderSequenceUI(); }
         function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
@@ -817,44 +973,61 @@ let total = crew + vehicle + other;
 document.getElementById("total-cost").value = total;
 
 }
-      function addInventoryItem(itemName) {
-    let item = furnitureDB.find(i => i.item === itemName);
 
+function addVolume(amount) {
+    const qtyInput = document.getElementById("inv-qty");
+    const qty = parseInt(qtyInput?.value) || 1;
+
+    currentItemVolume = amount * qty;
+    totalVolume += currentItemVolume;
+
+    updateInventoryDisplay(`+ ${qty} x ${amount} CUFT`);
+}
+
+function addInventoryItem(itemName) {
+    let item = furnitureDB.find(i => i.item === itemName);
     if (!item) return;
+
+    const qtyInput = document.getElementById("inv-qty");
+    const qty = parseInt(qtyInput?.value) || 1;
 
     let existing = inventoryItems.find(i => i.item === itemName);
 
     if (existing) {
-        existing.qty += 1;
+        existing.qty += qty;
     } else {
         inventoryItems.push({
             item: item.item,
             volume: item.volume,
-            qty: 1
+            qty: qty
         });
     }
 
+    currentItemVolume = item.volume * qty;
     totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
 
-    updateInventoryDisplay();
+    updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
 }
 
-function updateInventoryDisplay() {
+
+function updateInventoryDisplay(logText = "No items added") {
     let log = document.querySelector(".log-bar");
     let volValue = document.querySelector(".vol-box span:last-child");
+    let totalVolBox = document.getElementById("inv-total-volume");
 
-    if (!log || !volValue) return;
-
-    if (inventoryItems.length === 0) {
-        log.innerText = "No items added";
-        volValue.innerText = "0";
-        return;
+    if (log) {
+        log.innerText = logText;
     }
 
-    let lastItem = inventoryItems[inventoryItems.length - 1];
-    log.innerText = `${lastItem.qty} X ${lastItem.item.toUpperCase()}`;
-    volValue.innerText = totalVolume;
+    if (volValue) {
+        volValue.innerText = currentItemVolume;
+    }
+
+    if (totalVolBox) {
+        totalVolBox.innerText = totalVolume;
+    }
 }
+
         window.onload = renderDashboard;
     </script>
 </body>

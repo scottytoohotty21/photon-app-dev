@@ -769,8 +769,11 @@ let currentInventoryCategory = "Full List";
     currentJob = jobs.find(j => j.id === id);
     currentJob.isNew = false;
 
-    document.getElementById('hdr-name').innerText = currentJob.name;
-    document.getElementById('hdr-ref').innerText = currentJob.ref;
+    document.getElementById('hdr-name').innerText =
+    currentJob.customer?.displayName || currentJob.name || "---";
+
+document.getElementById('hdr-ref').innerText =
+    currentJob.ref || "---";
 
     document.getElementById('view-dashboard').classList.add('hidden');
     document.getElementById('view-editor').classList.remove('hidden');

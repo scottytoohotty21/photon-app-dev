@@ -111,6 +111,25 @@
             100% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); border-color: #e2e8f0; }
         }
         .pulse-new { animation: uiPulse 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .pulse-blue {
+    animation: pulseBlue 0.5s ease;
+}
+
+.pulse-red {
+    animation: pulseRed 0.5s ease;
+}
+
+@keyframes pulseBlue {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59,130,246,0.45); }
+    50% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(59,130,246,0.12); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+
+@keyframes pulseRed {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.45); }
+    50% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(239,68,68,0.12); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
 
         .add-property-btn {
             background: #3b82f6; color: white; border-radius: 10px; transition: 0.2s;
@@ -357,7 +376,13 @@ Enter as: Surname, First Name
             <div class="flex gap-2 mb-4">
                 <div class="flex-grow log-bar">2 X SOFA 3 SEAT [EXC]</div>
                 <div class="w-20 vol-box"><span class="mini-label !mb-0 text-red-400">Vol</span><span class="text-sm font-black">50</span></div>
-                <button class="w-20 total-vol-box bg-red-100 !text-red-500 font-black text-xs uppercase">Undo</button>
+               <button
+    id="undo-btn"
+    onclick="undoLastInventoryAction()"
+    class="w-20 total-vol-box bg-red-100 !text-red-500 font-black text-xs uppercase"
+>
+    Undo
+</button>
             </div>
 
             <div class="grid grid-cols-5 gap-1">
@@ -701,12 +726,13 @@ const inventoryCategories = {
     })
 ];
         
-       let currentJob = null; let activePropId = null; let activeSeqId = null;
+     let currentJob = null; let activePropId = null; let activeSeqId = null;
 let inventoryItems = [];
 let currentItemVolume = 0;
 let totalVolume = 0;
 let currentInventoryCategory = "Full List";
 let lastAddedItemName = null;
+let lastInventoryAction = null;
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -792,12 +818,14 @@ document.getElementById('hdr-ref').innerText =
 totalVolume = 0;
 currentInventoryCategory = "Full List";
 lastAddedItemName = null;
+lastInventoryAction = null;
 inventoryItems = [];
             
     renderAddressUI();
 renderInventorySequenceDropdown();
 renderInventoryButtons();
 updateInventoryDisplay();
+updateUndoButtonState();
 saveToDevice();
 }
 
@@ -1090,11 +1118,12 @@ function updatePropData(f, v) {
 
     if (t === 'sequence') renderSequenceUI();
     if (t === 'address') renderAddressUI();
-    if (t === 'inventory') {
-        renderInventorySequenceDropdown();
-        renderInventoryButtons();
-        updateInventoryDisplay();
-    }
+   if (t === 'inventory') {
+    renderInventorySequenceDropdown();
+    renderInventoryButtons();
+    updateInventoryDisplay();
+    updateUndoButtonState();
+}
 }
 function splitManualName(fullName) {
     const cleaned = (fullName || "").trim();
@@ -1188,14 +1217,26 @@ function addVolume(amount) {
     const qtyInput = document.getElementById("inv-qty");
     let qty = parseInt(qtyInput?.value, 10);
     if (isNaN(qty) || qty < 1) qty = 1;
-    qtyInput.value = qty;
+    if (qtyInput) qtyInput.value = qty;
 
-    currentItemVolume = amount * qty;
-    totalVolume += currentItemVolume;
+    const addedVolume = amount * qty;
+
+    lastInventoryAction = {
+        type: "volume",
+        addedVolume: addedVolume,
+        displayText: `${qty} X ${amount} CUFT`
+    };
+
+    currentItemVolume = addedVolume;
+    totalVolume += addedVolume;
 
     updateInventoryDisplay(`+ ${qty} x ${amount} CUFT`);
+    triggerInventoryPulse("qty", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("light");
 
-    qtyInput.value = 1;
+    if (qtyInput) qtyInput.value = 1;
+    updateUndoButtonState();
 }
 
 function addInventoryItem(itemName) {
@@ -1205,6 +1246,8 @@ function addInventoryItem(itemName) {
     lastAddedItemName = itemName;
 
     let existing = inventoryItems.find(i => i.item === itemName);
+    const wasNewItem = !existing;
+    const previousQty = existing ? existing.qty : 0;
 
     if (existing) {
         existing.qty = 1;
@@ -1214,15 +1257,30 @@ function addInventoryItem(itemName) {
             volume: item.volume,
             qty: 1
         });
+        existing = inventoryItems.find(i => i.item === itemName);
     }
+
+    lastInventoryAction = {
+        type: "item",
+        itemName: itemName,
+        previousQty: previousQty,
+        wasNewItem: wasNewItem,
+        previousItemVolume: currentItemVolume,
+        displayText: `1 X ${item.item.toUpperCase()}`
+    };
 
     currentItemVolume = item.volume;
     totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
 
     updateInventoryDisplay(`1 X ${item.item.toUpperCase()}`);
+    triggerInventoryPulse("qty", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("light");
 
     const qtyInput = document.getElementById("inv-qty");
     if (qtyInput) qtyInput.value = 1;
+
+    updateUndoButtonState();
 }
 
 function updateLastItemQty(newQty) {
@@ -1240,8 +1298,95 @@ function updateLastItemQty(newQty) {
     totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
 
     updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
+    triggerInventoryPulse("qty", "blue");
+    triggerInventoryPulse("total", "blue");
 }
 
+        function triggerInventoryPulse(target = "total", type = "blue") {
+    let el = null;
+
+    if (target === "qty") {
+        el = document.getElementById("inv-qty");
+    } else if (target === "total") {
+        el = document.getElementById("inv-total-volume");
+    } else if (target === "undo") {
+        el = document.getElementById("undo-btn");
+    }
+
+    if (!el) return;
+
+    el.classList.remove("pulse-blue", "pulse-red");
+    void el.offsetWidth;
+    el.classList.add(type === "red" ? "pulse-red" : "pulse-blue");
+}
+
+function triggerHaptic(type = "light") {
+    if (!("vibrate" in navigator)) return;
+
+    if (type === "light") {
+        navigator.vibrate(20);
+    } else if (type === "medium") {
+        navigator.vibrate(35);
+    } else if (type === "error") {
+        navigator.vibrate([30, 20, 30]);
+    }
+}
+
+function updateUndoButtonState() {
+    const undoBtn = document.getElementById("undo-btn");
+    if (!undoBtn) return;
+
+    if (lastInventoryAction) {
+        undoBtn.disabled = false;
+        undoBtn.classList.remove("opacity-50", "pointer-events-none");
+    } else {
+        undoBtn.disabled = true;
+        undoBtn.classList.add("opacity-50", "pointer-events-none");
+    }
+}
+
+function undoLastInventoryAction() {
+    if (!lastInventoryAction) return;
+
+    const action = lastInventoryAction;
+
+    if (action.type === "item") {
+        const item = inventoryItems.find(i => i.item === action.itemName);
+
+        if (item) {
+            if (action.wasNewItem) {
+                inventoryItems = inventoryItems.filter(i => i.item !== action.itemName);
+            } else {
+                item.qty = action.previousQty;
+            }
+        }
+
+        currentItemVolume = action.previousItemVolume;
+        totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+
+        lastAddedItemName = inventoryItems.length
+            ? inventoryItems[inventoryItems.length - 1].item
+            : null;
+
+        updateInventoryDisplay(`UNDO ${action.displayText}`);
+        triggerInventoryPulse("undo", "red");
+        triggerInventoryPulse("total", "red");
+        triggerHaptic("error");
+    }
+
+    if (action.type === "volume") {
+        totalVolume = Math.max(0, totalVolume - action.addedVolume);
+        currentItemVolume = 0;
+
+        updateInventoryDisplay(`UNDO ${action.displayText}`);
+        triggerInventoryPulse("undo", "red");
+        triggerInventoryPulse("total", "red");
+        triggerHaptic("error");
+    }
+
+    lastInventoryAction = null;
+    updateUndoButtonState();
+}
 function updateInventoryDisplay(logText = "No items added") {
     let log = document.querySelector(".log-bar");
     let volValue = document.querySelector(".vol-box span:last-child");

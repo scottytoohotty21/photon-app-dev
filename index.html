@@ -336,16 +336,17 @@ Enter as: Surname, First Name
     </div>
     <div class="col-span-1">
         <label class="mini-label">Qty</label>
-        <input
-            type="text"
-            id="inv-qty"
-            class="inv-header-select inv-top-field text-center"
-            value="1"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            onclick="this.select()"
-            onfocus="this.select()"
-            oninput="updateLastItemQty(this.value)"
+       <input
+    type="text"
+    id="inv-qty"
+    class="inv-header-select inv-top-field text-center"
+    value="1"
+    inputmode="numeric"
+    pattern="[0-9]*"
+    onclick="this.select()"
+    onfocus="this.select()"
+    onchange="updateLastItemQty(this.value)"
+>
         >
     </div>
     <div class="col-span-1">
@@ -1521,8 +1522,7 @@ function addBox(boxCode) {
     if (!boxVolume) return;
 
     const qtyInput = document.getElementById("inv-qty");
-    let qty = parseInt(qtyInput ? qtyInput.value : 1, 10);
-    if (isNaN(qty) || qty < 1) qty = 1;
+    const qty = 1;
 
     const itemNameMap = {
         "AP": "AP BOX",
@@ -1547,6 +1547,7 @@ function addBox(boxCode) {
     } else {
         inventoryItems.push({
             item: itemName,
+            displayName: itemName,
             volume: boxVolume,
             qty: qty
         });
@@ -1575,22 +1576,35 @@ function addBox(boxCode) {
 
 function addVolume(amount) {
     const qtyInput = document.getElementById("inv-qty");
-    let qty = parseInt(qtyInput?.value, 10);
-    if (isNaN(qty) || qty < 1) qty = 1;
+    const qty = 1;
 
-    const addedVolume = amount * qty;
+    const volumeEntryName = "VOL-" + amount + "-" + Date.now();
+    const displayName = amount + " CUFT";
+
+    lastAddedItemName = volumeEntryName;
+
+    inventoryItems.push({
+        item: volumeEntryName,
+        displayName: displayName,
+        volume: amount,
+        qty: qty,
+        isManualVolume: true
+    });
 
     inventoryHistory.push({
         type: "volume",
-        addedVolume: addedVolume,
-        unitVolume: amount,
-        qtyAdded: qty
+        itemName: volumeEntryName,
+        displayName: displayName,
+        qtyAdded: qty,
+        unitVolume: amount
     });
 
-    currentItemVolume = addedVolume;
-    totalVolume += addedVolume;
+    currentItemVolume = amount * qty;
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        return sum + (i.volume * i.qty);
+    }, 0);
 
-    updateInventoryDisplay(`+ ${qty} X ${amount} CUFT`);
+    updateInventoryDisplay("+ " + qty + " X " + displayName);
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
     triggerHaptic("light");
@@ -1599,16 +1613,19 @@ function addVolume(amount) {
     updateUndoButtonState();
 }
 function addInventoryItem(itemName) {
-    let item = furnitureDB.find(i => i.item === itemName);
+    let item = furnitureDB.find(function(i) {
+        return i.item === itemName;
+    });
     if (!item) return;
 
     const qtyInput = document.getElementById("inv-qty");
-    let qty = parseInt(qtyInput?.value, 10);
-    if (isNaN(qty) || qty < 1) qty = 1;
+    const qty = 1;
 
     lastAddedItemName = itemName;
 
-    let existing = inventoryItems.find(i => i.item === itemName);
+    let existing = inventoryItems.find(function(i) {
+        return i.item === itemName;
+    });
     const previousQty = existing ? existing.qty : 0;
 
     if (existing) {
@@ -1616,6 +1633,7 @@ function addInventoryItem(itemName) {
     } else {
         inventoryItems.push({
             item: item.item,
+            displayName: item.item,
             volume: item.volume,
             qty: qty
         });
@@ -1629,9 +1647,11 @@ function addInventoryItem(itemName) {
     });
 
     currentItemVolume = item.volume * qty;
-    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        return sum + (i.volume * i.qty);
+    }, 0);
 
-    updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
+    updateInventoryDisplay(qty + " X " + item.item.toUpperCase());
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
     triggerHaptic("light");
@@ -1639,18 +1659,23 @@ function addInventoryItem(itemName) {
     if (qtyInput) qtyInput.value = 1;
     updateUndoButtonState();
 }
-    
 function updateLastItemQty(newQty) {
     if (!lastAddedItemName) return;
 
-    let item = inventoryItems.find(i => i.item === lastAddedItemName);
+    let item = inventoryItems.find(function(i) {
+        return i.item === lastAddedItemName;
+    });
     if (!item) return;
 
     let qty = parseInt(newQty, 10);
     if (isNaN(qty) || qty < 1) qty = 1;
 
     const previousQty = item.qty;
-    if (previousQty === qty) return;
+    if (previousQty === qty) {
+        const qtyInput = document.getElementById("inv-qty");
+        if (qtyInput) qtyInput.value = 1;
+        return;
+    }
 
     item.qty = qty;
 
@@ -1662,11 +1687,20 @@ function updateLastItemQty(newQty) {
     });
 
     currentItemVolume = item.volume * qty;
-    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        return sum + (i.volume * i.qty);
+    }, 0);
 
-    updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
+    const label = item.displayName || item.item;
+    updateInventoryDisplay(qty + " X " + String(label).toUpperCase());
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
+    triggerHaptic("light");
+
+    const qtyInput = document.getElementById("inv-qty");
+    if (qtyInput) qtyInput.value = 1;
+
+    updateUndoButtonState();
 }
         function triggerInventoryPulse(target = "total", type = "blue") {
     let el = null;
@@ -1717,45 +1751,66 @@ function undoLastInventoryAction() {
     const action = inventoryHistory.pop();
 
     if (action.type === "item") {
-        const item = inventoryItems.find(i => i.item === action.itemName);
+        const item = inventoryItems.find(function(i) {
+            return i.item === action.itemName;
+        });
 
         if (item) {
             item.qty = action.previousQty;
 
             if (item.qty <= 0) {
-                inventoryItems = inventoryItems.filter(i => i.item !== action.itemName);
+                inventoryItems = inventoryItems.filter(function(i) {
+                    return i.item !== action.itemName;
+                });
             }
         }
 
-        totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+        totalVolume = inventoryItems.reduce(function(sum, i) {
+            return sum + (i.volume * i.qty);
+        }, 0);
         currentItemVolume = 0;
 
-        updateInventoryDisplay(`UNDO ${action.qtyAdded} X ${action.itemName.toUpperCase()}`);
+        updateInventoryDisplay("UNDO " + action.qtyAdded + " X " + action.itemName.toUpperCase());
     }
 
     else if (action.type === "volume") {
-        totalVolume = Math.max(0, totalVolume - action.addedVolume);
+        inventoryItems = inventoryItems.filter(function(i) {
+            return i.item !== action.itemName;
+        });
+
+        totalVolume = inventoryItems.reduce(function(sum, i) {
+            return sum + (i.volume * i.qty);
+        }, 0);
         currentItemVolume = 0;
 
-        updateInventoryDisplay(`UNDO ${action.qtyAdded} X ${action.unitVolume} CUFT`);
+        const label = action.displayName || (action.unitVolume + " CUFT");
+        updateInventoryDisplay("UNDO " + action.qtyAdded + " X " + String(label).toUpperCase());
     }
 
     else if (action.type === "qty-edit") {
-        const item = inventoryItems.find(i => i.item === action.itemName);
+        const item = inventoryItems.find(function(i) {
+            return i.item === action.itemName;
+        });
 
         if (item) {
             item.qty = action.previousQty;
             currentItemVolume = item.volume * item.qty;
         }
 
-        totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+        totalVolume = inventoryItems.reduce(function(sum, i) {
+            return sum + (i.volume * i.qty);
+        }, 0);
 
-        updateInventoryDisplay(`UNDO QTY ${action.itemName.toUpperCase()}`);
+        const label = item ? (item.displayName || item.item) : action.itemName;
+        updateInventoryDisplay("UNDO QTY " + String(label).toUpperCase());
     }
 
     triggerInventoryPulse("undo", "red");
     triggerInventoryPulse("total", "red");
     triggerHaptic("error");
+
+    const qtyInput = document.getElementById("inv-qty");
+    if (qtyInput) qtyInput.value = 1;
 
     updateUndoButtonState();
 }
@@ -1781,4 +1836,4 @@ function updateInventoryDisplay(logText = "No items added") {
 </body>
 
 </html>
-    
+  

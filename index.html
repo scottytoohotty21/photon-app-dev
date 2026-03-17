@@ -1079,7 +1079,15 @@ function recalculateInventoryTotals() {
 
 function getEntryTotalVolume(entry) {
     const qty = parseInt(entry.qty, 10) || 0;
-    const unitVolume = parseFloat(entry.unitVolume ?? entry.volume ?? 0) || 0;
+
+    let rawUnitVolume = 0;
+    if (entry && entry.unitVolume !== undefined && entry.unitVolume !== null) {
+        rawUnitVolume = entry.unitVolume;
+    } else if (entry && entry.volume !== undefined && entry.volume !== null) {
+        rawUnitVolume = entry.volume;
+    }
+
+    const unitVolume = parseFloat(rawUnitVolume) || 0;
     const total = parseFloat(entry.totalVolume);
 
     if (!isNaN(total)) return total;

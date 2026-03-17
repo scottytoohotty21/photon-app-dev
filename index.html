@@ -388,22 +388,25 @@ Enter as: Surname, First Name
             <div class="grid grid-cols-5 gap-1">
     <div id="inventory-button-grid" class="col-span-4 grid grid-cols-4 gap-1"></div>
 
-    <div class="col-span-1 grid grid-cols-1 gap-1">
-        <button class="item-btn bg-red-50 text-red-500 border-red-100 flex-col">
-            VOICE
-            <span class="text-[7px] opacity-60">0 CLIPS</span>
-        </button>
+  <div class="col-span-1 grid grid-cols-1 gap-1">
+    <button class="item-btn bg-red-50 text-red-500 border-red-100 flex-col">
+        VOICE
+        <span class="text-[7px] opacity-60">0 CLIPS</span>
+    </button>
 
-        <button class="item-btn item-btn-blue" onclick="addVolume(1)">1 CUFT</button>
-        <button class="item-btn item-btn-blue" onclick="addVolume(5)">5 CUFT</button>
-        <button class="item-btn item-btn-blue" onclick="addVolume(10)">10 CUFT</button>
+    <button class="item-btn item-btn-blue" onclick="addBox('AP')">AP</button>
+    <button class="item-btn item-btn-blue" onclick="addBox('CG')">CG</button>
+    <button class="item-btn item-btn-blue" onclick="addBox('BOOK')">BOOK</button>
+    <button class="item-btn item-btn-blue" onclick="addBox('LINEN')">LINEN</button>
+    <button class="item-btn item-btn-blue" onclick="addBox('WR')">WR</button>
 
-        <button class="item-btn item-btn-blue">AP</button>
-        <button class="item-btn item-btn-blue">CG</button>
-        <button class="item-btn item-btn-blue">BOOK</button>
-        <button class="item-btn item-btn-blue">LINEN</button>
-        <button class="item-btn item-btn-blue">W/R</button>
-    </div>
+    <button class="item-btn item-btn-blue" onclick="addVolume(1)">1 CUFT</button>
+    <button class="item-btn item-btn-blue" onclick="addVolume(5)">5 CUFT</button>
+    <button class="item-btn item-btn-blue" onclick="addVolume(10)">10 CUFT</button>
+    <button class="item-btn item-btn-blue" onclick="addVolume(20)">20 CUFT</button>
+    <button class="item-btn item-btn-blue" onclick="addVolume(50)">50 CUFT</button>
+    <button class="item-btn item-btn-blue" onclick="addVolume(100)">100 CUFT</button>
+</div>
 </div>
         </section>
         
@@ -511,7 +514,14 @@ const DEFAULT_FLOORS = [
     "Loft",
     "Outside"
 ];
-        
+const BOX_VOLUMES = {
+    "AP": 4,
+    "CG": 4,
+    "BOOK": 2,
+    "LINEN": 5,
+    "WR": 10
+};
+
 const furnitureDB = [
     {item:"AC Unit", volume:10},
     {item:"Armchair", volume:20},
@@ -1505,6 +1515,62 @@ let total = crew + vehicle + other;
 
 document.getElementById("total-cost").value = total;
 
+}
+function addBox(boxCode) {
+    const boxVolume = BOX_VOLUMES[boxCode];
+    if (!boxVolume) return;
+
+    const qtyInput = document.getElementById("inv-qty");
+    let qty = parseInt(qtyInput ? qtyInput.value : 1, 10);
+    if (isNaN(qty) || qty < 1) qty = 1;
+
+    const itemNameMap = {
+        "AP": "AP BOX",
+        "CG": "CG BOX",
+        "BOOK": "BOOK BOX",
+        "LINEN": "LINEN BOX",
+        "WR": "WR BOX"
+    };
+
+    const itemName = itemNameMap[boxCode] || (boxCode + " BOX");
+
+    lastAddedItemName = itemName;
+
+    let existing = inventoryItems.find(function(i) {
+        return i.item === itemName;
+    });
+
+    const previousQty = existing ? existing.qty : 0;
+
+    if (existing) {
+        existing.qty += qty;
+    } else {
+        inventoryItems.push({
+            item: itemName,
+            volume: boxVolume,
+            qty: qty
+        });
+    }
+
+    inventoryHistory.push({
+        type: "item",
+        itemName: itemName,
+        qtyAdded: qty,
+        previousQty: previousQty
+    });
+
+    currentItemVolume = boxVolume * qty;
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        return sum + (i.volume * i.qty);
+    }, 0);
+
+    updateInventoryDisplay(qty + " X " + itemName);
+    triggerInventoryPulse("qty", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("light");
+
+    if (qtyInput) qtyInput.value = 1;
+    updateUndoButtonState();
 }
 
 function addVolume(amount) {

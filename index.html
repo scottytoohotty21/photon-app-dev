@@ -316,7 +316,7 @@ Enter as: Surname, First Name
             <div id="active-sequence-ui" class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-6 space-y-6"></div>
         </section>
 
-        <section id="content-inventory" class="tab-content hidden">
+       <select id="inv-seq-select" onchange="handleInventorySequenceChange(this.value)" class="inv-header-select inv-top-field"></select>
           <div class="grid grid-cols-12 gap-2 mb-3">
     <div class="col-span-3">
         <label class="mini-label">Seq</label>
@@ -830,11 +830,16 @@ document.getElementById('hdr-ref').innerText =
 
     activePropId = currentJob.properties[0].id;
 
-    if (!currentJob.sequences || currentJob.sequences.length === 0) {
-        addSequence();
-    } else {
-        activeSeqId = currentJob.sequences[0].id;
-    }
+   if (!currentJob.sequences || currentJob.sequences.length === 0) {
+    addSequence();
+} else {
+    activeSeqId = currentJob.sequences[0].id;
+}
+
+if (!currentJob.inventory) currentJob.inventory = {};
+if (!currentJob.inventory.activeSequenceId) {
+    currentJob.inventory.activeSequenceId = activeSeqId;
+}
 
    currentItemVolume = 0;
 totalVolume = 0;
@@ -938,13 +943,25 @@ function renderInventorySequenceDropdown() {
     const dropdown = document.getElementById('inv-seq-select');
     if (!dropdown || !currentJob) return;
 
+    if (!currentJob.inventory) currentJob.inventory = {};
+
+    const selectedSequenceId =
+        currentJob.inventory.activeSequenceId || activeSeqId;
+
     dropdown.innerHTML = currentJob.sequences.map((s, idx) => {
         const moveLabel = s.moveType || 'New Sequence';
         const packLabel = s.packOption || 'No Packing Set';
         const label = `Seq #${idx + 1}: ${moveLabel} / ${packLabel}`;
-        return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
+        return `<option value="${s.id}" ${String(s.id) === String(selectedSequenceId) ? 'selected' : ''}>${label}</option>`;
     }).join('');
+}
+        function handleInventorySequenceChange(value) {
+    if (!currentJob) return;
 
+    if (!currentJob.inventory) currentJob.inventory = {};
+    currentJob.inventory.activeSequenceId = value;
+
+    saveToDevice();
 }
         function getRoomOptions() {
     if (!currentJob) return DEFAULT_ROOMS;

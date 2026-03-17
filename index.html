@@ -1030,6 +1030,46 @@ function handleRoomChange(value) {
         return;
     }
 
+    currentJob.inventory.activeRoomName = value;
+    saveToDevice();
+}
+
+function handleInventorySequenceChange(value) {
+    if (!currentJob) return;
+    if (!currentJob.inventory) currentJob.inventory = {};
+    currentJob.inventory.activeSequenceId = value;
+    saveToDevice();
+}
+
+function getEntryTotalVolume(entry) {
+    const qty = parseInt(entry.qty, 10) || 0;
+    const unitVolume = parseFloat(entry.unitVolume ?? entry.volume ?? 0) || 0;
+    const total = parseFloat(entry.totalVolume);
+
+    if (!isNaN(total)) return total;
+    return qty * unitVolume;
+}
+
+function recalculateInventoryTotals() {
+    totalVolume = inventoryItems.reduce((sum, entry) => sum + getEntryTotalVolume(entry), 0);
+
+    if (currentJob && currentJob.inventory) {
+        if (!currentJob.inventory.totals) {
+            currentJob.inventory.totals = { currentItemVolume: 0, totalVolume: 0 };
+        }
+
+        currentJob.inventory.totals.currentItemVolume = currentItemVolume;
+        currentJob.inventory.totals.totalVolume = totalVolume;
+    }
+
+    if (currentJob && Array.isArray(currentJob.sequences)) {
+        currentJob.sequences.forEach(seq => {
+            seq.vol = inventoryItems
+                .filter(entry => String(entry.sequenceId) === String(seq.id))
+                .reduce((sum, entry) => sum + getEntryTotalVolume(entry), 0);
+        });
+    }
+}
     function handleInventorySequenceChange(value) {
     if (!currentJob) return;
     if (!currentJob.inventory) currentJob.inventory = {};

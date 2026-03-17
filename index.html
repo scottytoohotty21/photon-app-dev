@@ -322,18 +322,14 @@ Enter as: Surname, First Name
         <label class="mini-label">Seq</label>
         <select id="inv-seq-select" class="inv-header-select inv-top-field"></select>
     </div>
-    <div class="col-span-3">
-        <label class="mini-label">Floor</label>
-        <select class="inv-header-select inv-top-field">
-            <option>Ground</option>
-        </select>
-    </div>
-    <div class="col-span-3">
-        <label class="mini-label">Room</label>
-        <select class="inv-header-select inv-top-field">
-            <option>Hallway</option>
-        </select>
-    </div>
+   <div class="col-span-3">
+    <label class="mini-label">Floor</label>
+    <select id="inv-floor-select" onchange="handleFloorChange(this.value)" class="inv-header-select inv-top-field"></select>
+</div>
+   <div class="col-span-3">
+    <label class="mini-label">Room</label>
+    <select id="inv-room-select" onchange="handleRoomChange(this.value)" class="inv-header-select inv-top-field"></select>
+</div>
     <div class="col-span-1">
         <label class="mini-label">Qty</label>
   <input
@@ -487,7 +483,31 @@ Calculate Cost
         const MOVE_TYPES = ["Dom-local", "Dom-Distance", "Dom-To Store", "Dom-Ex Store", "Dom-Direct/Store", "GPG", "LCL", "FCL"];
         const PACK_OPTIONS = ["Owner Pack", "Fragile (china & Glassware) pack", "Full Packing", "Full Export Pack and Wrap", "Fragile & Kitchenware Pack"];
         const SALUTATIONS = ["Mr", "Miss", "Mrs", "Ms", "Other"];
-
+        const DEFAULT_ROOMS = [
+    "Hallway",
+    "Lounge",
+    "Dining Room",
+    "Kitchen",
+    "Main Bedroom",
+    "Bedroom 2",
+    "Bedroom 3",
+    "Bathroom",
+    "Utility",
+    "Garage",
+    "Loft",
+    "Garden"
+];
+const DEFAULT_FLOORS = [
+    "Basement",
+    "Lower Ground",
+    "Ground",
+    "First",
+    "Second",
+    "Third",
+    "Loft",
+    "Outside"
+];
+        
 const furnitureDB = [
     {item:"AC Unit", volume:10},
     {item:"Armchair", volume:20},
@@ -648,19 +668,21 @@ const inventoryCategories = {
         addresses: defaultProperties,
         sequences: [],
 
-        inventory: {
-            activeSequenceId: null,
-            activeFloor: "Ground",
-            activeRoomName: "",
-            activeCategory: "Full List",
-            items: [],
-            exclusions: [],
-            voiceNotes: [],
-            totals: {
-                currentItemVolume: 0,
-                totalVolume: 0
-            }
-        },
+ inventory: {
+    activeSequenceId: null,
+    activeFloor: "Ground",
+    activeRoomName: "Hallway",
+    customRooms: [],
+    customFloors: [],
+    activeCategory: "Full List",
+    items: [],
+    exclusions: [],
+    voiceNotes: [],
+    totals: {
+        currentItemVolume: 0,
+        totalVolume: 0
+    }
+},
 
         planner: {
             moveDate: "",
@@ -821,8 +843,10 @@ lastAddedItemName = null;
 inventoryItems = [];
 inventoryHistory = [];
             
-    renderAddressUI();
+renderAddressUI();
 renderInventorySequenceDropdown();
+renderInventoryRoomDropdown();
+renderInventoryFloorDropdown();
 renderInventoryButtons();
 updateInventoryDisplay();
 updateUndoButtonState();
@@ -921,6 +945,196 @@ function renderInventorySequenceDropdown() {
         return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
     }).join('');
 
+}
+        function getRoomOptions() {
+    if (!currentJob) return DEFAULT_ROOMS;
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    if (!Array.isArray(currentJob.inventory.customRooms)) {
+        currentJob.inventory.customRooms = [];
+    }
+
+    return [...DEFAULT_ROOMS, ...currentJob.inventory.customRooms];
+}
+
+function renderInventoryRoomDropdown() {
+    const dropdown = document.getElementById('inv-room-select');
+    if (!dropdown || !currentJob) return;
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    if (!Array.isArray(currentJob.inventory.customRooms)) {
+        currentJob.inventory.customRooms = [];
+    }
+
+    const currentRoom = currentJob.inventory.activeRoomName || "Hallway";
+    const roomOptions = getRoomOptions();
+
+    dropdown.innerHTML = roomOptions.map(room => {
+        return `<option value="${room}" ${room === currentRoom ? 'selected' : ''}>${room}</option>`;
+    }).join('') + `<option value="__add_custom_room__">+ Add Custom Room</option>`;
+
+    dropdown.value = roomOptions.includes(currentRoom) ? currentRoom : "Hallway";
+}
+
+function handleRoomChange(value) {
+    if (!currentJob) return;
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    if (!Array.isArray(currentJob.inventory.customRooms)) {
+        currentJob.inventory.customRooms = [];
+    }
+
+    if (value === "__add_custom_room__") {
+        const customRoom = prompt("Enter custom room name:");
+
+        if (!customRoom) {
+            renderInventoryRoomDropdown();
+            return;
+        }
+
+        const cleanRoom = customRoom.trim();
+        if (!cleanRoom) {
+            renderInventoryRoomDropdown();
+            return;
+        }
+
+        const alreadyExists = getRoomOptions().some(
+            room => room.toLowerCase() === cleanRoom.toLowerCase()
+        );
+
+        if (!alreadyExists) {
+            currentJob.inventory.customRooms.push(cleanRoom);
+        }
+
+        currentJob.inventory.activeRoomName = cleanRoom;
+        renderInventoryRoomDropdown();
+        saveToDevice();
+        return;
+    }
+
+    currentJob.inventory.activeRoomName = value;
+    saveToDevice();
+}
+        function getFloorOptions() {
+    if (!currentJob) return DEFAULT_FLOORS;
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    if (!Array.isArray(currentJob.inventory.customFloors)) {
+        currentJob.inventory.customFloors = [];
+    }
+
+    return [...DEFAULT_FLOORS, ...currentJob.inventory.customFloors];
+}
+
+function renderInventoryFloorDropdown() {
+    const dropdown = document.getElementById('inv-floor-select');
+    if (!dropdown || !currentJob) return;
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    if (!Array.isArray(currentJob.inventory.customFloors)) {
+        currentJob.inventory.customFloors = [];
+    }
+
+    const currentFloor = currentJob.inventory.activeFloor || "Ground";
+    const floorOptions = getFloorOptions();
+
+    dropdown.innerHTML =
+        floorOptions.map(floor => {
+            return `<option value="${floor}" ${floor === currentFloor ? 'selected' : ''}>${floor}</option>`;
+        }).join('') +
+        `<option value="__add_numbered_floor__">+ Add Numbered Floor</option>` +
+        `<option value="__add_custom_floor__">+ Add Custom Floor</option>`;
+
+    dropdown.value = floorOptions.includes(currentFloor) ? currentFloor : "Ground";
+}
+
+function formatNumberedFloorLabel(value) {
+    const num = parseInt(value, 10);
+    if (isNaN(num) || num < 0) return null;
+
+    if (num === 0) return "Ground";
+
+    if (num === 1) return "First";
+    if (num === 2) return "Second";
+    if (num === 3) return "Third";
+
+    const lastTwo = num % 100;
+    const lastOne = num % 10;
+
+    let suffix = "th";
+    if (lastTwo < 11 || lastTwo > 13) {
+        if (lastOne === 1) suffix = "st";
+        else if (lastOne === 2) suffix = "nd";
+        else if (lastOne === 3) suffix = "rd";
+    }
+
+    return `${num}${suffix} Floor`;
+}
+
+function handleFloorChange(value) {
+    if (!currentJob) return;
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    if (!Array.isArray(currentJob.inventory.customFloors)) {
+        currentJob.inventory.customFloors = [];
+    }
+
+    if (value === "__add_numbered_floor__") {
+        const enteredNumber = prompt("Enter floor number:");
+        if (enteredNumber === null) {
+            renderInventoryFloorDropdown();
+            return;
+        }
+
+        const floorLabel = formatNumberedFloorLabel(enteredNumber.trim());
+        if (!floorLabel) {
+            renderInventoryFloorDropdown();
+            return;
+        }
+
+        const alreadyExists = getFloorOptions().some(
+            floor => floor.toLowerCase() === floorLabel.toLowerCase()
+        );
+
+        if (!alreadyExists) {
+            currentJob.inventory.customFloors.push(floorLabel);
+        }
+
+        currentJob.inventory.activeFloor = floorLabel;
+        renderInventoryFloorDropdown();
+        saveToDevice();
+        return;
+    }
+
+    if (value === "__add_custom_floor__") {
+        const customFloor = prompt("Enter custom floor name:");
+        if (!customFloor) {
+            renderInventoryFloorDropdown();
+            return;
+        }
+
+        const cleanFloor = customFloor.trim();
+        if (!cleanFloor) {
+            renderInventoryFloorDropdown();
+            return;
+        }
+
+        const alreadyExists = getFloorOptions().some(
+            floor => floor.toLowerCase() === cleanFloor.toLowerCase()
+        );
+
+        if (!alreadyExists) {
+            currentJob.inventory.customFloors.push(cleanFloor);
+        }
+
+        currentJob.inventory.activeFloor = cleanFloor;
+        renderInventoryFloorDropdown();
+        saveToDevice();
+        return;
+    }
+
+    currentJob.inventory.activeFloor = value;
+    saveToDevice();
 }
        function renderInventoryButtons() {
     const grid = document.getElementById('inventory-button-grid');
@@ -1118,8 +1332,10 @@ function updatePropData(f, v) {
 
     if (t === 'sequence') renderSequenceUI();
     if (t === 'address') renderAddressUI();
-   if (t === 'inventory') {
+if (t === 'inventory') {
     renderInventorySequenceDropdown();
+    renderInventoryRoomDropdown();
+    renderInventoryFloorDropdown();
     renderInventoryButtons();
     updateInventoryDisplay();
     updateUndoButtonState();

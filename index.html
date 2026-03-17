@@ -320,7 +320,7 @@ Enter as: Surname, First Name
           <div class="grid grid-cols-12 gap-2 mb-3">
     <div class="col-span-3">
         <label class="mini-label">Seq</label>
-        <select id="inv-seq-select" class="inv-header-select inv-top-field"></select>
+      <select id="inv-seq-select" onchange="handleInventorySequenceChange(this.value)" class="inv-header-select inv-top-field"></select>
     </div>
    <div class="col-span-3">
     <label class="mini-label">Floor</label>
@@ -748,14 +748,13 @@ const inventoryCategories = {
     })
 ];
         
-     let currentJob = null; let activePropId = null; let activeSeqId = null;
+   let currentJob = null; let activePropId = null; let activeSeqId = null;
 let inventoryItems = [];
 let currentItemVolume = 0;
 let totalVolume = 0;
 let currentInventoryCategory = "Full List";
-let lastAddedItemName = null;
+let lastAddedItemId = null;
 let inventoryHistory = [];
-
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
         }
@@ -836,12 +835,22 @@ document.getElementById('hdr-ref').innerText =
         activeSeqId = currentJob.sequences[0].id;
     }
 
-   currentItemVolume = 0;
-totalVolume = 0;
-currentInventoryCategory = "Full List";
-lastAddedItemName = null;
-inventoryItems = [];
+if (!currentJob.inventory) currentJob.inventory = {};
+if (!Array.isArray(currentJob.inventory.items)) currentJob.inventory.items = [];
+if (!Array.isArray(currentJob.inventory.customRooms)) currentJob.inventory.customRooms = [];
+if (!Array.isArray(currentJob.inventory.customFloors)) currentJob.inventory.customFloors = [];
+
+inventoryItems = currentJob.inventory.items;
+currentItemVolume = 0;
+currentInventoryCategory = currentJob.inventory.activeCategory || "Full List";
+lastAddedItemId = null;
 inventoryHistory = [];
+
+if (!currentJob.inventory.activeSequenceId) {
+    currentJob.inventory.activeSequenceId = activeSeqId || (currentJob.sequences[0] ? currentJob.sequences[0].id : null);
+}
+
+recalculateInventoryTotals();
             
 renderAddressUI();
 renderInventorySequenceDropdown();
@@ -938,13 +947,22 @@ function renderInventorySequenceDropdown() {
     const dropdown = document.getElementById('inv-seq-select');
     if (!dropdown || !currentJob) return;
 
+    if (!currentJob.inventory) currentJob.inventory = {};
+    if (!Array.isArray(currentJob.inventory.items)) currentJob.inventory.items = [];
+
+    const selectedSequenceId =
+        currentJob.inventory.activeSequenceId ||
+        activeSeqId ||
+        (currentJob.sequences[0] ? currentJob.sequences[0].id : "");
+
+    currentJob.inventory.activeSequenceId = selectedSequenceId;
+
     dropdown.innerHTML = currentJob.sequences.map((s, idx) => {
         const moveLabel = s.moveType || 'New Sequence';
         const packLabel = s.packOption || 'No Packing Set';
         const label = `Seq #${idx + 1}: ${moveLabel} / ${packLabel}`;
-        return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
+        return `<option value="${s.id}" ${String(s.id) === String(selectedSequenceId) ? 'selected' : ''}>${label}</option>`;
     }).join('');
-
 }
         function getRoomOptions() {
     if (!currentJob) return DEFAULT_ROOMS;
@@ -1012,6 +1030,42 @@ function handleRoomChange(value) {
         return;
     }
 
+    function handleInventorySequenceChange(value) {
+    if (!currentJob) return;
+    if (!currentJob.inventory) currentJob.inventory = {};
+    currentJob.inventory.activeSequenceId = value;
+    saveToDevice();
+}
+
+function getEntryTotalVolume(entry) {
+    const qty = parseInt(entry.qty, 10) || 0;
+    const unitVolume = parseFloat(entry.unitVolume ?? entry.volume ?? 0) || 0;
+    const total = parseFloat(entry.totalVolume);
+
+    if (!isNaN(total)) return total;
+    return qty * unitVolume;
+}
+
+function recalculateInventoryTotals() {
+    totalVolume = inventoryItems.reduce((sum, entry) => sum + getEntryTotalVolume(entry), 0);
+
+    if (currentJob && currentJob.inventory) {
+        if (!currentJob.inventory.totals) {
+            currentJob.inventory.totals = { currentItemVolume: 0, totalVolume: 0 };
+        }
+
+        currentJob.inventory.totals.currentItemVolume = currentItemVolume;
+        currentJob.inventory.totals.totalVolume = totalVolume;
+    }
+
+    if (currentJob && Array.isArray(currentJob.sequences)) {
+        currentJob.sequences.forEach(seq => {
+            seq.vol = inventoryItems
+                .filter(entry => String(entry.sequenceId) === String(seq.id))
+                .reduce((sum, entry) => sum + getEntryTotalVolume(entry), 0);
+        });
+    }
+}
     currentJob.inventory.activeRoomName = value;
     saveToDevice();
 }
@@ -1149,6 +1203,11 @@ function handleFloorChange(value) {
 
 function setInventoryCategory(category, btn) {
     currentInventoryCategory = category;
+
+    if (currentJob && currentJob.inventory) {
+        currentJob.inventory.activeCategory = category;
+        saveToDevice();
+    }
 
     document.querySelectorAll('.inv-room-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
@@ -1430,21 +1489,40 @@ document.getElementById("total-cost").value = total;
 }
 
 function addVolume(amount) {
+    if (!currentJob) return;
+
     const qtyInput = document.getElementById("inv-qty");
     let qty = parseInt(qtyInput?.value, 10);
     if (isNaN(qty) || qty < 1) qty = 1;
 
-    const addedVolume = amount * qty;
+    const entryId = `inv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const sequenceId = currentJob.inventory?.activeSequenceId || activeSeqId || "";
+    const roomName = currentJob.inventory?.activeRoomName || "Hallway";
+    const floorName = currentJob.inventory?.activeFloor || "Ground";
+    const entryTotalVolume = amount * qty;
+
+    const newEntry = {
+        id: entryId,
+        kind: "volume",
+        sequenceId: sequenceId,
+        roomName: roomName,
+        floorName: floorName,
+        itemName: "Manual Volume",
+        qty: qty,
+        unitVolume: amount,
+        totalVolume: entryTotalVolume
+    };
+
+    inventoryItems.push(newEntry);
+    lastAddedItemId = entryId;
 
     inventoryHistory.push({
         type: "volume",
-        addedVolume: addedVolume,
-        unitVolume: amount,
-        qtyAdded: qty
+        entryId: entryId
     });
 
-    currentItemVolume = addedVolume;
-    totalVolume += addedVolume;
+    currentItemVolume = entryTotalVolume;
+    recalculateInventoryTotals();
 
     updateInventoryDisplay(`+ ${qty} X ${amount} CUFT`);
     triggerInventoryPulse("qty", "blue");
@@ -1452,9 +1530,12 @@ function addVolume(amount) {
     triggerHaptic("light");
 
     if (qtyInput) qtyInput.value = 1;
+    saveToDevice();
     updateUndoButtonState();
 }
 function addInventoryItem(itemName) {
+    if (!currentJob) return;
+
     let item = furnitureDB.find(i => i.item === itemName);
     if (!item) return;
 
@@ -1462,30 +1543,34 @@ function addInventoryItem(itemName) {
     let qty = parseInt(qtyInput?.value, 10);
     if (isNaN(qty) || qty < 1) qty = 1;
 
-    lastAddedItemName = itemName;
+    const entryId = `inv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const sequenceId = currentJob.inventory?.activeSequenceId || activeSeqId || "";
+    const roomName = currentJob.inventory?.activeRoomName || "Hallway";
+    const floorName = currentJob.inventory?.activeFloor || "Ground";
+    const entryTotalVolume = item.volume * qty;
 
-    let existing = inventoryItems.find(i => i.item === itemName);
-    const previousQty = existing ? existing.qty : 0;
+    const newEntry = {
+        id: entryId,
+        kind: "item",
+        sequenceId: sequenceId,
+        roomName: roomName,
+        floorName: floorName,
+        itemName: item.item,
+        qty: qty,
+        unitVolume: item.volume,
+        totalVolume: entryTotalVolume
+    };
 
-    if (existing) {
-        existing.qty += qty;
-    } else {
-        inventoryItems.push({
-            item: item.item,
-            volume: item.volume,
-            qty: qty
-        });
-    }
+    inventoryItems.push(newEntry);
+    lastAddedItemId = entryId;
 
     inventoryHistory.push({
         type: "item",
-        itemName: itemName,
-        qtyAdded: qty,
-        previousQty: previousQty
+        entryId: entryId
     });
 
-    currentItemVolume = item.volume * qty;
-    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+    currentItemVolume = entryTotalVolume;
+    recalculateInventoryTotals();
 
     updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
     triggerInventoryPulse("qty", "blue");
@@ -1493,36 +1578,39 @@ function addInventoryItem(itemName) {
     triggerHaptic("light");
 
     if (qtyInput) qtyInput.value = 1;
+    saveToDevice();
     updateUndoButtonState();
 }
     
 function updateLastItemQty(newQty) {
-    if (!lastAddedItemName) return;
+    if (!lastAddedItemId) return;
 
-    let item = inventoryItems.find(i => i.item === lastAddedItemName);
-    if (!item) return;
+    let entry = inventoryItems.find(i => i.id === lastAddedItemId);
+    if (!entry) return;
 
     let qty = parseInt(newQty, 10);
     if (isNaN(qty) || qty < 1) qty = 1;
 
-    const previousQty = item.qty;
+    const previousQty = entry.qty;
     if (previousQty === qty) return;
 
-    item.qty = qty;
+    entry.qty = qty;
+    entry.totalVolume = entry.unitVolume * qty;
 
     inventoryHistory.push({
         type: "qty-edit",
-        itemName: item.item,
+        entryId: entry.id,
         previousQty: previousQty,
         newQty: qty
     });
 
-    currentItemVolume = item.volume * qty;
-    totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
+    currentItemVolume = entry.totalVolume;
+    recalculateInventoryTotals();
 
-    updateInventoryDisplay(`${qty} X ${item.item.toUpperCase()}`);
+    updateInventoryDisplay(`${qty} X ${entry.itemName.toUpperCase()}`);
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
+    saveToDevice();
 }
         function triggerInventoryPulse(target = "total", type = "blue") {
     let el = null;
@@ -1572,47 +1660,46 @@ function undoLastInventoryAction() {
 
     const action = inventoryHistory.pop();
 
-    if (action.type === "item") {
-        const item = inventoryItems.find(i => i.item === action.itemName);
+    if (action.type === "item" || action.type === "volume") {
+        const entryIndex = inventoryItems.findIndex(i => i.id === action.entryId);
 
-        if (item) {
-            item.qty = action.previousQty;
+        if (entryIndex > -1) {
+            const removedEntry = inventoryItems[entryIndex];
+            inventoryItems.splice(entryIndex, 1);
+            currentItemVolume = 0;
 
-            if (item.qty <= 0) {
-                inventoryItems = inventoryItems.filter(i => i.item !== action.itemName);
+            if (removedEntry.kind === "volume") {
+                updateInventoryDisplay(`UNDO ${removedEntry.qty} X ${removedEntry.unitVolume} CUFT`);
+            } else {
+                updateInventoryDisplay(`UNDO ${removedEntry.qty} X ${removedEntry.itemName.toUpperCase()}`);
+            }
+
+            if (lastAddedItemId === removedEntry.id) {
+                lastAddedItemId = null;
             }
         }
 
-        totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
-        currentItemVolume = 0;
-
-        updateInventoryDisplay(`UNDO ${action.qtyAdded} X ${action.itemName.toUpperCase()}`);
-    }
-
-    else if (action.type === "volume") {
-        totalVolume = Math.max(0, totalVolume - action.addedVolume);
-        currentItemVolume = 0;
-
-        updateInventoryDisplay(`UNDO ${action.qtyAdded} X ${action.unitVolume} CUFT`);
+        recalculateInventoryTotals();
     }
 
     else if (action.type === "qty-edit") {
-        const item = inventoryItems.find(i => i.item === action.itemName);
+        const entry = inventoryItems.find(i => i.id === action.entryId);
 
-        if (item) {
-            item.qty = action.previousQty;
-            currentItemVolume = item.volume * item.qty;
+        if (entry) {
+            entry.qty = action.previousQty;
+            entry.totalVolume = entry.unitVolume * entry.qty;
+            currentItemVolume = entry.totalVolume;
+            updateInventoryDisplay(`UNDO QTY ${entry.itemName.toUpperCase()}`);
         }
 
-        totalVolume = inventoryItems.reduce((sum, i) => sum + (i.volume * i.qty), 0);
-
-        updateInventoryDisplay(`UNDO QTY ${action.itemName.toUpperCase()}`);
+        recalculateInventoryTotals();
     }
 
     triggerInventoryPulse("undo", "red");
     triggerInventoryPulse("total", "red");
     triggerHaptic("error");
 
+    saveToDevice();
     updateUndoButtonState();
 }
 function updateInventoryDisplay(logText = "No items added") {

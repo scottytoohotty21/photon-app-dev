@@ -1556,8 +1556,7 @@ if (t === 'inventory') {
     renderInventoryRoomDropdown();
     renderInventoryFloorDropdown();
     renderInventoryButtons();
-    updateInventoryDisplay();
-    updateUndoButtonState();
+    rebuildLiveInventoryFromSequence(activeSeqId);
 }
 
 if (t === 'listed') {

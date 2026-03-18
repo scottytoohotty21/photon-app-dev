@@ -888,10 +888,8 @@ renderInventoryDeliveryDropdown();
 renderInventoryRoomDropdown();
 renderInventoryFloorDropdown();
 renderInventoryButtons();
-updateInventoryDisplay();
-updateUndoButtonState();
-saveToDevice();
-}
+rebuildLiveInventoryFromSequence(activeSeqId);
+saveToDevice();}
 
         function renderAddressUI() {
          const prop = currentJob.properties.find(p => p.id === activePropId);
@@ -1100,6 +1098,57 @@ function removeRawInventoryEntry(rawEntryId) {
     });
 
     saveToDevice();
+}
+    function getRawInventoryItemsForSequence(sequenceId) {
+    if (!currentJob || !currentJob.inventory || !Array.isArray(currentJob.inventory.items)) {
+        return [];
+    }
+
+    return currentJob.inventory.items.filter(function(entry) {
+        return String(entry.sequenceId) === String(sequenceId);
+    });
+}
+
+function rebuildLiveInventoryFromSequence(sequenceId) {
+    inventoryItems = [];
+    currentItemVolume = 0;
+    totalVolume = 0;
+    lastAddedItemName = null;
+    lastAddedRawEntryId = null;
+    inventoryHistory = [];
+
+    const rawItems = getRawInventoryItemsForSequence(sequenceId);
+
+    if (!rawItems.length) {
+        updateInventoryDisplay("No items added");
+        updateUndoButtonState();
+        return;
+    }
+
+    rawItems.forEach(function(entry) {
+        let existing = inventoryItems.find(function(i) {
+            return i.item === entry.itemName;
+        });
+
+        const unitVolume = Number(entry.unitVolume || 0);
+        const qty = Number(entry.qty || 0);
+
+        if (existing) {
+            existing.qty += qty;
+        } else {
+            inventoryItems.push({
+                item: entry.itemName,
+                displayName: entry.itemName,
+                volume: unitVolume,
+                qty: qty
+            });
+        }
+
+        totalVolume += Number(entry.totalVolume || 0);
+    });
+
+    updateInventoryDisplay("Sequence restored");
+    updateUndoButtonState();
 }
         function getRoomOptions() {
     if (!currentJob) return DEFAULT_ROOMS;
@@ -1482,21 +1531,14 @@ function updatePropData(f, v) {
      function loadSequence(id) {
     activeSeqId = id;
 
-    currentItemVolume = 0;
-    totalVolume = 0;
-    inventoryItems = [];
-    inventoryHistory = [];
-    lastAddedItemName = null;
-    lastAddedRawEntryId = null;
-
     const qtyInput = document.getElementById("inv-qty");
     if (qtyInput) qtyInput.value = 1;
 
     renderSequenceUI();
     renderInventorySequenceDropdown();
     renderInventoryDeliveryDropdown();
-    updateInventoryDisplay("No items added");
-    updateUndoButtonState();
+
+    rebuildLiveInventoryFromSequence(activeSeqId);
 }
         function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
         

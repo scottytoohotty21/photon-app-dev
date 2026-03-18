@@ -345,9 +345,8 @@ Enter as: Surname, First Name
     pattern="[0-9]*"
     onclick="this.select()"
     onfocus="this.select()"
-    onchange="updateLastItemQty(this.value)"
+    oninput="updateLastItemQty(this.value)"
 >
-        >
     </div>
     <div class="col-span-1">
         <label class="mini-label">Total Vol</label>
@@ -376,7 +375,14 @@ Enter as: Surname, First Name
 
             <div class="flex gap-2 mb-4">
                 <div class="flex-grow log-bar">2 X SOFA 3 SEAT [EXC]</div>
-                <div class="w-20 vol-box"><span class="mini-label !mb-0 text-red-400">Vol</span><span class="text-sm font-black">50</span></div>
+               <div
+    id="inv-current-volume"
+    class="w-20 vol-box"
+    onclick="openVolumeOverride()"
+>
+    <span class="mini-label !mb-0 text-red-400">Vol</span>
+    <span class="text-sm font-black">50</span>
+</div>
                <button
     id="undo-btn"
     onclick="undoLastInventoryAction()"
@@ -764,13 +770,14 @@ const inventoryCategories = {
     })
 ];
         
-     let currentJob = null; let activePropId = null; let activeSeqId = null;
+let currentJob = null; let activePropId = null; let activeSeqId = null;
 let inventoryItems = [];
 let currentItemVolume = 0;
 let totalVolume = 0;
 let currentInventoryCategory = "Full List";
 let lastAddedItemName = null;
 let inventoryHistory = [];
+let qtyResetTimer = null;
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -1668,14 +1675,10 @@ function updateLastItemQty(newQty) {
     if (!item) return;
 
     let qty = parseInt(newQty, 10);
-    if (isNaN(qty) || qty < 1) qty = 1;
+    if (isNaN(qty) || qty < 1) return;
 
     const previousQty = item.qty;
-    if (previousQty === qty) {
-        const qtyInput = document.getElementById("inv-qty");
-        if (qtyInput) qtyInput.value = 1;
-        return;
-    }
+    if (previousQty === qty) return;
 
     item.qty = qty;
 
@@ -1697,12 +1700,59 @@ function updateLastItemQty(newQty) {
     triggerInventoryPulse("total", "blue");
     triggerHaptic("light");
 
-    const qtyInput = document.getElementById("inv-qty");
-    if (qtyInput) qtyInput.value = 1;
+    if (qtyResetTimer) {
+        clearTimeout(qtyResetTimer);
+    }
+
+    qtyResetTimer = setTimeout(function() {
+        const qtyInput = document.getElementById("inv-qty");
+        if (qtyInput) qtyInput.value = 1;
+    }, 550);
 
     updateUndoButtonState();
 }
-        function triggerInventoryPulse(target = "total", type = "blue") {
+
+function openVolumeOverride() {
+    if (!lastAddedItemName) return;
+
+    let item = inventoryItems.find(function(i) {
+        return i.item === lastAddedItemName;
+    });
+    if (!item) return;
+
+    const currentVolume = parseFloat(item.volume) || 0;
+    const entered = prompt("Enter new unit volume (cuft):", currentVolume);
+
+    if (entered === null) return;
+
+    const newVolume = parseFloat(entered);
+    if (isNaN(newVolume) || newVolume <= 0) return;
+
+    const previousVolume = item.volume;
+    item.volume = newVolume;
+
+    currentItemVolume = item.volume * item.qty;
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        return sum + (i.volume * i.qty);
+    }, 0);
+
+    inventoryHistory.push({
+        type: "volume-edit",
+        itemName: item.item,
+        previousVolume: previousVolume,
+        newVolume: newVolume
+    });
+
+    const label = item.displayName || item.item;
+    updateInventoryDisplay(item.qty + " X " + String(label).toUpperCase() + " @ " + newVolume + " CUFT");
+
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("medium");
+    updateUndoButtonState();
+}
+
+function triggerInventoryPulse(target = "total", type = "blue") {
     let el = null;
 
     if (target === "qty") {
@@ -1711,6 +1761,8 @@ function updateLastItemQty(newQty) {
         el = document.getElementById("inv-total-volume");
     } else if (target === "undo") {
         el = document.getElementById("undo-btn");
+    } else if (target === "current") {
+        el = document.getElementById("inv-current-volume");
     }
 
     if (!el) return;
@@ -1719,7 +1771,6 @@ function updateLastItemQty(newQty) {
     void el.offsetWidth;
     el.classList.add(type === "red" ? "pulse-red" : "pulse-blue");
 }
-
 function triggerHaptic(type = "light") {
     if (!("vibrate" in navigator)) return;
 
@@ -1804,6 +1855,23 @@ function undoLastInventoryAction() {
         const label = item ? (item.displayName || item.item) : action.itemName;
         updateInventoryDisplay("UNDO QTY " + String(label).toUpperCase());
     }
+else if (action.type === "volume-edit") {
+    const item = inventoryItems.find(function(i) {
+        return i.item === action.itemName;
+    });
+
+    if (item) {
+        item.volume = action.previousVolume;
+        currentItemVolume = item.volume * item.qty;
+    }
+
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        return sum + (i.volume * i.qty);
+    }, 0);
+
+    const label = item ? (item.displayName || item.item) : action.itemName;
+    updateInventoryDisplay("UNDO VOL " + String(label).toUpperCase());
+}
 
     triggerInventoryPulse("undo", "red");
     triggerInventoryPulse("total", "red");

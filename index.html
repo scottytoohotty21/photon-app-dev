@@ -165,6 +165,18 @@
     color: white;
     border-color: #2563eb;
 }
+
+.inv-tool-btn.exclude-active {
+    background: #334155;
+    color: white;
+    border-color: #0f172a;
+}
+
+.inv-tool-btn.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #2563eb;
+}
         .inv-room-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-size: 8px; font-weight: 900; text-transform: uppercase; padding: 12px 2px; text-align: center; flex: 1; }
         .inv-room-btn.active { background: #3b82f6; color: white; border-color: #2563eb; }
       .item-btn {
@@ -383,7 +395,7 @@ Enter as: Surname, First Name
     <button id="tool-expwrap" class="inv-tool-btn" onclick="toggleItemAction('expWrap')">Exp Wrap</button>
     <button class="inv-tool-btn">Crate Tool</button>
     <button class="inv-tool-btn">Damage</button>
-    <button class="inv-tool-btn">Exclude</button>
+    <button id="tool-exclude" class="inv-tool-btn" onclick="toggleItemAction('excluded')">Exclude</button>
     <button class="inv-tool-btn" onclick="addInventoryNote()">Note</button>
     <button class="inv-tool-btn" onclick="addMiscItem()">Misc</button>
 </div>
@@ -1082,7 +1094,8 @@ function buildRawInventoryEntry(entryData) {
         totalVolume: entryData.totalVolume || 0,
         kind: entryData.kind || "item",
         dismantle: !!entryData.dismantle,
-        expWrap: !!entryData.expWrap
+        expWrap: !!entryData.expWrap,
+        excluded: !!entryData.excluded
     };
 }
 
@@ -1153,6 +1166,97 @@ function findRawInventoryEntry(rawEntryId) {
     }) || null;
 }
 
+function getLastRawInventoryEntry() {
+    if (!lastAddedRawEntryId) return null;
+    return findRawInventoryEntry(lastAddedRawEntryId);
+}
+
+function syncLiveItemFlagsFromRaw() {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry || !lastAddedItemName) return;
+
+    const liveItem = inventoryItems.find(function(i) {
+        return i.item === lastAddedItemName;
+    });
+
+    if (!liveItem) return;
+
+    liveItem.dismantle = !!rawEntry.dismantle;
+    liveItem.expWrap = !!rawEntry.expWrap;
+    liveItem.excluded = !!rawEntry.excluded;
+}
+
+function recalculateTotalVolume() {
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        if (i.excluded) return sum;
+        return sum + (i.volume * i.qty);
+    }, 0);
+}
+
+function renderActionButtonStates() {
+    const dismantleBtn = document.getElementById("tool-dismantle");
+    const expWrapBtn = document.getElementById("tool-expwrap");
+    const excludeBtn = document.getElementById("tool-exclude");
+    const rawEntry = getLastRawInventoryEntry();
+
+    if (dismantleBtn) {
+        dismantleBtn.classList.toggle("active", !!(rawEntry && rawEntry.dismantle));
+    }
+
+    if (expWrapBtn) {
+        expWrapBtn.classList.toggle("active", !!(rawEntry && rawEntry.expWrap));
+    }
+
+    if (excludeBtn) {
+        excludeBtn.classList.toggle("exclude-active", !!(rawEntry && rawEntry.excluded));
+    }
+}
+
+function toggleItemAction(actionName) {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
+
+    const liveItem = inventoryItems.find(function(i) {
+        return i.item === lastAddedItemName;
+    });
+
+    if (!liveItem) return;
+
+    if (actionName === "dismantle") {
+        rawEntry.dismantle = !rawEntry.dismantle;
+        liveItem.dismantle = !!rawEntry.dismantle;
+    }
+
+    if (actionName === "expWrap") {
+        rawEntry.expWrap = !rawEntry.expWrap;
+        liveItem.expWrap = !!rawEntry.expWrap;
+    }
+
+    if (actionName === "excluded") {
+        rawEntry.excluded = !rawEntry.excluded;
+        liveItem.excluded = !!rawEntry.excluded;
+    }
+
+    saveToDevice();
+    recalculateTotalVolume();
+    renderActionButtonStates();
+
+    const tags = [];
+    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.excluded) tags.push("[EXCLUDED]");
+
+    const label = (rawEntry.itemName || "ITEM").toUpperCase();
+    const logText = tags.length ? (label + " " + tags.join(" ")) : (label + " ACTION CLEARED");
+
+    currentItemVolume = rawEntry.excluded ? 0 : (rawEntry.unitVolume * rawEntry.qty);
+
+    updateInventoryDisplay(logText);
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("light");
+}
+
 function removeRawInventoryEntry(rawEntryId) {
     if (!currentJob || !currentJob.inventory || !Array.isArray(currentJob.inventory.items)) return;
 
@@ -1184,8 +1288,8 @@ function rebuildLiveInventoryFromSequence(sequenceId) {
 
     if (!rawItems.length) {
         updateInventoryDisplay("No items added");
-        renderActionButtonStates();
         updateUndoButtonState();
+        renderActionButtonStates();
         return;
     }
 
@@ -1204,22 +1308,27 @@ function rebuildLiveInventoryFromSequence(sequenceId) {
                 item: entry.itemName,
                 displayName: entry.itemName,
                 volume: unitVolume,
-                qty: qty
+                qty: qty,
+                dismantle: !!entry.dismantle,
+                expWrap: !!entry.expWrap,
+                excluded: !!entry.excluded
             });
         }
-
-        totalVolume += Number(entry.totalVolume || 0);
     });
 
     const lastRaw = rawItems[rawItems.length - 1];
     if (lastRaw) {
         lastAddedRawEntryId = lastRaw.id;
+        lastAddedItemName = lastRaw.itemName;
+        currentItemVolume = lastRaw.excluded ? 0 : Number(lastRaw.totalVolume || 0);
     }
 
+    recalculateTotalVolume();
     updateInventoryDisplay("Sequence restored");
-    renderActionButtonStates();
     updateUndoButtonState();
-}        function getRoomOptions() {
+    renderActionButtonStates();
+}
+        function getRoomOptions() {
     if (!currentJob) return DEFAULT_ROOMS;
 
     if (!currentJob.inventory) currentJob.inventory = {};
@@ -1619,19 +1728,21 @@ function updatePropData(f, v) {
 
     if (t === 'sequence') renderSequenceUI();
     if (t === 'address') renderAddressUI();
-if (t === 'inventory') {
-    renderInventorySequenceDropdown();
-    renderInventoryDeliveryDropdown();
-    renderInventoryRoomDropdown();
-    renderInventoryFloorDropdown();
-    renderInventoryButtons();
-    updateInventoryDisplay();
-    updateUndoButtonState();
-}
 
-if (t === 'listed') {
-    renderListedInventory();
-}
+    if (t === 'inventory') {
+        renderInventorySequenceDropdown();
+        renderInventoryDeliveryDropdown();
+        renderInventoryRoomDropdown();
+        renderInventoryFloorDropdown();
+        renderInventoryButtons();
+        rebuildLiveInventoryFromSequence(activeSeqId);
+        renderActionButtonStates();
+        updateUndoButtonState();
+    }
+
+    if (t === 'listed') {
+        renderListedInventory();
+    }
 }
 function splitManualName(fullName) {
     const cleaned = (fullName || "").trim();
@@ -1777,9 +1888,7 @@ function addBox(boxCode) {
     });
 
     currentItemVolume = boxVolume * qty;
-    totalVolume = inventoryItems.reduce(function(sum, i) {
-        return sum + (i.volume * i.qty);
-    }, 0);
+    recalculateTotalVolume();
 
     updateInventoryDisplay(qty + " X " + itemName);
     triggerInventoryPulse("qty", "blue");
@@ -1830,9 +1939,7 @@ function addVolume(amount) {
     });
 
     currentItemVolume = amount * qty;
-    totalVolume = inventoryItems.reduce(function(sum, i) {
-        return sum + (i.volume * i.qty);
-    }, 0);
+    recalculateTotalVolume();
 
     updateInventoryDisplay("+ " + qty + " X " + displayName);
     triggerInventoryPulse("qty", "blue");
@@ -1891,9 +1998,7 @@ function addInventoryItem(itemName) {
     });
 
     currentItemVolume = item.volume * qty;
-    totalVolume = inventoryItems.reduce(function(sum, i) {
-        return sum + (i.volume * i.qty);
-    }, 0);
+    recalculateTotalVolume();
 
     updateInventoryDisplay(qty + " X " + item.item.toUpperCase());
     triggerInventoryPulse("qty", "blue");
@@ -1966,9 +2071,7 @@ function addMiscItem() {
 
     lastAddedRawEntryId = rawEntryId;
     currentItemVolume = unitVolume * qty;
-    totalVolume = inventoryItems.reduce(function(sum, i) {
-        return sum + (i.volume * i.qty);
-    }, 0);
+    recalculateTotalVolume();
 
     updateInventoryDisplay(qty + " X " + cleanName.toUpperCase());
     triggerInventoryPulse("current", "blue");
@@ -2051,10 +2154,8 @@ function updateLastItemQty(newQty) {
         previousRawQty: previousRawQty
     });
 
-    currentItemVolume = item.volume * qty;
-    totalVolume = inventoryItems.reduce(function(sum, i) {
-        return sum + (i.volume * i.qty);
-    }, 0);
+    currentItemVolume = item.excluded ? 0 : (item.volume * qty);
+recalculateTotalVolume();
 
     const label = item.displayName || item.item;
     updateInventoryDisplay(qty + " X " + String(label).toUpperCase());
@@ -2102,10 +2203,8 @@ function openVolumeOverride() {
         saveToDevice();
     }
 
-    currentItemVolume = item.volume * item.qty;
-    totalVolume = inventoryItems.reduce(function(sum, i) {
-        return sum + (i.volume * i.qty);
-    }, 0);
+   currentItemVolume = item.excluded ? 0 : (item.volume * item.qty);
+recalculateTotalVolume();
 
     inventoryHistory.push({
         type: "volume-edit",
@@ -2193,9 +2292,8 @@ function undoLastInventoryAction() {
             removeRawInventoryEntry(action.rawEntryId);
         }
 
-        totalVolume = inventoryItems.reduce(function(sum, i) {
-            return sum + (i.volume * i.qty);
-        }, 0);
+        currentItemVolume = item.excluded ? 0 : (item.volume * item.qty);
+recalculateTotalVolume();
         currentItemVolume = 0;
 
         updateInventoryDisplay("UNDO " + action.qtyAdded + " X " + action.itemName.toUpperCase());
@@ -2210,9 +2308,7 @@ function undoLastInventoryAction() {
             removeRawInventoryEntry(action.rawEntryId);
         }
 
-        totalVolume = inventoryItems.reduce(function(sum, i) {
-            return sum + (i.volume * i.qty);
-        }, 0);
+        recalculateTotalVolume();
         currentItemVolume = 0;
 
         const label = action.displayName || (action.unitVolume + " CUFT");
@@ -2238,9 +2334,7 @@ function undoLastInventoryAction() {
             }
         }
 
-        totalVolume = inventoryItems.reduce(function(sum, i) {
-            return sum + (i.volume * i.qty);
-        }, 0);
+        recalculateTotalVolume();
 
         const label = item ? (item.displayName || item.item) : action.itemName;
         updateInventoryDisplay("UNDO QTY " + String(label).toUpperCase());
@@ -2265,9 +2359,7 @@ function undoLastInventoryAction() {
             }
         }
 
-        totalVolume = inventoryItems.reduce(function(sum, i) {
-            return sum + (i.volume * i.qty);
-        }, 0);
+        recalculateTotalVolume();
 
         const label = item ? (item.displayName || item.item) : action.itemName;
         updateInventoryDisplay("UNDO VOL " + String(label).toUpperCase());
@@ -2287,6 +2379,7 @@ function undoLastInventoryAction() {
     const qtyInput = document.getElementById("inv-qty");
     if (qtyInput) qtyInput.value = 1;
 
+renderActionButtonStates();
     updateUndoButtonState();
 }
 function updateInventoryDisplay(logText = "No items added") {

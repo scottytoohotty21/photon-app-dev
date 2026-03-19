@@ -369,8 +369,8 @@ Enter as: Surname, First Name
                 <button class="inv-tool-btn">Crate Tool</button>
                 <button class="inv-tool-btn">Damage</button>
                 <button class="inv-tool-btn">Exclude</button>
-                <button class="inv-tool-btn">Note</button>
-                <button class="inv-tool-btn">Misc</button>
+                <button class="inv-tool-btn" onclick="addInventoryNote()">Note</button>
+                <button class="inv-tool-btn" onclick="addMiscItem()">Misc</button>
             </div>
 
             <div class="flex gap-2 mb-4">
@@ -1556,7 +1556,8 @@ if (t === 'inventory') {
     renderInventoryRoomDropdown();
     renderInventoryFloorDropdown();
     renderInventoryButtons();
-    rebuildLiveInventoryFromSequence(activeSeqId);
+    updateInventoryDisplay();
+    updateUndoButtonState();
 }
 
 if (t === 'listed') {
@@ -1831,6 +1832,116 @@ function addInventoryItem(itemName) {
     if (qtyInput) qtyInput.value = 1;
     updateUndoButtonState();
 }
+function addMiscItem() {
+    if (!currentJob) return;
+
+    const itemNameInput = prompt("Enter misc item name:");
+    if (itemNameInput === null) return;
+
+    const cleanName = itemNameInput.trim();
+    if (!cleanName) return;
+
+    const volumeInput = prompt("Enter unit volume (cuft):", "10");
+    if (volumeInput === null) return;
+
+    const unitVolume = parseFloat(volumeInput);
+    if (isNaN(unitVolume) || unitVolume <= 0) return;
+
+    const qtyInput = document.getElementById("inv-qty");
+    const qty = 1;
+
+    const miscKey = "MISC-" + cleanName.toUpperCase();
+    lastAddedItemName = miscKey;
+
+    let existing = inventoryItems.find(function(i) {
+        return i.item === miscKey;
+    });
+
+    const previousQty = existing ? existing.qty : 0;
+
+    if (existing) {
+        existing.qty += qty;
+        existing.volume = unitVolume;
+    } else {
+        inventoryItems.push({
+            item: miscKey,
+            displayName: cleanName,
+            volume: unitVolume,
+            qty: qty,
+            isMisc: true
+        });
+    }
+
+    const rawEntryId = saveRawInventoryEntry({
+        sequenceId: activeSeqId,
+        deliveryId: currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "",
+        roomName: currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "",
+        floorName: currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "",
+        itemName: cleanName,
+        qty: qty,
+        unitVolume: unitVolume,
+        totalVolume: unitVolume * qty,
+        kind: "misc"
+    });
+
+    inventoryHistory.push({
+        type: "item",
+        itemName: miscKey,
+        qtyAdded: qty,
+        previousQty: previousQty,
+        rawEntryId: rawEntryId
+    });
+
+    lastAddedRawEntryId = rawEntryId;
+    currentItemVolume = unitVolume * qty;
+    totalVolume = inventoryItems.reduce(function(sum, i) {
+        return sum + (i.volume * i.qty);
+    }, 0);
+
+    updateInventoryDisplay(qty + " X " + cleanName.toUpperCase());
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("medium");
+
+    if (qtyInput) qtyInput.value = 1;
+    updateUndoButtonState();
+}
+function addInventoryNote() {
+    if (!currentJob) return;
+
+    const noteInput = prompt("Enter note:");
+    if (noteInput === null) return;
+
+    const cleanNote = noteInput.trim();
+    if (!cleanNote) return;
+
+    const rawEntryId = saveRawInventoryEntry({
+        sequenceId: activeSeqId,
+        deliveryId: currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "",
+        roomName: currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "",
+        floorName: currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "",
+        itemName: cleanNote,
+        qty: 0,
+        unitVolume: 0,
+        totalVolume: 0,
+        kind: "note"
+    });
+
+    inventoryHistory.push({
+        type: "note",
+        itemName: cleanNote,
+        rawEntryId: rawEntryId
+    });
+
+    lastAddedItemName = null;
+    lastAddedRawEntryId = rawEntryId;
+    currentItemVolume = 0;
+
+    updateInventoryDisplay("NOTE: " + cleanNote.toUpperCase());
+    triggerInventoryPulse("current", "blue");
+    triggerHaptic("light");
+    updateUndoButtonState();
+}
 function updateLastItemQty(newQty) {
     if (!lastAddedItemName) return;
 
@@ -2087,7 +2198,14 @@ function undoLastInventoryAction() {
         const label = item ? (item.displayName || item.item) : action.itemName;
         updateInventoryDisplay("UNDO VOL " + String(label).toUpperCase());
     }
+    else if (action.type === "note") {
+        if (action.rawEntryId) {
+            removeRawInventoryEntry(action.rawEntryId);
+        }
 
+        currentItemVolume = 0;
+        updateInventoryDisplay("UNDO NOTE");
+    }
     triggerInventoryPulse("undo", "red");
     triggerInventoryPulse("total", "red");
     triggerHaptic("error");
@@ -2182,17 +2300,27 @@ function renderListedInventory() {
 
     container.innerHTML = groupedSections.map(function(section) {
         const rows = section.entries.map(function(entry) {
-            return `
-                <tr class="border-t border-slate-200">
-                    <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.roomName || "-"}</td>
-                    <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.floorName || "-"}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black text-slate-900 uppercase">${entry.itemName || "-"}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black text-blue-600 uppercase">${entry.qty || 0}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black text-slate-700 uppercase">${entry.unitVolume || 0}</td>
-                    <td class="py-2 text-[10px] font-black text-slate-900 uppercase">${entry.totalVolume || 0}</td>
-                </tr>
-            `;
-        }).join("");
+    if (entry.kind === "note") {
+        return `
+            <tr class="border-t border-slate-200 bg-amber-50">
+                <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.roomName || "-"}</td>
+                <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.floorName || "-"}</td>
+                <td colspan="4" class="py-2 text-[10px] font-black text-amber-700 uppercase">NOTE: ${entry.itemName || "-"}</td>
+            </tr>
+        `;
+    }
+
+    return `
+        <tr class="border-t border-slate-200">
+            <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.roomName || "-"}</td>
+            <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.floorName || "-"}</td>
+            <td class="py-2 pr-2 text-[10px] font-black text-slate-900 uppercase">${entry.itemName || "-"}</td>
+            <td class="py-2 pr-2 text-[10px] font-black text-blue-600 uppercase">${entry.qty || 0}</td>
+            <td class="py-2 pr-2 text-[10px] font-black text-slate-700 uppercase">${entry.unitVolume || 0}</td>
+            <td class="py-2 text-[10px] font-black text-slate-900 uppercase">${entry.totalVolume || 0}</td>
+        </tr>
+    `;
+}).join("");
 
         return `
             <div class="border border-slate-200 rounded-2xl overflow-hidden">

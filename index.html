@@ -2443,7 +2443,13 @@ function groupInventoryItemsForListedView(items) {
         }
 
         grouped[groupKey].entries.push(entry);
-        grouped[groupKey].totalVolume += Number(entry.totalVolume || 0);
+
+        const isExcluded = !!entry.excluded;
+        const isNote = entry.kind === "note";
+
+        if (!isExcluded && !isNote) {
+            grouped[groupKey].totalVolume += Number(entry.totalVolume || 0);
+        }
     });
 
     return Object.values(grouped);
@@ -2473,6 +2479,19 @@ function renderListedInventory() {
                 <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.roomName || "-"}</td>
                 <td class="py-2 pr-2 text-[10px] font-bold text-slate-600 uppercase">${entry.floorName || "-"}</td>
                 <td colspan="4" class="py-2 text-[10px] font-black text-amber-700 uppercase">NOTE: ${entry.itemName || "-"}</td>
+            </tr>
+        `;
+    }
+
+    if (entry.excluded) {
+        return `
+            <tr class="border-t border-slate-200 bg-slate-50">
+                <td class="py-2 pr-2 text-[10px] font-bold text-slate-400 uppercase italic">${entry.roomName || "-"}</td>
+                <td class="py-2 pr-2 text-[10px] font-bold text-slate-400 uppercase italic">${entry.floorName || "-"}</td>
+                <td class="py-2 pr-2 text-[10px] font-black text-slate-500 uppercase italic">${entry.itemName || "-"} [EXCLUDED]</td>
+                <td class="py-2 pr-2 text-[10px] font-black text-slate-400 uppercase italic">${entry.qty || 0}</td>
+                <td class="py-2 pr-2 text-[10px] font-black text-slate-300 uppercase italic"></td>
+                <td class="py-2 text-[10px] font-black text-slate-300 uppercase italic"></td>
             </tr>
         `;
     }

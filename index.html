@@ -390,11 +390,11 @@ Enter as: Surname, First Name
     <button class="inv-room-btn" onclick="setInventoryCategory('Outside', this)">Outside</button>
 </div>
 
-          <div class="grid grid-cols-7 gap-1 mb-3">
+         <div class="grid grid-cols-7 gap-1 mb-3">
     <button id="tool-dismantle" class="inv-tool-btn" onclick="toggleItemAction('dismantle')">Dismantle</button>
     <button id="tool-expwrap" class="inv-tool-btn" onclick="toggleItemAction('expWrap')">Exp Wrap</button>
     <button id="tool-crate" class="inv-tool-btn" onclick="addOrEditCrate()">Crate</button>
-    <button class="inv-tool-btn">Damage</button>
+    <button id="tool-damage" class="inv-tool-btn" onclick="addOrEditDamage()">Damage</button>
     <button id="tool-exclude" class="inv-tool-btn" onclick="toggleItemAction('excluded')">Exclude</button>
     <button class="inv-tool-btn" onclick="addInventoryNote()">Note</button>
     <button class="inv-tool-btn" onclick="addMiscItem()">Misc</button>
@@ -1098,7 +1098,8 @@ function buildRawInventoryEntry(entryData) {
         excluded: !!entryData.excluded,
         note: entryData.note || "",
         crated: !!entryData.crated,
-        crateDims: entryData.crateDims || null
+        crateDims: entryData.crateDims || null,
+        damage: entryData.damage || ""
     };
 }
 
@@ -1156,6 +1157,7 @@ function renderActionButtonStates() {
     const expWrapBtn = document.getElementById("tool-expwrap");
     const excludeBtn = document.getElementById("tool-exclude");
     const crateBtn = document.getElementById("tool-crate");
+    const damageBtn = document.getElementById("tool-damage");
     const rawEntry = getLastRawInventoryEntry();
 
     if (dismantleBtn) {
@@ -1172,6 +1174,10 @@ function renderActionButtonStates() {
 
     if (crateBtn) {
         crateBtn.classList.toggle("active", !!(rawEntry && rawEntry.crated));
+    }
+
+    if (damageBtn) {
+        damageBtn.classList.toggle("active", !!(rawEntry && rawEntry.damage));
     }
 }
 
@@ -2161,6 +2167,66 @@ function addOrEditCrate() {
     triggerHaptic("light");
     updateUndoButtonState();
 }
+function addOrEditDamage() {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
+    if (rawEntry.kind === "note") return;
+
+    const currentDamage = rawEntry.damage || "";
+
+    const damageInput = prompt(
+        "Enter damage type:\n\nDented / Scratched / Marked / Cracked / Other",
+        currentDamage || "Dented"
+    );
+    if (damageInput === null) return;
+
+    let cleanDamage = damageInput.trim();
+    if (!cleanDamage) return;
+
+    const lower = cleanDamage.toLowerCase();
+
+    if (lower === "other") {
+        const otherInput = prompt("Enter damage note:", currentDamage && currentDamage.toLowerCase() !== "other" ? currentDamage : "");
+        if (otherInput === null) return;
+
+        cleanDamage = otherInput.trim();
+        if (!cleanDamage) return;
+    } else {
+        if (lower === "dented") cleanDamage = "Dented";
+        else if (lower === "scratched") cleanDamage = "Scratched";
+        else if (lower === "marked") cleanDamage = "Marked";
+        else if (lower === "cracked") cleanDamage = "Cracked";
+    }
+
+    const previousDamage = rawEntry.damage || "";
+    rawEntry.damage = cleanDamage;
+
+    inventoryHistory.push({
+        type: "damage-edit",
+        rawEntryId: rawEntry.id,
+        previousDamage: previousDamage,
+        newDamage: cleanDamage
+    });
+
+    saveToDevice();
+    renderActionButtonStates();
+
+    const tags = [];
+    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.crated && rawEntry.crateDims) {
+        tags.push("[CRATE: " + rawEntry.crateDims.l + " x " + rawEntry.crateDims.w + " x " + rawEntry.crateDims.h + " " + rawEntry.crateDims.unit + "]");
+    }
+    if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
+    if (rawEntry.excluded) tags.push("[EXCLUDED]");
+    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+
+    const label = (rawEntry.itemName || "ITEM").toUpperCase();
+    updateInventoryDisplay(label + " " + tags.join(" "));
+    triggerInventoryPulse("current", "blue");
+    triggerHaptic("light");
+    updateUndoButtonState();
+}
 function updateLastItemQty(newQty) {
     if (!lastAddedItemName) return;
 
@@ -2456,6 +2522,26 @@ else if (action.type === "crate-edit") {
         updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
     }
 }
+else if (action.type === "damage-edit") {
+    const rawEntry = findRawInventoryEntry(action.rawEntryId);
+    if (rawEntry) {
+        rawEntry.damage = action.previousDamage || "";
+        saveToDevice();
+
+        const tags = [];
+        if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+        if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+        if (rawEntry.crated && rawEntry.crateDims) {
+            tags.push("[CRATE: " + rawEntry.crateDims.l + " x " + rawEntry.crateDims.w + " x " + rawEntry.crateDims.h + " " + rawEntry.crateDims.unit + "]");
+        }
+        if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
+        if (rawEntry.excluded) tags.push("[EXCLUDED]");
+        if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+
+        const label = (rawEntry.itemName || "ITEM").toUpperCase();
+        updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
+    }
+}
     triggerInventoryPulse("undo", "red");
     triggerInventoryPulse("total", "red");
     triggerHaptic("error");
@@ -2568,6 +2654,7 @@ function renderListedInventory() {
                     entry.crateDims.unit
                 );
             }
+            if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
             if (entry.excluded) tags.push("EXCLUDED");
             if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
 

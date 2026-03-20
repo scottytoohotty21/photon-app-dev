@@ -393,7 +393,7 @@ Enter as: Surname, First Name
           <div class="grid grid-cols-7 gap-1 mb-3">
     <button id="tool-dismantle" class="inv-tool-btn" onclick="toggleItemAction('dismantle')">Dismantle</button>
     <button id="tool-expwrap" class="inv-tool-btn" onclick="toggleItemAction('expWrap')">Exp Wrap</button>
-    <button class="inv-tool-btn">Crate Tool</button>
+    <button id="tool-crate" class="inv-tool-btn" onclick="addOrEditCrate()">Crate</button>
     <button class="inv-tool-btn">Damage</button>
     <button id="tool-exclude" class="inv-tool-btn" onclick="toggleItemAction('excluded')">Exclude</button>
     <button class="inv-tool-btn" onclick="addInventoryNote()">Note</button>
@@ -1096,7 +1096,9 @@ function buildRawInventoryEntry(entryData) {
         dismantle: !!entryData.dismantle,
         expWrap: !!entryData.expWrap,
         excluded: !!entryData.excluded,
-        note: entryData.note || ""
+        note: entryData.note || "",
+        crated: !!entryData.crated,
+        crateDims: entryData.crateDims || null
     };
 }
 
@@ -1153,6 +1155,7 @@ function renderActionButtonStates() {
     const dismantleBtn = document.getElementById("tool-dismantle");
     const expWrapBtn = document.getElementById("tool-expwrap");
     const excludeBtn = document.getElementById("tool-exclude");
+    const crateBtn = document.getElementById("tool-crate");
     const rawEntry = getLastRawInventoryEntry();
 
     if (dismantleBtn) {
@@ -1165,6 +1168,10 @@ function renderActionButtonStates() {
 
     if (excludeBtn) {
         excludeBtn.classList.toggle("exclude-active", !!(rawEntry && rawEntry.excluded));
+    }
+
+    if (crateBtn) {
+        crateBtn.classList.toggle("active", !!(rawEntry && rawEntry.crated));
     }
 }
 
@@ -2074,6 +2081,86 @@ function addInventoryNote() {
     renderActionButtonStates();
     updateUndoButtonState();
 }
+function addOrEditCrate() {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
+    if (rawEntry.kind === "note") return;
+
+    const existing = rawEntry.crateDims || {};
+
+    const unitInput = prompt(
+        "Internal Crate dims\n\nEnter unit: CM or IN",
+        existing.unit || "CM"
+    );
+    if (unitInput === null) return;
+
+    const unit = unitInput.trim().toUpperCase() === "IN" ? "IN" : "CM";
+
+    const lengthInput = prompt(
+        "Internal Crate dims\n\nLength (" + unit + ")",
+        existing.l || ""
+    );
+    if (lengthInput === null) return;
+
+    const widthInput = prompt(
+        "Internal Crate dims\n\nWidth (" + unit + ")",
+        existing.w || ""
+    );
+    if (widthInput === null) return;
+
+    const heightInput = prompt(
+        "Internal Crate dims\n\nHeight (" + unit + ")",
+        existing.h || ""
+    );
+    if (heightInput === null) return;
+
+    const l = parseFloat(lengthInput);
+    const w = parseFloat(widthInput);
+    const h = parseFloat(heightInput);
+
+    if (isNaN(l) || isNaN(w) || isNaN(h) || l <= 0 || w <= 0 || h <= 0) {
+        return;
+    }
+
+    const previousCrated = !!rawEntry.crated;
+    const previousDims = rawEntry.crateDims
+        ? {
+            l: rawEntry.crateDims.l,
+            w: rawEntry.crateDims.w,
+            h: rawEntry.crateDims.h,
+            unit: rawEntry.crateDims.unit
+        }
+        : null;
+
+    rawEntry.crated = true;
+    rawEntry.crateDims = { l, w, h, unit };
+
+    inventoryHistory.push({
+        type: "crate-edit",
+        rawEntryId: rawEntry.id,
+        previousCrated: previousCrated,
+        previousDims: previousDims,
+        newDims: { l, w, h, unit }
+    });
+
+    saveToDevice();
+    renderActionButtonStates();
+
+    const tags = [];
+    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.excluded) tags.push("[EXCLUDED]");
+    if (rawEntry.crated && rawEntry.crateDims) {
+        tags.push("[CRATE: " + rawEntry.crateDims.l + " x " + rawEntry.crateDims.w + " x " + rawEntry.crateDims.h + " " + rawEntry.crateDims.unit + "]");
+    }
+    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+
+    const label = (rawEntry.itemName || "ITEM").toUpperCase();
+    updateInventoryDisplay(label + " " + tags.join(" "));
+    triggerInventoryPulse("current", "blue");
+    triggerHaptic("light");
+    updateUndoButtonState();
+}
 function updateLastItemQty(newQty) {
     if (!lastAddedItemName) return;
 
@@ -2343,6 +2430,32 @@ recalculateTotalVolume();
         updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
     }
 }
+else if (action.type === "crate-edit") {
+    const rawEntry = findRawInventoryEntry(action.rawEntryId);
+    if (rawEntry) {
+        rawEntry.crated = !!action.previousCrated;
+        rawEntry.crateDims = action.previousDims ? {
+            l: action.previousDims.l,
+            w: action.previousDims.w,
+            h: action.previousDims.h,
+            unit: action.previousDims.unit
+        } : null;
+
+        saveToDevice();
+
+        const tags = [];
+        if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+        if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+        if (rawEntry.excluded) tags.push("[EXCLUDED]");
+        if (rawEntry.crated && rawEntry.crateDims) {
+            tags.push("[CRATE: " + rawEntry.crateDims.l + " x " + rawEntry.crateDims.w + " x " + rawEntry.crateDims.h + " " + rawEntry.crateDims.unit + "]");
+        }
+        if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+
+        const label = (rawEntry.itemName || "ITEM").toUpperCase();
+        updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
+    }
+}
     triggerInventoryPulse("undo", "red");
     triggerInventoryPulse("total", "red");
     triggerHaptic("error");
@@ -2446,6 +2559,15 @@ function renderListedInventory() {
 
             if (entry.dismantle) tags.push("DISMANTLE");
             if (entry.expWrap) tags.push("EXP WRAP");
+            if (entry.crated && entry.crateDims) {
+                tags.push(
+                    "CRATE: " +
+                    entry.crateDims.l + " x " +
+                    entry.crateDims.w + " x " +
+                    entry.crateDims.h + " " +
+                    entry.crateDims.unit
+                );
+            }
             if (entry.excluded) tags.push("EXCLUDED");
             if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
 

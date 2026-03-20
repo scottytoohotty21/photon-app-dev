@@ -2175,7 +2175,7 @@ function addOrEditDamage() {
     const currentDamage = rawEntry.damage || "";
 
     const damageInput = prompt(
-        "Enter damage type:\n\nDented / Scratched / Marked / Cracked / Other",
+        "Damage type:\n\nDented / Scratched / Marked / Cracked / Other",
         currentDamage || "Dented"
     );
     if (damageInput === null) return;
@@ -2186,16 +2186,34 @@ function addOrEditDamage() {
     const lower = cleanDamage.toLowerCase();
 
     if (lower === "other") {
-        const otherInput = prompt("Enter damage note:", currentDamage && currentDamage.toLowerCase() !== "other" ? currentDamage : "");
+        const otherInput = prompt(
+            "Enter damage note:",
+            currentDamage &&
+            !["dented", "scratched", "marked", "cracked"].includes(currentDamage.toLowerCase())
+                ? currentDamage
+                : ""
+        );
         if (otherInput === null) return;
 
         cleanDamage = otherInput.trim();
         if (!cleanDamage) return;
+    } else if (lower === "dented") {
+        cleanDamage = "Dented";
+    } else if (lower === "scratched") {
+        cleanDamage = "Scratched";
+    } else if (lower === "marked") {
+        cleanDamage = "Marked";
+    } else if (lower === "cracked") {
+        cleanDamage = "Cracked";
     } else {
-        if (lower === "dented") cleanDamage = "Dented";
-        else if (lower === "scratched") cleanDamage = "Scratched";
-        else if (lower === "marked") cleanDamage = "Marked";
-        else if (lower === "cracked") cleanDamage = "Cracked";
+        const confirmCustom = prompt(
+            "Custom damage note:",
+            cleanDamage
+        );
+        if (confirmCustom === null) return;
+
+        cleanDamage = confirmCustom.trim();
+        if (!cleanDamage) return;
     }
 
     const previousDamage = rawEntry.damage || "";
@@ -2215,7 +2233,13 @@ function addOrEditDamage() {
     if (rawEntry.dismantle) tags.push("[DISMANTLE]");
     if (rawEntry.expWrap) tags.push("[EXP WRAP]");
     if (rawEntry.crated && rawEntry.crateDims) {
-        tags.push("[CRATE: " + rawEntry.crateDims.l + " x " + rawEntry.crateDims.w + " x " + rawEntry.crateDims.h + " " + rawEntry.crateDims.unit + "]");
+        tags.push(
+            "[CRATE: " +
+            rawEntry.crateDims.l + " x " +
+            rawEntry.crateDims.w + " x " +
+            rawEntry.crateDims.h + " " +
+            rawEntry.crateDims.unit + "]"
+        );
     }
     if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
     if (rawEntry.excluded) tags.push("[EXCLUDED]");

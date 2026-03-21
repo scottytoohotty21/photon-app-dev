@@ -240,6 +240,18 @@
     border-radius: 999px;
     white-space: nowrap;
 }
+    .undo-btn-style {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+    border-bottom-width: 3px;
+    border-radius: 8px;
+}
+
+.undo-btn-style:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
     </style>
 </head>
 <body class="p-4 pb-12">
@@ -413,7 +425,7 @@ Enter as: Surname, First Name
                <button
     id="undo-btn"
     onclick="undoLastInventoryAction()"
-    class="w-20 total-vol-box bg-red-100 !text-red-500 font-black text-xs uppercase"
+    class="w-20 undo-btn-style font-black text-xs uppercase"
 >
     Undo
 </button>
@@ -1335,17 +1347,28 @@ function handleRoomChange(value) {
         currentJob.inventory.customRooms = [];
     }
 
+    if (qtyResetTimer) {
+        clearTimeout(qtyResetTimer);
+        qtyResetTimer = null;
+    }
+
     if (value === "__add_custom_room__") {
         const customRoom = prompt("Enter custom room name:");
 
         if (!customRoom) {
             renderInventoryRoomDropdown();
+            resetInventoryQtyInput();
+            lastAddedItemName = null;
+            lastAddedRawEntryId = null;
             return;
         }
 
         const cleanRoom = customRoom.trim();
         if (!cleanRoom) {
             renderInventoryRoomDropdown();
+            resetInventoryQtyInput();
+            lastAddedItemName = null;
+            lastAddedRawEntryId = null;
             return;
         }
 
@@ -1359,11 +1382,17 @@ function handleRoomChange(value) {
 
         currentJob.inventory.activeRoomName = cleanRoom;
         renderInventoryRoomDropdown();
+        resetInventoryQtyInput();
+        lastAddedItemName = null;
+        lastAddedRawEntryId = null;
         saveToDevice();
         return;
     }
 
     currentJob.inventory.activeRoomName = value;
+    resetInventoryQtyInput();
+    lastAddedItemName = null;
+    lastAddedRawEntryId = null;
     saveToDevice();
 }
         function getFloorOptions() {
@@ -2252,58 +2281,81 @@ function addOrEditDamage() {
     updateUndoButtonState();
 }
 function updateLastItemQty(newQty) {
-    if (!lastAddedItemName) return;
+    const qtyInput = document.getElementById("inv-qty");
+    if (!qtyInput) return;
 
-    let item = inventoryItems.find(function(i) {
-        return i.item === lastAddedItemName;
-    });
-    if (!item) return;
-
-    let qty = parseInt(newQty, 10);
-    if (isNaN(qty) || qty < 1) return;
-
-    const previousQty = item.qty;
-    if (previousQty === qty) return;
-
-    item.qty = qty;
+    if (!lastAddedRawEntryId) {
+        qtyInput.value = "";
+        return;
+    }
 
     const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
-    let previousRawQty = null;
-
-    if (rawEntry) {
-        previousRawQty = rawEntry.qty;
-        rawEntry.qty = qty;
-        rawEntry.totalVolume = rawEntry.unitVolume * qty;
-        saveToDevice();
+    if (!rawEntry) {
+        qtyInput.value = "";
+        return;
     }
+
+    const qty = getCleanInventoryQtyValue(newQty);
+    qtyInput.value = qty;
+
+    const previousRawQty = Number(rawEntry.qty || 1);
+    if (previousRawQty === qty) {
+        if (qtyResetTimer) clearTimeout(qtyResetTimer);
+        qtyResetTimer = setTimeout(function() {
+            resetInventoryQtyInput();
+        }, 550);
+        return;
+    }
+
+    rawEntry.qty = qty;
+    rawEntry.totalVolume = Number(rawEntry.unitVolume || 0) * qty;
 
     inventoryHistory.push({
         type: "qty-edit",
-        itemName: item.item,
-        previousQty: previousQty,
+        itemName: rawEntry.itemName,
+        previousQty: previousRawQty,
         newQty: qty,
-        rawEntryId: lastAddedRawEntryId,
+        rawEntryId: rawEntry.id,
         previousRawQty: previousRawQty
     });
 
-    currentItemVolume = item.excluded ? 0 : (item.volume * qty);
-recalculateTotalVolume();
+    saveToDevice();
 
-    const label = item.displayName || item.item;
-    updateInventoryDisplay(qty + " X " + String(label).toUpperCase());
+    syncLiveInventoryFromRawForActiveSequence();
+
+    currentItemVolume = rawEntry.excluded ? 0 : Number(rawEntry.totalVolume || 0);
+
+    const tags = [];
+    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.crated && rawEntry.crateDims) {
+        tags.push(
+            "[CRATE: " +
+            rawEntry.crateDims.l + " x " +
+            rawEntry.crateDims.w + " x " +
+            rawEntry.crateDims.h + " " +
+            rawEntry.crateDims.unit + "]"
+        );
+    }
+    if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
+    if (rawEntry.excluded) tags.push("[EXCLUDED]");
+    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+
+    const label = (rawEntry.itemName || "ITEM").toUpperCase();
+    updateInventoryDisplay(qty + " X " + label + (tags.length ? " " + tags.join(" ") : ""));
+
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
-    triggerHaptic("light");
 
     if (qtyResetTimer) {
         clearTimeout(qtyResetTimer);
     }
 
     qtyResetTimer = setTimeout(function() {
-        const qtyInput = document.getElementById("inv-qty");
-        if (qtyInput) qtyInput.value = 1;
+        resetInventoryQtyInput();
     }, 550);
-renderActionButtonStates();
+
+    renderActionButtonStates();
     updateUndoButtonState();
 }
 function openVolumeOverride() {
@@ -2730,7 +2782,57 @@ function renderListedInventory() {
         `;
     }).join("");
 }
+function resetInventoryQtyInput() {
+    const qtyInput = document.getElementById("inv-qty");
+    if (qtyInput) qtyInput.value = 1;
+}
 
+function getCleanInventoryQtyValue(rawValue) {
+    let qty = parseInt(rawValue, 10);
+    if (isNaN(qty) || qty < 1) qty = 1;
+    return qty;
+}
+
+function syncLiveInventoryFromRawForActiveSequence() {
+    if (!currentJob) return;
+
+    inventoryItems = [];
+
+    const rawItems = getRawInventoryItemsForSequence(activeSeqId);
+
+    rawItems.forEach(function(entry) {
+        let existing = inventoryItems.find(function(i) {
+            return (
+                i.item === entry.itemName &&
+                i.roomName === entry.roomName &&
+                i.floorName === entry.floorName &&
+                String(i.deliveryId || "") === String(entry.deliveryId || "")
+            );
+        });
+
+        const unitVolume = Number(entry.unitVolume || 0);
+        const qty = Number(entry.qty || 0);
+
+        if (existing) {
+            existing.qty += qty;
+        } else {
+            inventoryItems.push({
+                item: entry.itemName,
+                displayName: entry.itemName,
+                volume: unitVolume,
+                qty: qty,
+                dismantle: !!entry.dismantle,
+                expWrap: !!entry.expWrap,
+                excluded: !!entry.excluded,
+                roomName: entry.roomName || "",
+                floorName: entry.floorName || "",
+                deliveryId: entry.deliveryId || ""
+            });
+        }
+    });
+
+    recalculateTotalVolume();
+}
 window.onload = renderDashboard;    </script>
 </body>
 

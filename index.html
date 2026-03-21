@@ -427,6 +427,91 @@
             font-weight: 900;
             text-transform: uppercase;
         }
+        /* --- NOTE MODAL --- */
+.note-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+}
+
+.note-panel {
+    width: 92%;
+    max-width: 360px;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+}
+
+.note-title {
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #0f172a;
+    text-align: center;
+}
+
+.note-subtitle {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    text-align: center;
+    margin-top: 4px;
+    margin-bottom: 16px;
+}
+
+.note-input {
+    width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    outline: none;
+    background: #fff;
+    min-height: 110px;
+    resize: none;
+}
+
+.note-input:focus {
+    border-color: #3b82f6;
+}
+
+.note-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.note-cancel-btn {
+    flex: 1;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.note-save-btn {
+    flex: 1;
+    background: #3b82f6;
+    color: white;
+    border: 1px solid #2563eb;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
         /* --- JOB HEADER --- */
         .job-header {
             background: #0f172a;
@@ -2299,36 +2384,19 @@ function addInventoryNote() {
     if (!rawEntry) return;
     if (rawEntry.kind === "note") return;
 
-    const noteInput = prompt("Enter note:");
-    if (noteInput === null) return;
+    const overlay = document.getElementById("note-overlay");
+    const input = document.getElementById("note-input");
 
-    const cleanNote = noteInput.trim();
-    if (!cleanNote) return;
+    if (!overlay || !input) return;
 
-    const previousNote = rawEntry.note || "";
-    rawEntry.note = cleanNote;
+    input.value = rawEntry.note || "";
+    overlay.style.display = "flex";
 
-    inventoryHistory.push({
-        type: "note-edit",
-        rawEntryId: rawEntry.id,
-        previousNote: previousNote,
-        newNote: cleanNote
-    });
-
-    saveToDevice();
-
-    const tags = [];
-    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-    if (rawEntry.excluded) tags.push("[EXCLUDED]");
-    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
-
-    const label = (rawEntry.itemName || "ITEM").toUpperCase();
-    updateInventoryDisplay(label + " " + tags.join(" "));
-    triggerInventoryPulse("current", "blue");
-    triggerHaptic("light");
-    renderActionButtonStates();
-    updateUndoButtonState();
+    setTimeout(function () {
+        input.focus();
+        input.selectionStart = input.value.length;
+        input.selectionEnd = input.value.length;
+    }, 50);
 }
 function addOrEditCrate() {
     const rawEntry = getLastRawInventoryEntry();
@@ -2453,6 +2521,61 @@ function saveCrateModal() {
     updateUndoButtonState();
 
     closeCrateModal();
+}
+function closeNoteModal() {
+    const overlay = document.getElementById("note-overlay");
+    const input = document.getElementById("note-input");
+
+    if (overlay) overlay.style.display = "none";
+    if (input) input.value = "";
+}
+
+function saveNoteModal() {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
+    if (rawEntry.kind === "note") return;
+
+    const input = document.getElementById("note-input");
+    if (!input) return;
+
+    const cleanNote = input.value.trim();
+    if (!cleanNote) return;
+
+    const previousNote = rawEntry.note || "";
+    rawEntry.note = cleanNote;
+
+    inventoryHistory.push({
+        type: "note-edit",
+        rawEntryId: rawEntry.id,
+        previousNote: previousNote,
+        newNote: cleanNote
+    });
+
+    saveToDevice();
+    renderActionButtonStates();
+
+    const tags = [];
+    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.crated && rawEntry.crateDims) {
+        tags.push(
+            "[CRATE: " +
+            rawEntry.crateDims.l + " x " +
+            rawEntry.crateDims.w + " x " +
+            rawEntry.crateDims.h + " " +
+            rawEntry.crateDims.unit + "]"
+        );
+    }
+    if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
+    if (rawEntry.excluded) tags.push("[EXCLUDED]");
+    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+
+    const label = (rawEntry.itemName || "ITEM").toUpperCase();
+    updateInventoryDisplay(label + " " + tags.join(" "));
+    triggerInventoryPulse("current", "blue");
+    updateUndoButtonState();
+
+    closeNoteModal();
 }
 function addOrEditDamage() {
     const rawEntry = getLastRawInventoryEntry();
@@ -3176,6 +3299,24 @@ window.onload = function () {
         <div class="damage-actions">
             <button type="button" class="damage-cancel-btn" onclick="closeDamageModal()">Cancel</button>
             <button type="button" class="damage-save-btn" onclick="saveDamageModal()">Save Damage</button>
+        </div>
+    </div>
+</div>
+<!-- NOTE MODAL -->
+<div id="note-overlay" class="note-overlay" onclick="closeNoteModal()">
+    <div class="note-panel" onclick="event.stopPropagation()">
+        <div class="note-title">Add Note</div>
+        <div class="note-subtitle">Add extra detail for the selected item</div>
+
+        <textarea
+            id="note-input"
+            class="note-input"
+            placeholder="Type note here..."
+        ></textarea>
+
+        <div class="note-actions">
+            <button type="button" class="note-cancel-btn" onclick="closeNoteModal()">Cancel</button>
+            <button type="button" class="note-save-btn" onclick="saveNoteModal()">Save Note</button>
         </div>
     </div>
 </div>

@@ -316,6 +316,117 @@
     font-weight: 900;
     text-transform: uppercase;
 }
+        /* --- DAMAGE MODAL --- */
+        .damage-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            align-items: center;
+            justify-content: center;
+            z-index: 2100;
+        }
+
+        .damage-panel {
+            width: 92%;
+            max-width: 360px;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+        }
+
+        .damage-title {
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #0f172a;
+            text-align: center;
+        }
+
+        .damage-subtitle {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #64748b;
+            text-align: center;
+            margin-top: 4px;
+            margin-bottom: 16px;
+        }
+
+        .damage-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .damage-option-btn {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            min-height: 52px;
+            padding: 10px 8px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #475569;
+            text-align: center;
+        }
+
+        .damage-option-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .damage-note-input {
+            width: 100%;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            outline: none;
+            background: #fff;
+            min-height: 88px;
+            resize: none;
+        }
+
+        .damage-note-input:focus {
+            border-color: #3b82f6;
+        }
+
+        .damage-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .damage-cancel-btn {
+            flex: 1;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .damage-save-btn {
+            flex: 1;
+            background: #3b82f6;
+            color: white;
+            border: 1px solid #2563eb;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
         /* --- JOB HEADER --- */
         .job-header {
             background: #0f172a;
@@ -931,6 +1042,7 @@ let lastAddedRawEntryId = null;
 let inventoryHistory = [];
 let qtyResetTimer = null;
 let selectedCrateUnit = "IN";
+let selectedDamageOption = "";
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -2347,58 +2459,116 @@ function addOrEditDamage() {
     if (!rawEntry) return;
     if (rawEntry.kind === "note") return;
 
-    const currentDamage = rawEntry.damage || "";
+    selectedDamageOption = "";
 
-    const damageInput = prompt(
-        "Damage type:\n\nDented / Scratched / Marked / Cracked / Other",
-        currentDamage || "Dented"
-    );
-    if (damageInput === null) return;
+    const overlay = document.getElementById("damage-overlay");
+    const customNote = document.getElementById("damage-custom-note");
 
-    let cleanDamage = damageInput.trim();
-    if (!cleanDamage) return;
+    if (!overlay || !customNote) return;
 
-    const lower = cleanDamage.toLowerCase();
+    clearDamageOptionButtons();
 
-    if (lower === "other") {
-        const otherInput = prompt(
-            "Enter damage note:",
-            currentDamage &&
-            !["dented", "scratched", "marked", "cracked"].includes(currentDamage.toLowerCase())
-                ? currentDamage
-                : ""
-        );
-        if (otherInput === null) return;
+    const currentDamage = (rawEntry.damage || "").trim();
 
-        cleanDamage = otherInput.trim();
-        if (!cleanDamage) return;
-    } else if (lower === "dented") {
-        cleanDamage = "Dented";
-    } else if (lower === "scratched") {
-        cleanDamage = "Scratched";
-    } else if (lower === "marked") {
-        cleanDamage = "Marked";
-    } else if (lower === "cracked") {
-        cleanDamage = "Cracked";
+    if (
+        currentDamage === "Dented" ||
+        currentDamage === "Scratched" ||
+        currentDamage === "Marked" ||
+        currentDamage === "Cracked"
+    ) {
+        selectedDamageOption = currentDamage;
+        highlightDamageOption(currentDamage);
+        customNote.value = "";
     } else {
-        const confirmCustom = prompt(
-            "Custom damage note:",
-            cleanDamage
-        );
-        if (confirmCustom === null) return;
+        customNote.value = currentDamage;
+    }
 
-        cleanDamage = confirmCustom.trim();
-        if (!cleanDamage) return;
+    overlay.style.display = "flex";
+}
+
+function closeDamageModal() {
+    const overlay = document.getElementById("damage-overlay");
+    const customNote = document.getElementById("damage-custom-note");
+
+    if (overlay) overlay.style.display = "none";
+    if (customNote) customNote.value = "";
+
+    selectedDamageOption = "";
+    clearDamageOptionButtons();
+}
+
+function selectDamageOption(option) {
+    const customNote = document.getElementById("damage-custom-note");
+
+    if (selectedDamageOption === option) {
+        selectedDamageOption = "";
+        clearDamageOptionButtons();
+        return;
+    }
+
+    selectedDamageOption = option;
+    highlightDamageOption(option);
+
+    if (customNote) {
+        customNote.value = "";
+    }
+}
+
+function clearDamageOptionButtons() {
+    [
+        "damage-option-dented",
+        "damage-option-scratched",
+        "damage-option-marked",
+        "damage-option-cracked"
+    ].forEach(function(id) {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove("active");
+    });
+}
+
+function highlightDamageOption(option) {
+    clearDamageOptionButtons();
+
+    const map = {
+        "Dented": "damage-option-dented",
+        "Scratched": "damage-option-scratched",
+        "Marked": "damage-option-marked",
+        "Cracked": "damage-option-cracked"
+    };
+
+    const btnId = map[option];
+    if (!btnId) return;
+
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add("active");
+}
+
+function saveDamageModal() {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
+    if (rawEntry.kind === "note") return;
+
+    const customNoteEl = document.getElementById("damage-custom-note");
+    const customNote = customNoteEl ? customNoteEl.value.trim() : "";
+
+    let finalDamage = "";
+
+    if (customNote) {
+        finalDamage = customNote;
+    } else if (selectedDamageOption) {
+        finalDamage = selectedDamageOption;
+    } else {
+        return;
     }
 
     const previousDamage = rawEntry.damage || "";
-    rawEntry.damage = cleanDamage;
+    rawEntry.damage = finalDamage;
 
     inventoryHistory.push({
         type: "damage-edit",
         rawEntryId: rawEntry.id,
         previousDamage: previousDamage,
-        newDamage: cleanDamage
+        newDamage: finalDamage
     });
 
     saveToDevice();
@@ -2423,8 +2593,9 @@ function addOrEditDamage() {
     const label = (rawEntry.itemName || "ITEM").toUpperCase();
     updateInventoryDisplay(label + " " + tags.join(" "));
     triggerInventoryPulse("current", "blue");
-    triggerHaptic("light");
     updateUndoButtonState();
+
+    closeDamageModal();
 }
 function updateLastItemQty(newQty) {
     const qtyInput = document.getElementById("inv-qty");
@@ -2983,6 +3154,31 @@ console.log("Photon script loaded once");
 window.onload = function () {
     renderDashboard();
 };    </script>
+<!-- DAMAGE MODAL -->
+<div id="damage-overlay" class="damage-overlay" onclick="closeDamageModal()">
+    <div class="damage-panel" onclick="event.stopPropagation()">
+        <div class="damage-title">Damage</div>
+        <div class="damage-subtitle">Select type or add your own note</div>
+
+        <div class="damage-grid">
+            <button type="button" id="damage-option-dented" class="damage-option-btn" onclick="selectDamageOption('Dented')">Dented</button>
+            <button type="button" id="damage-option-scratched" class="damage-option-btn" onclick="selectDamageOption('Scratched')">Scratched</button>
+            <button type="button" id="damage-option-marked" class="damage-option-btn" onclick="selectDamageOption('Marked')">Marked</button>
+            <button type="button" id="damage-option-cracked" class="damage-option-btn" onclick="selectDamageOption('Cracked')">Cracked</button>
+        </div>
+
+        <textarea
+            id="damage-custom-note"
+            class="damage-note-input"
+            placeholder="If none apply, enter damage note here..."
+        ></textarea>
+
+        <div class="damage-actions">
+            <button type="button" class="damage-cancel-btn" onclick="closeDamageModal()">Cancel</button>
+            <button type="button" class="damage-save-btn" onclick="saveDamageModal()">Save Damage</button>
+        </div>
+    </div>
+</div>
 <!-- CRATE MODAL -->
 <div id="crate-overlay" class="crate-overlay" onclick="closeCrateModal()">
     <div class="crate-panel" onclick="event.stopPropagation()">

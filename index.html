@@ -512,6 +512,102 @@
     font-weight: 900;
     text-transform: uppercase;
 }
+/* --- MISC MODAL --- */
+.misc-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 2200;
+}
+
+.misc-panel {
+    width: 92%;
+    max-width: 360px;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+}
+
+.misc-title {
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #0f172a;
+    text-align: center;
+}
+
+.misc-subtitle {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    text-align: center;
+    margin-top: 4px;
+    margin-bottom: 16px;
+}
+
+.misc-field-wrap {
+    margin-bottom: 12px;
+}
+
+.misc-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.misc-input {
+    width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    outline: none;
+    background: #fff;
+}
+
+.misc-input:focus {
+    border-color: #3b82f6;
+}
+
+.misc-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.misc-cancel-btn {
+    flex: 1;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.misc-save-btn {
+    flex: 1;
+    background: #3b82f6;
+    color: white;
+    border: 1px solid #2563eb;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
         /* --- JOB HEADER --- */
         .job-header {
             background: #0f172a;
@@ -2307,24 +2403,49 @@ function addInventoryItem(itemName) {
     updateUndoButtonState();
 }
 function addMiscItem() {
+    const overlay = document.getElementById("misc-overlay");
+    const nameInput = document.getElementById("misc-name-input");
+    const volumeInput = document.getElementById("misc-volume-input");
+
+    if (!overlay || !nameInput || !volumeInput) return;
+
+    nameInput.value = "";
+    volumeInput.value = "";
+
+    overlay.style.display = "flex";
+
+    setTimeout(function () {
+        nameInput.focus();
+    }, 50);
+}
+function closeMiscModal() {
+    const overlay = document.getElementById("misc-overlay");
+    const nameInput = document.getElementById("misc-name-input");
+    const volumeInput = document.getElementById("misc-volume-input");
+
+    if (overlay) overlay.style.display = "none";
+    if (nameInput) nameInput.value = "";
+    if (volumeInput) volumeInput.value = "";
+}
+
+function saveMiscModal() {
     if (!currentJob) return;
 
-    const itemNameInput = prompt("Enter misc item name:");
-    if (itemNameInput === null) return;
+    const nameInput = document.getElementById("misc-name-input");
+    const volumeInput = document.getElementById("misc-volume-input");
+    const qtyInput = document.getElementById("inv-qty");
 
-    const cleanName = itemNameInput.trim();
+    if (!nameInput || !volumeInput) return;
+
+    const cleanName = nameInput.value.trim();
+    const unitVolume = parseFloat(volumeInput.value);
+
     if (!cleanName) return;
-
-    const volumeInput = prompt("Enter unit volume (cuft):", "10");
-    if (volumeInput === null) return;
-
-    const unitVolume = parseFloat(volumeInput);
     if (isNaN(unitVolume) || unitVolume <= 0) return;
 
-    const qtyInput = document.getElementById("inv-qty");
     const qty = 1;
-
     const miscKey = "MISC-" + cleanName.toUpperCase();
+
     lastAddedItemName = miscKey;
 
     let existing = inventoryItems.find(function(i) {
@@ -2373,11 +2494,12 @@ function addMiscItem() {
     updateInventoryDisplay(qty + " X " + cleanName.toUpperCase());
     triggerInventoryPulse("current", "blue");
     triggerInventoryPulse("total", "blue");
-    triggerHaptic("medium");
+    updateUndoButtonState();
+    renderActionButtonStates();
 
     if (qtyInput) qtyInput.value = 1;
-    renderActionButtonStates();
-    updateUndoButtonState();
+
+    closeMiscModal();
 }
 function addInventoryNote() {
     const rawEntry = getLastRawInventoryEntry();
@@ -3299,6 +3421,40 @@ window.onload = function () {
         <div class="damage-actions">
             <button type="button" class="damage-cancel-btn" onclick="closeDamageModal()">Cancel</button>
             <button type="button" class="damage-save-btn" onclick="saveDamageModal()">Save Damage</button>
+        </div>
+    </div>
+</div>
+<!-- MISC MODAL -->
+<div id="misc-overlay" class="misc-overlay" onclick="closeMiscModal()">
+    <div class="misc-panel" onclick="event.stopPropagation()">
+        <div class="misc-title">Add Misc Item</div>
+        <div class="misc-subtitle">Enter item name and volume</div>
+
+        <div class="misc-field-wrap">
+            <label class="misc-label" for="misc-name-input">Item Name</label>
+            <input
+                type="text"
+                id="misc-name-input"
+                class="misc-input"
+                placeholder="e.g. Floor Lamp"
+            >
+        </div>
+
+        <div class="misc-field-wrap">
+            <label class="misc-label" for="misc-volume-input">Unit Volume (CUFT)</label>
+            <input
+                type="number"
+                id="misc-volume-input"
+                class="misc-input"
+                placeholder="e.g. 10"
+                min="1"
+                step="0.5"
+            >
+        </div>
+
+        <div class="misc-actions">
+            <button type="button" class="misc-cancel-btn" onclick="closeMiscModal()">Cancel</button>
+            <button type="button" class="misc-save-btn" onclick="saveMiscModal()">Add Item</button>
         </div>
     </div>
 </div>

@@ -191,7 +191,131 @@
             color: #dc2626 !important;
             border: 1px solid #fca5a5 !important;
         }
+/* --- CRATE MODAL --- */
+.crate-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
 
+.crate-panel {
+    width: 92%;
+    max-width: 360px;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+}
+
+.crate-title {
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #0f172a;
+    text-align: center;
+}
+
+.crate-subtitle {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    text-align: center;
+    margin-top: 4px;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+
+.crate-unit-toggle {
+    display: flex;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.crate-unit-btn {
+    flex: 1;
+    background: #f8fafc;
+    border: none;
+    padding: 12px 10px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.crate-unit-btn.active {
+    background: #3b82f6;
+    color: white;
+}
+
+.crate-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.crate-field-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 6px;
+}
+
+.crate-field-input {
+    width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 900;
+    outline: none;
+    background: #f8fafc;
+}
+
+.crate-field-input:focus {
+    border-color: #3b82f6;
+    background: white;
+}
+
+.crate-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.crate-cancel-btn {
+    flex: 1;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.crate-save-btn {
+    flex: 1;
+    background: #3b82f6;
+    color: white;
+    border: 1px solid #2563eb;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
         /* --- JOB HEADER --- */
         .job-header {
             background: #0f172a;
@@ -806,7 +930,7 @@ let lastAddedItemName = null;
 let lastAddedRawEntryId = null;
 let inventoryHistory = [];
 let qtyResetTimer = null;
-let selectedCrateUnit = "IN";l;
+let selectedCrateUnit = "IN";
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));

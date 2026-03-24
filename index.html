@@ -3402,7 +3402,7 @@ function updateInventoryDisplay(logText = "No items added") {
         totalVolBox.innerText = totalVolume;
     }
 }
-              function getPropertyLabelById(propertyId) {
+                 function getPropertyLabelById(propertyId) {
     if (!currentJob || !Array.isArray(currentJob.properties)) return "Unknown Address";
 
     const prop = currentJob.properties.find(function(p) {
@@ -3573,88 +3573,16 @@ function renderListedSummary(summary) {
     `;
 }
 
-function makeListedEntryMergeKey(entry) {
-    const crateText = entry.crated && entry.crateDims
-        ? [entry.crateDims.l, entry.crateDims.w, entry.crateDims.h, entry.crateDims.unit].join("x")
-        : "";
-
-    return [
-        entry.roomName || "",
-        entry.floorName || "",
-        entry.itemName || "",
-        Number(entry.unitVolume || 0),
-        !!entry.dismantle,
-        !!entry.expWrap,
-        !!entry.excluded,
-        entry.note || "",
-        entry.damage || "",
-        !!entry.crated,
-        crateText
-    ].join("||");
-}
-
-function mergeListedEntries(entries) {
-    const mergedMap = {};
-
-    entries.forEach(function(entry) {
-        const key = makeListedEntryMergeKey(entry);
-
-        if (!mergedMap[key]) {
-            mergedMap[key] = {
-                roomName: entry.roomName || "",
-                floorName: entry.floorName || "",
-                itemName: entry.itemName || "",
-                qty: Number(entry.qty || 0),
-                unitVolume: Number(entry.unitVolume || 0),
-                totalVolume: entry.excluded ? 0 : Number(entry.totalVolume || 0),
-                dismantle: !!entry.dismantle,
-                expWrap: !!entry.expWrap,
-                excluded: !!entry.excluded,
-                note: entry.note || "",
-                damage: entry.damage || "",
-                crated: !!entry.crated,
-                crateDims: entry.crateDims || null
-            };
-        } else {
-            mergedMap[key].qty += Number(entry.qty || 0);
-            if (!entry.excluded) {
-                mergedMap[key].totalVolume += Number(entry.totalVolume || 0);
-            }
-        }
-    });
-
-    return Object.values(mergedMap).sort(function(a, b) {
-        const roomA = (a.roomName || "").toUpperCase();
-        const roomB = (b.roomName || "").toUpperCase();
-        if (roomA < roomB) return -1;
-        if (roomA > roomB) return 1;
-
-        const floorA = (a.floorName || "").toUpperCase();
-        const floorB = (b.floorName || "").toUpperCase();
-        if (floorA < floorB) return -1;
-        if (floorA > floorB) return 1;
-
-        const itemA = (a.itemName || "").toUpperCase();
-        const itemB = (b.itemName || "").toUpperCase();
-        if (itemA < itemB) return -1;
-        if (itemA > itemB) return 1;
-
-        return 0;
-    });
-}
-
 function groupInventoryItemsForListedView(items) {
     const grouped = {};
 
     items.forEach(function(entry) {
         const sequenceLabel = getSequenceLabelById(entry.sequenceId);
         const deliveryLabel = getPropertyLabelById(entry.deliveryId);
-        const groupKey = String(entry.sequenceId || "") + "||" + String(entry.deliveryId || "");
+        const groupKey = sequenceLabel + "||" + deliveryLabel;
 
         if (!grouped[groupKey]) {
             grouped[groupKey] = {
-                sequenceId: entry.sequenceId || "",
-                deliveryId: entry.deliveryId || "",
                 sequenceLabel: sequenceLabel,
                 deliveryLabel: deliveryLabel,
                 entries: [],
@@ -3669,70 +3597,7 @@ function groupInventoryItemsForListedView(items) {
         }
     });
 
-    return Object.values(grouped).sort(function(a, b) {
-        return String(a.sequenceLabel).localeCompare(String(b.sequenceLabel));
-    });
-}
-
-function groupMergedEntriesByRoom(entries) {
-    const rooms = {};
-
-    entries.forEach(function(entry) {
-        const roomKey = (entry.roomName || "Unassigned") + "||" + (entry.floorName || "-");
-
-        if (!rooms[roomKey]) {
-            rooms[roomKey] = {
-                roomName: entry.roomName || "Unassigned",
-                floorName: entry.floorName || "-",
-                entries: [],
-                totalVolume: 0
-            };
-        }
-
-        rooms[roomKey].entries.push(entry);
-
-        if (!entry.excluded) {
-            rooms[roomKey].totalVolume += Number(entry.totalVolume || 0);
-        }
-    });
-
-    return Object.values(rooms).sort(function(a, b) {
-        const nameA = (a.roomName + " " + a.floorName).toUpperCase();
-        const nameB = (b.roomName + " " + b.floorName).toUpperCase();
-        return nameA.localeCompare(nameB);
-    });
-}
-
-function buildListedTags(entry) {
-    const tags = [];
-
-    if (entry.dismantle) {
-        tags.push(`<span class="listed-tag wrap">Dismantle</span>`);
-    }
-
-    if (entry.expWrap) {
-        tags.push(`<span class="listed-tag wrap">Exp Wrap</span>`);
-    }
-
-    if (entry.crated && entry.crateDims) {
-        tags.push(
-            `<span class="listed-tag crate">Crate: ${entry.crateDims.l} x ${entry.crateDims.w} x ${entry.crateDims.h} ${entry.crateDims.unit}</span>`
-        );
-    }
-
-    if (entry.damage) {
-        tags.push(`<span class="listed-tag damage">Damage: ${String(entry.damage).toUpperCase()}</span>`);
-    }
-
-    if (entry.excluded) {
-        tags.push(`<span class="listed-tag excluded">Excluded</span>`);
-    }
-
-    if (entry.note) {
-        tags.push(`<span class="listed-tag note">Note: ${String(entry.note).toUpperCase()}</span>`);
-    }
-
-    return tags.join("");
+    return Object.values(grouped);
 }
 
 function renderListedInventory() {
@@ -3758,64 +3623,64 @@ function renderListedInventory() {
     }
 
     container.innerHTML = groupedSections.map(function(section) {
-        const mergedEntries = mergeListedEntries(section.entries);
-        const roomGroups = groupMergedEntriesByRoom(mergedEntries);
+        const rows = section.entries.map(function(entry) {
+            const tags = [];
 
-        const roomBlocks = roomGroups.map(function(roomGroup) {
-            const rows = roomGroup.entries.map(function(entry) {
-                const isExcluded = !!entry.excluded;
-                const tags = buildListedTags(entry);
+            if (entry.dismantle) tags.push("DISMANTLE");
+            if (entry.expWrap) tags.push("EXP WRAP");
+            if (entry.crated && entry.crateDims) {
+                tags.push(
+                    "CRATE: " +
+                    entry.crateDims.l + " x " +
+                    entry.crateDims.w + " x " +
+                    entry.crateDims.h + " " +
+                    entry.crateDims.unit
+                );
+            }
+            if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
+            if (entry.excluded) tags.push("EXCLUDED");
+            if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
 
-                return `
-                    <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
-                        <td class="py-3 pr-2 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">
-                            ${entry.itemName || "-"}
-                            ${tags ? `<div class="mt-1">${tags}</div>` : ``}
-                        </td>
-                        <td class="py-3 pr-2 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">${entry.qty || 0}</td>
-                        <td class="py-3 pr-2 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">${isExcluded ? "" : (entry.unitVolume || 0)}</td>
-                        <td class="py-3 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">${isExcluded ? "" : (entry.totalVolume || 0)}</td>
-                    </tr>
-                `;
-            }).join("");
+            const tagText = tags.length ? ` [${tags.join("] [")}]` : "";
+            const isExcluded = !!entry.excluded;
 
             return `
-                <div class="listed-room-block">
-                    <div class="listed-room-head">
-                        <div class="listed-room-title">${roomGroup.roomName} / ${roomGroup.floorName}</div>
-                        <div class="listed-room-total">${roomGroup.totalVolume} Cuft</div>
-                    </div>
-
-                    <div class="p-3">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b border-slate-200">
-                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
-                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Qty</th>
-                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
-                                    <th class="text-left py-2 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${rows}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
+                    <td class="py-2 pr-2 text-[10px] font-bold uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-slate-600'}">${entry.roomName || "-"}</td>
+                    <td class="py-2 pr-2 text-[10px] font-bold uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-slate-600'}">${entry.floorName || "-"}</td>
+                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">${entry.itemName || "-"}${tagText}</td>
+                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">${entry.qty || 0}</td>
+                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">${isExcluded ? '' : (entry.unitVolume || 0)}</td>
+                    <td class="py-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">${isExcluded ? '' : (entry.totalVolume || 0)}</td>
+                </tr>
             `;
         }).join("");
 
         return `
-            <div class="listed-section-card">
-                <div class="listed-section-head">
-                    <div class="listed-section-title">${section.sequenceLabel}</div>
-                    <div class="listed-section-subtitle">Delivery To: ${section.deliveryLabel}</div>
+            <div class="border border-slate-200 rounded-2xl overflow-hidden">
+                <div class="bg-slate-900 px-4 py-3">
+                    <div class="text-[11px] font-black text-white uppercase">${section.sequenceLabel}</div>
+                    <div class="text-[10px] font-bold text-blue-300 uppercase mt-1">Delivery To: ${section.deliveryLabel}</div>
                 </div>
 
-                <div class="p-4 space-y-4">
-                    ${roomBlocks}
+                <div class="p-4">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-300">
+                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Room</th>
+                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Floor</th>
+                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
+                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Qty</th>
+                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
+                                <th class="text-left py-2 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
 
-                    <div class="pt-2 border-t border-slate-200 text-right">
+                    <div class="mt-4 pt-3 border-t border-slate-200 text-right">
                         <span class="text-[10px] font-black text-slate-400 uppercase mr-2">Section Total</span>
                         <span class="text-sm font-black text-blue-600">${section.totalVolume}</span>
                     </div>

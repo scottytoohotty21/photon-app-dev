@@ -655,7 +655,7 @@
             margin-top: 4px;
             letter-spacing: 0.04em;
         }
-        .job-status-pill {
+                .job-status-pill {
             background: #1e293b;
             border: 1px solid #475569;
             color: #93c5fd;
@@ -665,6 +665,147 @@
             padding: 6px 10px;
             border-radius: 999px;
             white-space: nowrap;
+        }
+
+        /* --- LISTED INVENTORY --- */
+        .listed-filter-select {
+            width: 100%;
+            background: #fff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #0f172a;
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        .listed-stat-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        .listed-stat-label {
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .listed-stat-value {
+            font-size: 18px;
+            font-weight: 900;
+            color: #0f172a;
+            line-height: 1;
+        }
+
+        .listed-stat-sub {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-top: 6px;
+        }
+
+        .listed-section-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .listed-section-head {
+            background: #0f172a;
+            padding: 14px 16px;
+        }
+
+        .listed-section-title {
+            font-size: 11px;
+            font-weight: 900;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .listed-section-subtitle {
+            font-size: 10px;
+            font-weight: 800;
+            color: #93c5fd;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .listed-room-block {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .listed-room-head {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .listed-room-title {
+            font-size: 10px;
+            font-weight: 900;
+            color: #0f172a;
+            text-transform: uppercase;
+        }
+
+        .listed-room-total {
+            font-size: 10px;
+            font-weight: 900;
+            color: #2563eb;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .listed-tag {
+            display: inline-block;
+            margin-top: 4px;
+            margin-right: 4px;
+            padding: 3px 6px;
+            border-radius: 999px;
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .listed-tag.excluded {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+
+        .listed-tag.note {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .listed-tag.damage {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .listed-tag.crate {
+            background: #ede9fe;
+            color: #6d28d9;
+        }
+
+        .listed-tag.wrap {
+            background: #dcfce7;
+            color: #166534;
         }
     </style>
 </head>
@@ -878,9 +1019,22 @@ Enter as: Surname, First Name
     <div class="flex items-center justify-between mb-4">
         <div>
             <div class="text-sm font-black text-slate-900 uppercase">Listed Inventory</div>
-            <div class="text-[10px] font-bold text-slate-400 uppercase">Saved inventory records by sequence and delivery</div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase">Saved inventory records grouped for quick review</div>
         </div>
     </div>
+
+    <div class="grid grid-cols-12 gap-3 mb-4">
+        <div class="col-span-6">
+            <label class="mini-label">Sequence View</label>
+            <select id="listed-sequence-filter" class="listed-filter-select" onchange="handleListedSequenceFilterChange(this.value)"></select>
+        </div>
+        <div class="col-span-6">
+            <label class="mini-label">Delivery View</label>
+            <select id="listed-delivery-filter" class="listed-filter-select" onchange="handleListedDeliveryFilterChange(this.value)"></select>
+        </div>
+    </div>
+
+    <div id="listed-summary-bar" class="grid grid-cols-3 gap-3 mb-4"></div>
 
     <div id="listed-inventory-output" class="space-y-4">
         <div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory saved</div>
@@ -1245,6 +1399,8 @@ let inventoryHistory = [];
 let qtyResetTimer = null;
 let selectedCrateUnit = "IN";
 let selectedDamageOption = "";
+let listedSequenceFilter = "__all__";
+let listedDeliveryFilter = "__all__";
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -2134,7 +2290,7 @@ function updatePropData(f, v) {
 }
         function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
         
-  function switchTab(t) {
+    function switchTab(t) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('content-' + t).classList.remove('hidden');
@@ -2155,9 +2311,18 @@ function updatePropData(f, v) {
     }
 
     if (t === 'listed') {
+        listedSequenceFilter = activeSeqId ? String(activeSeqId) : "__all__";
+        listedDeliveryFilter =
+            currentJob &&
+            currentJob.inventory &&
+            currentJob.inventory.activeDeliveryId
+                ? String(currentJob.inventory.activeDeliveryId)
+                : "__all__";
+
         renderListedInventory();
     }
 }
+
 function splitManualName(fullName) {
     const cleaned = (fullName || "").trim();
 
@@ -3237,7 +3402,7 @@ function updateInventoryDisplay(logText = "No items added") {
         totalVolBox.innerText = totalVolume;
     }
 }
-       function getPropertyLabelById(propertyId) {
+              function getPropertyLabelById(propertyId) {
     if (!currentJob || !Array.isArray(currentJob.properties)) return "Unknown Address";
 
     const prop = currentJob.properties.find(function(p) {
@@ -3263,16 +3428,233 @@ function getSequenceLabelById(sequenceId) {
     return "Seq #" + (seqIndex + 1) + ": " + moveLabel + " / " + packLabel;
 }
 
+function getListedInventoryItems() {
+    if (!currentJob || !currentJob.inventory || !Array.isArray(currentJob.inventory.items)) {
+        return [];
+    }
+
+    return currentJob.inventory.items.slice();
+}
+
+function getListedSequenceFilterOptions(items) {
+    const seen = {};
+    const options = [];
+
+    items.forEach(function(entry) {
+        const key = String(entry.sequenceId || "");
+        if (!key || seen[key]) return;
+
+        seen[key] = true;
+        options.push({
+            value: key,
+            label: getSequenceLabelById(key)
+        });
+    });
+
+    return options;
+}
+
+function getListedDeliveryFilterOptions(items) {
+    const seen = {};
+    const options = [];
+
+    items.forEach(function(entry) {
+        const key = String(entry.deliveryId || "");
+        if (!key || seen[key]) return;
+
+        seen[key] = true;
+        options.push({
+            value: key,
+            label: getPropertyLabelById(key)
+        });
+    });
+
+    return options;
+}
+
+function renderListedInventoryFilters(items) {
+    const seqSelect = document.getElementById("listed-sequence-filter");
+    const deliverySelect = document.getElementById("listed-delivery-filter");
+
+    if (!seqSelect || !deliverySelect) return;
+
+    const seqOptions = getListedSequenceFilterOptions(items);
+    const deliveryOptions = getListedDeliveryFilterOptions(items);
+
+    const seqStillExists = seqOptions.some(function(option) {
+        return option.value === String(listedSequenceFilter);
+    });
+
+    const deliveryStillExists = deliveryOptions.some(function(option) {
+        return option.value === String(listedDeliveryFilter);
+    });
+
+    if (listedSequenceFilter !== "__all__" && !seqStillExists) {
+        listedSequenceFilter = "__all__";
+    }
+
+    if (listedDeliveryFilter !== "__all__" && !deliveryStillExists) {
+        listedDeliveryFilter = "__all__";
+    }
+
+    seqSelect.innerHTML =
+        `<option value="__all__">All Sequences</option>` +
+        seqOptions.map(function(option) {
+            const selected = option.value === String(listedSequenceFilter) ? "selected" : "";
+            return `<option value="${option.value}" ${selected}>${option.label}</option>`;
+        }).join("");
+
+    deliverySelect.innerHTML =
+        `<option value="__all__">All Deliveries</option>` +
+        deliveryOptions.map(function(option) {
+            const selected = option.value === String(listedDeliveryFilter) ? "selected" : "";
+            return `<option value="${option.value}" ${selected}>${option.label}</option>`;
+        }).join("");
+}
+
+function handleListedSequenceFilterChange(value) {
+    listedSequenceFilter = value || "__all__";
+    renderListedInventory();
+}
+
+function handleListedDeliveryFilterChange(value) {
+    listedDeliveryFilter = value || "__all__";
+    renderListedInventory();
+}
+
+function filterListedInventoryItems(items) {
+    return items.filter(function(entry) {
+        const seqOk = listedSequenceFilter === "__all__" || String(entry.sequenceId || "") === String(listedSequenceFilter);
+        const deliveryOk = listedDeliveryFilter === "__all__" || String(entry.deliveryId || "") === String(listedDeliveryFilter);
+        return seqOk && deliveryOk;
+    });
+}
+
+function buildListedSummary(items) {
+    let includedVolume = 0;
+    let excludedCount = 0;
+    let lineCount = items.length;
+
+    items.forEach(function(entry) {
+        if (entry.excluded) {
+            excludedCount += 1;
+        } else {
+            includedVolume += Number(entry.totalVolume || 0);
+        }
+    });
+
+    return {
+        includedVolume: includedVolume,
+        excludedCount: excludedCount,
+        lineCount: lineCount
+    };
+}
+
+function renderListedSummary(summary) {
+    const bar = document.getElementById("listed-summary-bar");
+    if (!bar) return;
+
+    bar.innerHTML = `
+        <div class="listed-stat-card">
+            <div class="listed-stat-label">Included Volume</div>
+            <div class="listed-stat-value">${summary.includedVolume}</div>
+            <div class="listed-stat-sub">Cuft counted</div>
+        </div>
+        <div class="listed-stat-card">
+            <div class="listed-stat-label">Saved Lines</div>
+            <div class="listed-stat-value">${summary.lineCount}</div>
+            <div class="listed-stat-sub">Raw records shown</div>
+        </div>
+        <div class="listed-stat-card">
+            <div class="listed-stat-label">Excluded Lines</div>
+            <div class="listed-stat-value">${summary.excludedCount}</div>
+            <div class="listed-stat-sub">Not in total volume</div>
+        </div>
+    `;
+}
+
+function makeListedEntryMergeKey(entry) {
+    const crateText = entry.crated && entry.crateDims
+        ? [entry.crateDims.l, entry.crateDims.w, entry.crateDims.h, entry.crateDims.unit].join("x")
+        : "";
+
+    return [
+        entry.roomName || "",
+        entry.floorName || "",
+        entry.itemName || "",
+        Number(entry.unitVolume || 0),
+        !!entry.dismantle,
+        !!entry.expWrap,
+        !!entry.excluded,
+        entry.note || "",
+        entry.damage || "",
+        !!entry.crated,
+        crateText
+    ].join("||");
+}
+
+function mergeListedEntries(entries) {
+    const mergedMap = {};
+
+    entries.forEach(function(entry) {
+        const key = makeListedEntryMergeKey(entry);
+
+        if (!mergedMap[key]) {
+            mergedMap[key] = {
+                roomName: entry.roomName || "",
+                floorName: entry.floorName || "",
+                itemName: entry.itemName || "",
+                qty: Number(entry.qty || 0),
+                unitVolume: Number(entry.unitVolume || 0),
+                totalVolume: entry.excluded ? 0 : Number(entry.totalVolume || 0),
+                dismantle: !!entry.dismantle,
+                expWrap: !!entry.expWrap,
+                excluded: !!entry.excluded,
+                note: entry.note || "",
+                damage: entry.damage || "",
+                crated: !!entry.crated,
+                crateDims: entry.crateDims || null
+            };
+        } else {
+            mergedMap[key].qty += Number(entry.qty || 0);
+            if (!entry.excluded) {
+                mergedMap[key].totalVolume += Number(entry.totalVolume || 0);
+            }
+        }
+    });
+
+    return Object.values(mergedMap).sort(function(a, b) {
+        const roomA = (a.roomName || "").toUpperCase();
+        const roomB = (b.roomName || "").toUpperCase();
+        if (roomA < roomB) return -1;
+        if (roomA > roomB) return 1;
+
+        const floorA = (a.floorName || "").toUpperCase();
+        const floorB = (b.floorName || "").toUpperCase();
+        if (floorA < floorB) return -1;
+        if (floorA > floorB) return 1;
+
+        const itemA = (a.itemName || "").toUpperCase();
+        const itemB = (b.itemName || "").toUpperCase();
+        if (itemA < itemB) return -1;
+        if (itemA > itemB) return 1;
+
+        return 0;
+    });
+}
+
 function groupInventoryItemsForListedView(items) {
     const grouped = {};
 
     items.forEach(function(entry) {
         const sequenceLabel = getSequenceLabelById(entry.sequenceId);
         const deliveryLabel = getPropertyLabelById(entry.deliveryId);
-        const groupKey = sequenceLabel + "||" + deliveryLabel;
+        const groupKey = String(entry.sequenceId || "") + "||" + String(entry.deliveryId || "");
 
         if (!grouped[groupKey]) {
             grouped[groupKey] = {
+                sequenceId: entry.sequenceId || "",
+                deliveryId: entry.deliveryId || "",
                 sequenceLabel: sequenceLabel,
                 deliveryLabel: deliveryLabel,
                 entries: [],
@@ -3282,90 +3664,158 @@ function groupInventoryItemsForListedView(items) {
 
         grouped[groupKey].entries.push(entry);
 
-        const isExcluded = !!entry.excluded;
-        if (!isExcluded) {
+        if (!entry.excluded) {
             grouped[groupKey].totalVolume += Number(entry.totalVolume || 0);
         }
     });
 
-    return Object.values(grouped);
+    return Object.values(grouped).sort(function(a, b) {
+        return String(a.sequenceLabel).localeCompare(String(b.sequenceLabel));
+    });
+}
+
+function groupMergedEntriesByRoom(entries) {
+    const rooms = {};
+
+    entries.forEach(function(entry) {
+        const roomKey = (entry.roomName || "Unassigned") + "||" + (entry.floorName || "-");
+
+        if (!rooms[roomKey]) {
+            rooms[roomKey] = {
+                roomName: entry.roomName || "Unassigned",
+                floorName: entry.floorName || "-",
+                entries: [],
+                totalVolume: 0
+            };
+        }
+
+        rooms[roomKey].entries.push(entry);
+
+        if (!entry.excluded) {
+            rooms[roomKey].totalVolume += Number(entry.totalVolume || 0);
+        }
+    });
+
+    return Object.values(rooms).sort(function(a, b) {
+        const nameA = (a.roomName + " " + a.floorName).toUpperCase();
+        const nameB = (b.roomName + " " + b.floorName).toUpperCase();
+        return nameA.localeCompare(nameB);
+    });
+}
+
+function buildListedTags(entry) {
+    const tags = [];
+
+    if (entry.dismantle) {
+        tags.push(`<span class="listed-tag wrap">Dismantle</span>`);
+    }
+
+    if (entry.expWrap) {
+        tags.push(`<span class="listed-tag wrap">Exp Wrap</span>`);
+    }
+
+    if (entry.crated && entry.crateDims) {
+        tags.push(
+            `<span class="listed-tag crate">Crate: ${entry.crateDims.l} x ${entry.crateDims.w} x ${entry.crateDims.h} ${entry.crateDims.unit}</span>`
+        );
+    }
+
+    if (entry.damage) {
+        tags.push(`<span class="listed-tag damage">Damage: ${String(entry.damage).toUpperCase()}</span>`);
+    }
+
+    if (entry.excluded) {
+        tags.push(`<span class="listed-tag excluded">Excluded</span>`);
+    }
+
+    if (entry.note) {
+        tags.push(`<span class="listed-tag note">Note: ${String(entry.note).toUpperCase()}</span>`);
+    }
+
+    return tags.join("");
 }
 
 function renderListedInventory() {
     const container = document.getElementById("listed-inventory-output");
     if (!container || !currentJob) return;
 
-    if (!currentJob.inventory || !Array.isArray(currentJob.inventory.items) || currentJob.inventory.items.length === 0) {
-        container.innerHTML = `<div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory saved</div>`;
+    const allItems = getListedInventoryItems();
+    renderListedInventoryFilters(allItems);
+
+    const filteredItems = filterListedInventoryItems(allItems);
+    renderListedSummary(buildListedSummary(filteredItems));
+
+    if (filteredItems.length === 0) {
+        container.innerHTML = `<div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory matches current view</div>`;
         return;
     }
 
-    const groupedSections = groupInventoryItemsForListedView(currentJob.inventory.items);
+    const groupedSections = groupInventoryItemsForListedView(filteredItems);
 
     if (groupedSections.length === 0) {
-        container.innerHTML = `<div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory saved</div>`;
+        container.innerHTML = `<div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory matches current view</div>`;
         return;
     }
 
     container.innerHTML = groupedSections.map(function(section) {
-        const rows = section.entries.map(function(entry) {
-            const tags = [];
+        const mergedEntries = mergeListedEntries(section.entries);
+        const roomGroups = groupMergedEntriesByRoom(mergedEntries);
 
-            if (entry.dismantle) tags.push("DISMANTLE");
-            if (entry.expWrap) tags.push("EXP WRAP");
-            if (entry.crated && entry.crateDims) {
-                tags.push(
-                    "CRATE: " +
-                    entry.crateDims.l + " x " +
-                    entry.crateDims.w + " x " +
-                    entry.crateDims.h + " " +
-                    entry.crateDims.unit
-                );
-            }
-            if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
-            if (entry.excluded) tags.push("EXCLUDED");
-            if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
+        const roomBlocks = roomGroups.map(function(roomGroup) {
+            const rows = roomGroup.entries.map(function(entry) {
+                const isExcluded = !!entry.excluded;
+                const tags = buildListedTags(entry);
 
-            const tagText = tags.length ? ` [${tags.join("] [")}]` : "";
-            const isExcluded = !!entry.excluded;
+                return `
+                    <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
+                        <td class="py-3 pr-2 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">
+                            ${entry.itemName || "-"}
+                            ${tags ? `<div class="mt-1">${tags}</div>` : ``}
+                        </td>
+                        <td class="py-3 pr-2 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">${entry.qty || 0}</td>
+                        <td class="py-3 pr-2 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">${isExcluded ? "" : (entry.unitVolume || 0)}</td>
+                        <td class="py-3 align-top text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">${isExcluded ? "" : (entry.totalVolume || 0)}</td>
+                    </tr>
+                `;
+            }).join("");
 
             return `
-                <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
-                    <td class="py-2 pr-2 text-[10px] font-bold uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-slate-600'}">${entry.roomName || "-"}</td>
-                    <td class="py-2 pr-2 text-[10px] font-bold uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-slate-600'}">${entry.floorName || "-"}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">${entry.itemName || "-"}${tagText}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">${entry.qty || 0}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">${isExcluded ? '' : (entry.unitVolume || 0)}</td>
-                    <td class="py-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">${isExcluded ? '' : (entry.totalVolume || 0)}</td>
-                </tr>
+                <div class="listed-room-block">
+                    <div class="listed-room-head">
+                        <div class="listed-room-title">${roomGroup.roomName} / ${roomGroup.floorName}</div>
+                        <div class="listed-room-total">${roomGroup.totalVolume} Cuft</div>
+                    </div>
+
+                    <div class="p-3">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
+                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Qty</th>
+                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
+                                    <th class="text-left py-2 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             `;
         }).join("");
 
         return `
-            <div class="border border-slate-200 rounded-2xl overflow-hidden">
-                <div class="bg-slate-900 px-4 py-3">
-                    <div class="text-[11px] font-black text-white uppercase">${section.sequenceLabel}</div>
-                    <div class="text-[10px] font-bold text-blue-300 uppercase mt-1">Delivery To: ${section.deliveryLabel}</div>
+            <div class="listed-section-card">
+                <div class="listed-section-head">
+                    <div class="listed-section-title">${section.sequenceLabel}</div>
+                    <div class="listed-section-subtitle">Delivery To: ${section.deliveryLabel}</div>
                 </div>
 
-                <div class="p-4">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b border-slate-300">
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Room</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Floor</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Qty</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
-                                <th class="text-left py-2 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
+                <div class="p-4 space-y-4">
+                    ${roomBlocks}
 
-                    <div class="mt-4 pt-3 border-t border-slate-200 text-right">
+                    <div class="pt-2 border-t border-slate-200 text-right">
                         <span class="text-[10px] font-black text-slate-400 uppercase mr-2">Section Total</span>
                         <span class="text-sm font-black text-blue-600">${section.totalVolume}</span>
                     </div>

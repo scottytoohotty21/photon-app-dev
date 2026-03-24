@@ -126,6 +126,27 @@
 
         .pulse-blue { animation: pulseBlue 0.5s ease; }
         .pulse-red { animation: pulseRed 0.5s ease; }
+        .item-click-flash {
+    animation: itemClickFlash 0.42s ease;
+}
+
+@keyframes itemClickFlash {
+    0% {
+        transform: scale(1);
+        background: #ffffff;
+        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+    }
+    35% {
+        transform: scale(1.03);
+        background: #dbeafe;
+        box-shadow: 0 0 0 8px rgba(96, 165, 250, 0.18);
+    }
+    100% {
+        transform: scale(1);
+        background: inherit;
+        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+    }
+}
 
         .add-property-btn {
             background: #3b82f6; color: white; border-radius: 10px; transition: 0.2s;
@@ -2228,6 +2249,7 @@ function addBox(boxCode) {
     const boxVolume = BOX_VOLUMES[boxCode];
     if (!boxVolume) return;
 
+    const clickedBtn = event && event.currentTarget ? event.currentTarget : null;
     const qtyInput = document.getElementById("inv-qty");
     const qty = 1;
 
@@ -2286,7 +2308,7 @@ function addBox(boxCode) {
     updateInventoryDisplay(qty + " X " + itemName);
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
-    triggerHaptic("light");
+    pulseInventoryButton(clickedBtn);
 
     if (qtyInput) qtyInput.value = 1;
     renderActionButtonStates();
@@ -2294,6 +2316,7 @@ function addBox(boxCode) {
 }
 
 function addVolume(amount) {
+    const clickedBtn = event && event.currentTarget ? event.currentTarget : null;
     const qtyInput = document.getElementById("inv-qty");
     const qty = 1;
 
@@ -2337,7 +2360,7 @@ function addVolume(amount) {
     updateInventoryDisplay("+ " + qty + " X " + displayName);
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
-    triggerHaptic("light");
+    pulseInventoryButton(clickedBtn);
 
     if (qtyInput) qtyInput.value = 1;
     renderActionButtonStates();
@@ -2349,6 +2372,7 @@ function addInventoryItem(itemName) {
     });
     if (!item) return;
 
+    const clickedBtn = event && event.currentTarget ? event.currentTarget : null;
     const qtyInput = document.getElementById("inv-qty");
     const qty = 1;
 
@@ -2396,7 +2420,7 @@ function addInventoryItem(itemName) {
     updateInventoryDisplay(qty + " X " + item.item.toUpperCase());
     triggerInventoryPulse("qty", "blue");
     triggerInventoryPulse("total", "blue");
-    triggerHaptic("light");
+    pulseInventoryButton(clickedBtn);
 
     if (qtyInput) qtyInput.value = 1;
     renderActionButtonStates();
@@ -2969,7 +2993,13 @@ recalculateTotalVolume();
     triggerHaptic("medium");
     updateUndoButtonState();
 }
+function pulseInventoryButton(buttonEl) {
+    if (!buttonEl) return;
 
+    buttonEl.classList.remove("item-click-flash");
+    void buttonEl.offsetWidth;
+    buttonEl.classList.add("item-click-flash");
+}
 function triggerInventoryPulse(target = "total", type = "blue") {
     let el = null;
 
@@ -3395,7 +3425,7 @@ function syncLiveInventoryFromRawForActiveSequence() {
 
     recalculateTotalVolume();
 }
-console.log("Photon script loaded once");
+
 window.onload = function () {
     renderDashboard();
 };    </script>

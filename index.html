@@ -1024,13 +1024,23 @@ Enter as: Surname, First Name
     </div>
 
     <div class="grid grid-cols-12 gap-3 mb-4">
-        <div class="col-span-6">
+        <div class="col-span-4">
             <label class="mini-label">Sequence View</label>
             <select id="listed-sequence-filter" class="listed-filter-select" onchange="handleListedSequenceFilterChange(this.value)"></select>
         </div>
-        <div class="col-span-6">
+        <div class="col-span-4">
             <label class="mini-label">Delivery View</label>
             <select id="listed-delivery-filter" class="listed-filter-select" onchange="handleListedDeliveryFilterChange(this.value)"></select>
+        </div>
+        <div class="col-span-4">
+            <label class="mini-label">Find Item / Room / Note</label>
+            <input
+                type="text"
+                id="listed-text-filter"
+                class="listed-filter-select"
+                placeholder="Type to filter..."
+                oninput="handleListedTextFilterChange(this.value)"
+            >
         </div>
     </div>
 
@@ -1401,6 +1411,7 @@ let selectedCrateUnit = "IN";
 let selectedDamageOption = "";
 let listedSequenceFilter = "__all__";
 let listedDeliveryFilter = "__all__";
+let listedTextFilter = "";
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -2290,7 +2301,7 @@ function updatePropData(f, v) {
 }
         function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
         
-    function switchTab(t) {
+        function switchTab(t) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('content-' + t).classList.remove('hidden');
@@ -2318,6 +2329,7 @@ function updatePropData(f, v) {
             currentJob.inventory.activeDeliveryId
                 ? String(currentJob.inventory.activeDeliveryId)
                 : "__all__";
+        listedTextFilter = "";
 
         renderListedInventory();
     }
@@ -3475,9 +3487,9 @@ function getListedDeliveryFilterOptions(items) {
 function renderListedInventoryFilters(items) {
     const seqSelect = document.getElementById("listed-sequence-filter");
     const deliverySelect = document.getElementById("listed-delivery-filter");
+    const textInput = document.getElementById("listed-text-filter");
 
     if (!seqSelect || !deliverySelect) return;
-
     const seqOptions = getListedSequenceFilterOptions(items);
     const deliveryOptions = getListedDeliveryFilterOptions(items);
 
@@ -3504,12 +3516,16 @@ function renderListedInventoryFilters(items) {
             return `<option value="${option.value}" ${selected}>${option.label}</option>`;
         }).join("");
 
-    deliverySelect.innerHTML =
+        deliverySelect.innerHTML =
         `<option value="__all__">All Deliveries</option>` +
         deliveryOptions.map(function(option) {
             const selected = option.value === String(listedDeliveryFilter) ? "selected" : "";
             return `<option value="${option.value}" ${selected}>${option.label}</option>`;
         }).join("");
+
+    if (textInput) {
+        textInput.value = listedTextFilter || "";
+    }
 }
 
 function handleListedSequenceFilterChange(value) {
@@ -3522,11 +3538,27 @@ function handleListedDeliveryFilterChange(value) {
     renderListedInventory();
 }
 
+function handleListedTextFilterChange(value) {
+    listedTextFilter = (value || "").trim().toLowerCase();
+    renderListedInventory();
+}
+
 function filterListedInventoryItems(items) {
     return items.filter(function(entry) {
         const seqOk = listedSequenceFilter === "__all__" || String(entry.sequenceId || "") === String(listedSequenceFilter);
         const deliveryOk = listedDeliveryFilter === "__all__" || String(entry.deliveryId || "") === String(listedDeliveryFilter);
-        return seqOk && deliveryOk;
+
+        const searchBlob = [
+            entry.roomName || "",
+            entry.floorName || "",
+            entry.itemName || "",
+            entry.note || "",
+            entry.damage || ""
+        ].join(" ").toLowerCase();
+
+        const textOk = !listedTextFilter || searchBlob.includes(listedTextFilter);
+
+        return seqOk && deliveryOk && textOk;
     });
 }
 

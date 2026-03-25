@@ -2203,7 +2203,12 @@ function openSimpleInputModal(config) {
     input.type = config.inputType || "text";
     input.inputMode = config.inputMode || "text";
 
-    overlay.style.display = "flex";
+input.oninput = function () {
+    setModalErrorText("simple-input-error-text", "");
+};
+
+setModalErrorText("simple-input-error-text", "");
+overlay.style.display = "flex";
 
     setTimeout(function () {
         input.focus();
@@ -2223,6 +2228,7 @@ function closeSimpleInputModal() {
         input.placeholder = "";
     }
 
+    setModalErrorText("simple-input-error-text", "");
     simpleInputMode = "";
     simpleInputMeta = null;
 }
@@ -2239,7 +2245,12 @@ function saveSimpleInputModal() {
             currentJob.inventory.customRooms = [];
         }
 
-        if (!rawValue) return;
+        if (!rawValue) {
+            setModalErrorText("simple-input-error-text", "Enter a room name");
+            return;
+        }
+
+        setModalErrorText("simple-input-error-text", "");
 
         const alreadyExists = getRoomOptions().some(function(room) {
             return room.toLowerCase() === rawValue.toLowerCase();
@@ -2265,8 +2276,18 @@ function saveSimpleInputModal() {
             currentJob.inventory.customFloors = [];
         }
 
+        if (!rawValue) {
+            setModalErrorText("simple-input-error-text", "Enter a floor number");
+            return;
+        }
+
         const floorLabel = formatNumberedFloorLabel(rawValue);
-        if (!floorLabel) return;
+        if (!floorLabel) {
+            setModalErrorText("simple-input-error-text", "Enter a valid floor number");
+            return;
+        }
+
+        setModalErrorText("simple-input-error-text", "");
 
         const alreadyExists = getFloorOptions().some(function(floor) {
             return floor.toLowerCase() === floorLabel.toLowerCase();
@@ -2289,7 +2310,12 @@ function saveSimpleInputModal() {
             currentJob.inventory.customFloors = [];
         }
 
-        if (!rawValue) return;
+        if (!rawValue) {
+            setModalErrorText("simple-input-error-text", "Enter a floor name");
+            return;
+        }
+
+        setModalErrorText("simple-input-error-text", "");
 
         const alreadyExists = getFloorOptions().some(function(floor) {
             return floor.toLowerCase() === rawValue.toLowerCase();
@@ -2314,8 +2340,18 @@ function saveSimpleInputModal() {
         });
         if (!item) return;
 
+        if (!rawValue) {
+            setModalErrorText("simple-input-error-text", "Enter a unit volume");
+            return;
+        }
+
         const newVolume = parseFloat(rawValue);
-        if (isNaN(newVolume) || newVolume <= 0) return;
+        if (isNaN(newVolume) || newVolume <= 0) {
+            setModalErrorText("simple-input-error-text", "Unit volume must be greater than 0");
+            return;
+        }
+
+        setModalErrorText("simple-input-error-text", "");
 
         const previousVolume = item.volume;
         item.volume = newVolume;
@@ -2345,7 +2381,7 @@ function saveSimpleInputModal() {
         const labelText = item.displayName || item.item;
         updateInventoryDisplay(item.qty + " X " + String(labelText).toUpperCase() + " @ " + newVolume + " CUFT");
 
-                triggerInventoryPulse("current", "blue");
+        triggerInventoryPulse("current", "blue");
         triggerInventoryPulse("total", "blue");
         triggerHaptic("medium");
         updateUndoButtonState();
@@ -2399,7 +2435,12 @@ function saveSimpleInputModal() {
             triggerPulse('active-sequence-ui');
         }
 
-        function renderDashboard() {
+        function filterFiles() {
+    // safe fallback so dashboard search never breaks
+    return;
+}
+
+function renderDashboard() {
             document.getElementById('job-list').innerHTML = jobs.map(j => {
                 let seqBreakdown = j.sequences.length > 0 ? j.sequences.map(s => `
                     <div class="seq-row">
@@ -2849,11 +2890,19 @@ function addMiscItem() {
     volumeInput.value = "";
     setModalErrorText("misc-error-text", "");
 
-    overlay.style.display = "flex";
+    nameInput.oninput = function () {
+    setModalErrorText("misc-error-text", "");
+};
 
-    setTimeout(function () {
-        nameInput.focus();
-    }, 50);
+volumeInput.oninput = function () {
+    setModalErrorText("misc-error-text", "");
+};
+
+overlay.style.display = "flex";
+
+setTimeout(function () {
+    nameInput.focus();
+}, 50);
 }
 function setModalErrorText(elementId, message) {
     const el = document.getElementById(elementId);
@@ -2978,7 +3027,13 @@ function addInventoryNote() {
     if (!overlay || !input) return;
 
     input.value = rawEntry.note || "";
-    overlay.style.display = "flex";
+
+input.oninput = function () {
+    setModalErrorText("note-error-text", "");
+};
+
+setModalErrorText("note-error-text", "");
+overlay.style.display = "flex";
 
     setTimeout(function () {
         input.focus();
@@ -3004,11 +3059,22 @@ function addOrEditCrate() {
     setCrateUnit(selectedCrateUnit);
 
     lengthInput.value = existing.l || "";
-    widthInput.value = existing.w || "";
-    heightInput.value = existing.h || "";
-    setModalErrorText("crate-error-text", "");
+widthInput.value = existing.w || "";
+heightInput.value = existing.h || "";
 
-    overlay.style.display = "flex";
+lengthInput.oninput = function () {
+    setModalErrorText("crate-error-text", "");
+};
+widthInput.oninput = function () {
+    setModalErrorText("crate-error-text", "");
+};
+heightInput.oninput = function () {
+    setModalErrorText("crate-error-text", "");
+};
+
+setModalErrorText("crate-error-text", "");
+
+overlay.style.display = "flex";
 }
 function closeCrateModal() {
     const overlay = document.getElementById("crate-overlay");
@@ -3136,6 +3202,7 @@ function closeNoteModal() {
 
     if (overlay) overlay.style.display = "none";
     if (input) input.value = "";
+    setModalErrorText("note-error-text", "");
 }
 
 function saveNoteModal() {
@@ -3147,7 +3214,12 @@ function saveNoteModal() {
     if (!input) return;
 
     const cleanNote = input.value.trim();
-    if (!cleanNote) return;
+    if (!cleanNote) {
+        setModalErrorText("note-error-text", "Enter a note or press cancel");
+        return;
+    }
+
+    setModalErrorText("note-error-text", "");
 
     const previousNote = rawEntry.note || "";
     rawEntry.note = cleanNote;
@@ -3198,7 +3270,7 @@ function addOrEditDamage() {
     if (!overlay || !customNote) return;
 
     clearDamageOptionButtons();
-
+    setModalErrorText("damage-error-text", "");
     const currentDamage = (rawEntry.damage || "").trim();
 
     if (
@@ -3226,6 +3298,7 @@ function closeDamageModal() {
 
     selectedDamageOption = "";
     clearDamageOptionButtons();
+    setModalErrorText("damage-error-text", "");
 }
 
 function selectDamageOption(option) {
@@ -3289,8 +3362,11 @@ function saveDamageModal() {
     } else if (selectedDamageOption) {
         finalDamage = selectedDamageOption;
     } else {
+        setModalErrorText("damage-error-text", "Select a damage type or enter a note");
         return;
     }
+
+    setModalErrorText("damage-error-text", "");
 
     const previousDamage = rawEntry.damage || "";
     rawEntry.damage = finalDamage;
@@ -3819,6 +3895,54 @@ function filterListedInventoryItems(items) {
     });
 }
 
+function getListedEntryMergeKey(entry) {
+    const crateText = entry.crated && entry.crateDims
+        ? [
+            entry.crateDims.l || "",
+            entry.crateDims.w || "",
+            entry.crateDims.h || "",
+            entry.crateDims.unit || ""
+        ].join("|")
+        : "";
+
+    return [
+        entry.roomName || "",
+        entry.floorName || "",
+        entry.itemName || "",
+        Number(entry.unitVolume || 0),
+        !!entry.excluded,
+        !!entry.dismantle,
+        !!entry.expWrap,
+        entry.note || "",
+        entry.damage || "",
+        !!entry.crated,
+        crateText
+    ].join("||");
+}
+function mergeListedInventoryEntries(items) {
+    const mergedMap = {};
+
+    items.forEach(function(entry) {
+        const key = getListedEntryMergeKey(entry);
+
+        if (!mergedMap[key]) {
+            mergedMap[key] = {
+                ...entry,
+                qty: Number(entry.qty || 0),
+                totalVolume: entry.excluded ? 0 : Number(entry.totalVolume || 0)
+            };
+            return;
+        }
+
+        mergedMap[key].qty += Number(entry.qty || 0);
+
+        if (!entry.excluded) {
+            mergedMap[key].totalVolume += Number(entry.totalVolume || 0);
+        }
+    });
+
+    return Object.values(mergedMap);
+}
 function buildListedSummary(items) {
     let includedVolume = 0;
     let excludedCount = 0;
@@ -3868,25 +3992,50 @@ function groupInventoryItemsForListedView(items) {
     items.forEach(function(entry) {
         const sequenceLabel = getSequenceLabelById(entry.sequenceId);
         const deliveryLabel = getPropertyLabelById(entry.deliveryId);
-        const groupKey = sequenceLabel + "||" + deliveryLabel;
+        const sectionKey = sequenceLabel + "||" + deliveryLabel;
+        const roomKey = (entry.roomName || "-") + "||" + (entry.floorName || "-");
 
-        if (!grouped[groupKey]) {
-            grouped[groupKey] = {
+        if (!grouped[sectionKey]) {
+            grouped[sectionKey] = {
                 sequenceLabel: sequenceLabel,
                 deliveryLabel: deliveryLabel,
+                rooms: {},
+                totalVolume: 0
+            };
+        }
+
+        if (!grouped[sectionKey].rooms[roomKey]) {
+            grouped[sectionKey].rooms[roomKey] = {
+                roomName: entry.roomName || "-",
+                floorName: entry.floorName || "-",
                 entries: [],
                 totalVolume: 0
             };
         }
 
-        grouped[groupKey].entries.push(entry);
+        grouped[sectionKey].rooms[roomKey].entries.push(entry);
 
         if (!entry.excluded) {
-            grouped[groupKey].totalVolume += Number(entry.totalVolume || 0);
+            grouped[sectionKey].rooms[roomKey].totalVolume += Number(entry.totalVolume || 0);
+            grouped[sectionKey].totalVolume += Number(entry.totalVolume || 0);
         }
     });
 
-    return Object.values(grouped);
+    return Object.values(grouped).map(function(section) {
+        return {
+            sequenceLabel: section.sequenceLabel,
+            deliveryLabel: section.deliveryLabel,
+            totalVolume: section.totalVolume,
+            rooms: Object.values(section.rooms).map(function(room) {
+                return {
+                    roomName: room.roomName,
+                    floorName: room.floorName,
+                    totalVolume: room.totalVolume,
+                    entries: mergeListedInventoryEntries(room.entries)
+                };
+            })
+        };
+    });
 }
 
 function renderListedInventory() {
@@ -3912,36 +4061,64 @@ function renderListedInventory() {
     }
 
     container.innerHTML = groupedSections.map(function(section) {
-        const rows = section.entries.map(function(entry) {
-            const tags = [];
+        const roomBlocks = section.rooms.map(function(room) {
+            const rows = room.entries.map(function(entry) {
+                const tags = [];
 
-            if (entry.dismantle) tags.push("DISMANTLE");
-            if (entry.expWrap) tags.push("EXP WRAP");
-            if (entry.crated && entry.crateDims) {
-                tags.push(
-                    "CRATE: " +
-                    entry.crateDims.l + " x " +
-                    entry.crateDims.w + " x " +
-                    entry.crateDims.h + " " +
-                    entry.crateDims.unit
-                );
-            }
-            if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
-            if (entry.excluded) tags.push("EXCLUDED");
-            if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
+                if (entry.dismantle) tags.push("DISMANTLE");
+                if (entry.expWrap) tags.push("EXP WRAP");
+                if (entry.crated && entry.crateDims) {
+                    tags.push(
+                        "CRATE: " +
+                        entry.crateDims.l + " x " +
+                        entry.crateDims.w + " x " +
+                        entry.crateDims.h + " " +
+                        entry.crateDims.unit
+                    );
+                }
+                if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
+                if (entry.excluded) tags.push("EXCLUDED");
+                if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
 
-            const tagText = tags.length ? ` [${tags.join("] [")}]` : "";
-            const isExcluded = !!entry.excluded;
+                const tagText = tags.length ? ` [${tags.join("] [")}]` : "";
+                const isExcluded = !!entry.excluded;
+
+                return `
+                    <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
+                        <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">${entry.itemName || "-"}${tagText}</td>
+                        <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">${entry.qty || 0}</td>
+                        <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">${isExcluded ? '' : (entry.unitVolume || 0)}</td>
+                        <td class="py-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">${isExcluded ? '' : (entry.totalVolume || 0)}</td>
+                    </tr>
+                `;
+            }).join("");
 
             return `
-                <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
-                    <td class="py-2 pr-2 text-[10px] font-bold uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-slate-600'}">${entry.roomName || "-"}</td>
-                    <td class="py-2 pr-2 text-[10px] font-bold uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-slate-600'}">${entry.floorName || "-"}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">${entry.itemName || "-"}${tagText}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">${entry.qty || 0}</td>
-                    <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">${isExcluded ? '' : (entry.unitVolume || 0)}</td>
-                    <td class="py-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">${isExcluded ? '' : (entry.totalVolume || 0)}</td>
-                </tr>
+                <div class="listed-room-block mt-4">
+                    <div class="listed-room-head">
+                        <div>
+                            <div class="listed-room-title">${room.roomName}</div>
+                            <div class="text-[9px] font-bold text-slate-400 uppercase mt-1">Floor: ${room.floorName}</div>
+                        </div>
+                        <div class="listed-room-total">${room.totalVolume} CUFT</div>
+                    </div>
+
+                    <div class="p-4">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-slate-300">
+                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
+                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Qty</th>
+                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
+                                    <th class="text-left py-2 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             `;
         }).join("");
 
@@ -3953,21 +4130,7 @@ function renderListedInventory() {
                 </div>
 
                 <div class="p-4">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b border-slate-300">
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Room</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Floor</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Qty</th>
-                                <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
-                                <th class="text-left py-2 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
+                    ${roomBlocks}
 
                     <div class="mt-4 pt-3 border-t border-slate-200 text-right">
                         <span class="text-[10px] font-black text-slate-400 uppercase mr-2">Section Total</span>
@@ -4052,10 +4215,12 @@ window.onload = function () {
             placeholder="If none apply, enter damage note here..."
         ></textarea>
 
-        <div class="damage-actions">
-            <button type="button" class="damage-cancel-btn" onclick="closeDamageModal()">Cancel</button>
-            <button type="button" class="damage-save-btn" onclick="saveDamageModal()">Save Damage</button>
-        </div>
+        <div id="damage-error-text" class="modal-error-text"></div>
+
+<div class="damage-actions">
+    <button type="button" class="damage-cancel-btn" onclick="closeDamageModal()">Cancel</button>
+    <button type="button" class="damage-save-btn" onclick="saveDamageModal()">Save Damage</button>
+</div>
     </div>
 </div>
 <!-- MISC MODAL -->
@@ -4106,6 +4271,8 @@ window.onload = function () {
             placeholder="Type note here..."
         ></textarea>
 
+        <div id="note-error-text" class="modal-error-text"></div>
+
         <div class="note-actions">
             <button type="button" class="note-cancel-btn" onclick="closeNoteModal()">Cancel</button>
             <button type="button" class="note-save-btn" onclick="saveNoteModal()">Save Note</button>
@@ -4147,7 +4314,7 @@ window.onload = function () {
     </div>
 </div>
 
-<!-- SIMPLE INPUT MODAL -->
+<!-- SIMPLE INPUT MODAL --><!-- SIMPLE INPUT MODAL -->
 <div id="simple-input-overlay" class="simple-input-overlay" onclick="closeSimpleInputModal()">
     <div class="simple-input-panel" onclick="event.stopPropagation()">
         <div id="simple-input-title" class="simple-input-title">Enter Value</div>
@@ -4162,6 +4329,8 @@ window.onload = function () {
                 placeholder=""
             >
         </div>
+
+        <div id="simple-input-error-text" class="modal-error-text"></div>
 
         <div class="simple-input-actions">
             <button type="button" class="simple-input-cancel-btn" onclick="closeSimpleInputModal()">Cancel</button>

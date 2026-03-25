@@ -803,9 +803,103 @@
             color: #6d28d9;
         }
 
-        .listed-tag.wrap {
+               .listed-tag.wrap {
             background: #dcfce7;
             color: #166534;
+        }
+
+        /* --- SIMPLE INPUT MODAL --- */
+        .simple-input-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            align-items: center;
+            justify-content: center;
+            z-index: 2300;
+        }
+
+        .simple-input-panel {
+            width: 92%;
+            max-width: 360px;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+        }
+
+        .simple-input-title {
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #0f172a;
+            text-align: center;
+        }
+
+        .simple-input-subtitle {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #64748b;
+            text-align: center;
+            margin-top: 4px;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .simple-input-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .simple-input-field {
+            width: 100%;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            outline: none;
+            background: #fff;
+        }
+
+        .simple-input-field:focus {
+            border-color: #3b82f6;
+        }
+
+        .simple-input-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .simple-input-cancel-btn {
+            flex: 1;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .simple-input-save-btn {
+            flex: 1;
+            background: #3b82f6;
+            color: white;
+            border: 1px solid #2563eb;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
         }
     </style>
 </head>
@@ -1412,6 +1506,8 @@ let selectedDamageOption = "";
 let listedSequenceFilter = "__all__";
 let listedDeliveryFilter = "__all__";
 let listedTextFilter = "";
+let simpleInputMode = "";
+let simpleInputMeta = null;
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -1936,39 +2032,17 @@ function handleRoomChange(value) {
     }
 
     if (value === "__add_custom_room__") {
-        const customRoom = prompt("Enter custom room name:");
-
-        if (!customRoom) {
-            renderInventoryRoomDropdown();
-            resetInventoryQtyInput();
-            lastAddedItemName = null;
-            lastAddedRawEntryId = null;
-            return;
-        }
-
-        const cleanRoom = customRoom.trim();
-        if (!cleanRoom) {
-            renderInventoryRoomDropdown();
-            resetInventoryQtyInput();
-            lastAddedItemName = null;
-            lastAddedRawEntryId = null;
-            return;
-        }
-
-        const alreadyExists = getRoomOptions().some(
-            room => room.toLowerCase() === cleanRoom.toLowerCase()
-        );
-
-        if (!alreadyExists) {
-            currentJob.inventory.customRooms.push(cleanRoom);
-        }
-
-        currentJob.inventory.activeRoomName = cleanRoom;
         renderInventoryRoomDropdown();
-        resetInventoryQtyInput();
-        lastAddedItemName = null;
-        lastAddedRawEntryId = null;
-        saveToDevice();
+        openSimpleInputModal({
+            mode: "custom-room",
+            title: "Add Custom Room",
+            subtitle: "Add a room name not already in the list",
+            label: "Room Name",
+            placeholder: "e.g. Study",
+            value: "",
+            inputType: "text",
+            inputMode: "text"
+        });
         return;
     }
 
@@ -2043,63 +2117,39 @@ function handleFloorChange(value) {
     }
 
     if (value === "__add_numbered_floor__") {
-        const enteredNumber = prompt("Enter floor number:");
-        if (enteredNumber === null) {
-            renderInventoryFloorDropdown();
-            return;
-        }
-
-        const floorLabel = formatNumberedFloorLabel(enteredNumber.trim());
-        if (!floorLabel) {
-            renderInventoryFloorDropdown();
-            return;
-        }
-
-        const alreadyExists = getFloorOptions().some(
-            floor => floor.toLowerCase() === floorLabel.toLowerCase()
-        );
-
-        if (!alreadyExists) {
-            currentJob.inventory.customFloors.push(floorLabel);
-        }
-
-        currentJob.inventory.activeFloor = floorLabel;
         renderInventoryFloorDropdown();
-        saveToDevice();
+        openSimpleInputModal({
+            mode: "numbered-floor",
+            title: "Add Numbered Floor",
+            subtitle: "Enter a number and Photon will format the floor name",
+            label: "Floor Number",
+            placeholder: "e.g. 4",
+            value: "",
+            inputType: "number",
+            inputMode: "numeric"
+        });
         return;
     }
 
     if (value === "__add_custom_floor__") {
-        const customFloor = prompt("Enter custom floor name:");
-        if (!customFloor) {
-            renderInventoryFloorDropdown();
-            return;
-        }
-
-        const cleanFloor = customFloor.trim();
-        if (!cleanFloor) {
-            renderInventoryFloorDropdown();
-            return;
-        }
-
-        const alreadyExists = getFloorOptions().some(
-            floor => floor.toLowerCase() === cleanFloor.toLowerCase()
-        );
-
-        if (!alreadyExists) {
-            currentJob.inventory.customFloors.push(cleanFloor);
-        }
-
-        currentJob.inventory.activeFloor = cleanFloor;
         renderInventoryFloorDropdown();
-        saveToDevice();
+        openSimpleInputModal({
+            mode: "custom-floor",
+            title: "Add Custom Floor",
+            subtitle: "Add a floor name not already in the list",
+            label: "Floor Name",
+            placeholder: "e.g. Mezzanine",
+            value: "",
+            inputType: "text",
+            inputMode: "text"
+        });
         return;
     }
 
     currentJob.inventory.activeFloor = value;
     saveToDevice();
 }
-       function renderInventoryButtons() {
+    function renderInventoryButtons() {
     const grid = document.getElementById('inventory-button-grid');
     if (!grid) return;
 
@@ -2117,6 +2167,177 @@ function setInventoryCategory(category, btn) {
     if (btn) btn.classList.add('active');
 
     renderInventoryButtons();
+}
+
+function openSimpleInputModal(config) {
+    const overlay = document.getElementById("simple-input-overlay");
+    const title = document.getElementById("simple-input-title");
+    const subtitle = document.getElementById("simple-input-subtitle");
+    const label = document.getElementById("simple-input-label");
+    const input = document.getElementById("simple-input-field");
+
+    if (!overlay || !title || !subtitle || !label || !input) return;
+
+    simpleInputMode = config.mode || "";
+    simpleInputMeta = config.meta || null;
+
+    title.innerText = config.title || "Enter Value";
+    subtitle.innerText = config.subtitle || "";
+    label.innerText = config.label || "Value";
+    input.value = config.value || "";
+    input.placeholder = config.placeholder || "";
+    input.type = config.inputType || "text";
+    input.inputMode = config.inputMode || "text";
+
+    overlay.style.display = "flex";
+
+    setTimeout(function () {
+        input.focus();
+        input.select();
+    }, 50);
+}
+
+function closeSimpleInputModal() {
+    const overlay = document.getElementById("simple-input-overlay");
+    const input = document.getElementById("simple-input-field");
+
+    if (overlay) overlay.style.display = "none";
+    if (input) {
+        input.value = "";
+        input.type = "text";
+        input.inputMode = "text";
+        input.placeholder = "";
+    }
+
+    simpleInputMode = "";
+    simpleInputMeta = null;
+}
+
+function saveSimpleInputModal() {
+    const input = document.getElementById("simple-input-field");
+    if (!input || !currentJob) return;
+
+    const rawValue = input.value.trim();
+
+    if (simpleInputMode === "custom-room") {
+        if (!currentJob.inventory) currentJob.inventory = {};
+        if (!Array.isArray(currentJob.inventory.customRooms)) {
+            currentJob.inventory.customRooms = [];
+        }
+
+        if (!rawValue) return;
+
+        const alreadyExists = getRoomOptions().some(function(room) {
+            return room.toLowerCase() === rawValue.toLowerCase();
+        });
+
+        if (!alreadyExists) {
+            currentJob.inventory.customRooms.push(rawValue);
+        }
+
+        currentJob.inventory.activeRoomName = rawValue;
+        renderInventoryRoomDropdown();
+        resetInventoryQtyInput();
+        lastAddedItemName = null;
+        lastAddedRawEntryId = null;
+        saveToDevice();
+        closeSimpleInputModal();
+        return;
+    }
+
+    if (simpleInputMode === "numbered-floor") {
+        if (!currentJob.inventory) currentJob.inventory = {};
+        if (!Array.isArray(currentJob.inventory.customFloors)) {
+            currentJob.inventory.customFloors = [];
+        }
+
+        const floorLabel = formatNumberedFloorLabel(rawValue);
+        if (!floorLabel) return;
+
+        const alreadyExists = getFloorOptions().some(function(floor) {
+            return floor.toLowerCase() === floorLabel.toLowerCase();
+        });
+
+        if (!alreadyExists) {
+            currentJob.inventory.customFloors.push(floorLabel);
+        }
+
+        currentJob.inventory.activeFloor = floorLabel;
+        renderInventoryFloorDropdown();
+        saveToDevice();
+        closeSimpleInputModal();
+        return;
+    }
+
+    if (simpleInputMode === "custom-floor") {
+        if (!currentJob.inventory) currentJob.inventory = {};
+        if (!Array.isArray(currentJob.inventory.customFloors)) {
+            currentJob.inventory.customFloors = [];
+        }
+
+        if (!rawValue) return;
+
+        const alreadyExists = getFloorOptions().some(function(floor) {
+            return floor.toLowerCase() === rawValue.toLowerCase();
+        });
+
+        if (!alreadyExists) {
+            currentJob.inventory.customFloors.push(rawValue);
+        }
+
+        currentJob.inventory.activeFloor = rawValue;
+        renderInventoryFloorDropdown();
+        saveToDevice();
+        closeSimpleInputModal();
+        return;
+    }
+
+    if (simpleInputMode === "volume-override") {
+        if (!lastAddedItemName) return;
+
+        let item = inventoryItems.find(function(i) {
+            return i.item === lastAddedItemName;
+        });
+        if (!item) return;
+
+        const newVolume = parseFloat(rawValue);
+        if (isNaN(newVolume) || newVolume <= 0) return;
+
+        const previousVolume = item.volume;
+        item.volume = newVolume;
+
+        const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
+        let previousRawVolume = null;
+
+        if (rawEntry) {
+            previousRawVolume = rawEntry.unitVolume;
+            rawEntry.unitVolume = newVolume;
+            rawEntry.totalVolume = newVolume * rawEntry.qty;
+            saveToDevice();
+        }
+
+        currentItemVolume = item.excluded ? 0 : (item.volume * item.qty);
+        recalculateTotalVolume();
+
+        inventoryHistory.push({
+            type: "volume-edit",
+            itemName: item.item,
+            previousVolume: previousVolume,
+            newVolume: newVolume,
+            rawEntryId: lastAddedRawEntryId,
+            previousRawVolume: previousRawVolume
+        });
+
+        const labelText = item.displayName || item.item;
+        updateInventoryDisplay(item.qty + " X " + String(labelText).toUpperCase() + " @ " + newVolume + " CUFT");
+
+                triggerInventoryPulse("current", "blue");
+        triggerInventoryPulse("total", "blue");
+        triggerHaptic("medium");
+        updateUndoButtonState();
+
+        closeSimpleInputModal();
+    }
 }
         function renderSequenceUI() {
     const seq = currentJob.sequences.find(s => s.id == activeSeqId); 
@@ -3130,45 +3351,17 @@ function openVolumeOverride() {
     if (!item) return;
 
     const currentVolume = parseFloat(item.volume) || 0;
-    const entered = prompt("Enter new unit volume (cuft):", currentVolume);
 
-    if (entered === null) return;
-
-    const newVolume = parseFloat(entered);
-    if (isNaN(newVolume) || newVolume <= 0) return;
-
-    const previousVolume = item.volume;
-    item.volume = newVolume;
-
-    const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
-    let previousRawVolume = null;
-
-    if (rawEntry) {
-        previousRawVolume = rawEntry.unitVolume;
-        rawEntry.unitVolume = newVolume;
-        rawEntry.totalVolume = newVolume * rawEntry.qty;
-        saveToDevice();
-    }
-
-   currentItemVolume = item.excluded ? 0 : (item.volume * item.qty);
-recalculateTotalVolume();
-
-    inventoryHistory.push({
-        type: "volume-edit",
-        itemName: item.item,
-        previousVolume: previousVolume,
-        newVolume: newVolume,
-        rawEntryId: lastAddedRawEntryId,
-        previousRawVolume: previousRawVolume
+    openSimpleInputModal({
+        mode: "volume-override",
+        title: "Override Volume",
+        subtitle: "Set a new unit volume for the selected item",
+        label: "Unit Volume (CUFT)",
+        placeholder: "e.g. 12",
+        value: String(currentVolume),
+        inputType: "number",
+        inputMode: "decimal"
     });
-
-    const label = item.displayName || item.item;
-    updateInventoryDisplay(item.qty + " X " + String(label).toUpperCase() + " @ " + newVolume + " CUFT");
-
-    triggerInventoryPulse("current", "blue");
-    triggerInventoryPulse("total", "blue");
-    triggerHaptic("medium");
-    updateUndoButtonState();
 }
 function pulseInventoryButton(buttonEl) {
     if (!buttonEl) return;
@@ -3882,6 +4075,29 @@ window.onload = function () {
         <div class="crate-actions">
             <button type="button" class="crate-cancel-btn" onclick="closeCrateModal()">Cancel</button>
             <button type="button" class="crate-save-btn" onclick="saveCrateModal()">Apply Crate</button>
+        </div>
+    </div>
+</div>
+
+<!-- SIMPLE INPUT MODAL -->
+<div id="simple-input-overlay" class="simple-input-overlay" onclick="closeSimpleInputModal()">
+    <div class="simple-input-panel" onclick="event.stopPropagation()">
+        <div id="simple-input-title" class="simple-input-title">Enter Value</div>
+        <div id="simple-input-subtitle" class="simple-input-subtitle">Type a value to continue</div>
+
+        <div>
+            <label id="simple-input-label" class="simple-input-label" for="simple-input-field">Value</label>
+            <input
+                type="text"
+                id="simple-input-field"
+                class="simple-input-field"
+                placeholder=""
+            >
+        </div>
+
+        <div class="simple-input-actions">
+            <button type="button" class="simple-input-cancel-btn" onclick="closeSimpleInputModal()">Cancel</button>
+            <button type="button" class="simple-input-save-btn" onclick="saveSimpleInputModal()">Save</button>
         </div>
     </div>
 </div>

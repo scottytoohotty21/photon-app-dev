@@ -890,7 +890,7 @@
             text-transform: uppercase;
         }
 
-        .simple-input-save-btn {
+                .simple-input-save-btn {
             flex: 1;
             background: #3b82f6;
             color: white;
@@ -900,6 +900,20 @@
             font-size: 10px;
             font-weight: 900;
             text-transform: uppercase;
+        }
+
+        .modal-error-text {
+            display: none;
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            color: #b91c1c;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            line-height: 1.3;
         }
     </style>
 </head>
@@ -2833,6 +2847,7 @@ function addMiscItem() {
 
     nameInput.value = "";
     volumeInput.value = "";
+    setModalErrorText("misc-error-text", "");
 
     overlay.style.display = "flex";
 
@@ -2840,6 +2855,20 @@ function addMiscItem() {
         nameInput.focus();
     }, 50);
 }
+function setModalErrorText(elementId, message) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    if (!message) {
+        el.style.display = "none";
+        el.innerText = "";
+        return;
+    }
+
+    el.innerText = message;
+    el.style.display = "block";
+}
+
 function closeMiscModal() {
     const overlay = document.getElementById("misc-overlay");
     const nameInput = document.getElementById("misc-name-input");
@@ -2848,6 +2877,7 @@ function closeMiscModal() {
     if (overlay) overlay.style.display = "none";
     if (nameInput) nameInput.value = "";
     if (volumeInput) volumeInput.value = "";
+    setModalErrorText("misc-error-text", "");
 }
 
 function saveMiscModal() {
@@ -2862,8 +2892,22 @@ function saveMiscModal() {
     const cleanName = nameInput.value.trim();
     const unitVolume = parseFloat(volumeInput.value);
 
-    if (!cleanName) return;
-    if (isNaN(unitVolume) || unitVolume <= 0) return;
+    if (!cleanName && (!volumeInput.value || String(volumeInput.value).trim() === "")) {
+        setModalErrorText("misc-error-text", "Enter item name and unit volume");
+        return;
+    }
+
+    if (!cleanName) {
+        setModalErrorText("misc-error-text", "Enter an item name");
+        return;
+    }
+
+    if (isNaN(unitVolume) || unitVolume <= 0) {
+        setModalErrorText("misc-error-text", "Unit volume must be greater than 0");
+        return;
+    }
+
+    setModalErrorText("misc-error-text", "");
 
     const qty = 1;
     const miscKey = "MISC-" + cleanName.toUpperCase();
@@ -2962,6 +3006,7 @@ function addOrEditCrate() {
     lengthInput.value = existing.l || "";
     widthInput.value = existing.w || "";
     heightInput.value = existing.h || "";
+    setModalErrorText("crate-error-text", "");
 
     overlay.style.display = "flex";
 }
@@ -2975,6 +3020,8 @@ function closeCrateModal() {
     if (lengthInput) lengthInput.value = "";
     if (widthInput) widthInput.value = "";
     if (heightInput) heightInput.value = "";
+
+    setModalErrorText("crate-error-text", "");
 
     selectedCrateUnit = "IN";
     setCrateUnit("IN");
@@ -3005,9 +3052,26 @@ function saveCrateModal() {
     const w = parseFloat(widthInput.value);
     const h = parseFloat(heightInput.value);
 
-    if (isNaN(l) || isNaN(w) || isNaN(h) || l <= 0 || w <= 0 || h <= 0) {
+    if (
+        (!lengthInput.value || String(lengthInput.value).trim() === "") &&
+        (!widthInput.value || String(widthInput.value).trim() === "") &&
+        (!heightInput.value || String(heightInput.value).trim() === "")
+    ) {
+        setModalErrorText("crate-error-text", "Enter length, width and height");
         return;
     }
+
+    if (isNaN(l) || isNaN(w) || isNaN(h)) {
+        setModalErrorText("crate-error-text", "Enter valid crate dimensions");
+        return;
+    }
+
+    if (l <= 0 || w <= 0 || h <= 0) {
+        setModalErrorText("crate-error-text", "All dimensions must be greater than 0");
+        return;
+    }
+
+    setModalErrorText("crate-error-text", "");
 
     const previousCrated = !!rawEntry.crated;
     const previousDims = rawEntry.crateDims
@@ -4022,6 +4086,8 @@ window.onload = function () {
             >
         </div>
 
+        <div id="misc-error-text" class="modal-error-text"></div>
+
         <div class="misc-actions">
             <button type="button" class="misc-cancel-btn" onclick="closeMiscModal()">Cancel</button>
             <button type="button" class="misc-save-btn" onclick="saveMiscModal()">Add Item</button>
@@ -4071,6 +4137,8 @@ window.onload = function () {
                 <input type="number" id="crate-height" class="crate-field-input" placeholder="0">
             </div>
         </div>
+
+        <div id="crate-error-text" class="modal-error-text"></div>
 
         <div class="crate-actions">
             <button type="button" class="crate-cancel-btn" onclick="closeCrateModal()">Cancel</button>

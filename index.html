@@ -1522,6 +1522,13 @@ let listedDeliveryFilter = "__all__";
 let listedTextFilter = "";
 let simpleInputMode = "";
 let simpleInputMeta = null;
+function getDefaultSequenceId() {
+    if (!currentJob || !Array.isArray(currentJob.sequences) || currentJob.sequences.length === 0) {
+        return null;
+    }
+
+    return currentJob.sequences[0].id;
+}
 
         function saveToDevice() {
             localStorage.setItem('photon_jobs', JSON.stringify(jobs));
@@ -1597,11 +1604,12 @@ document.getElementById('hdr-ref').innerText =
 
     activePropId = currentJob.properties[0].id;
 
-    if (!currentJob.sequences || currentJob.sequences.length === 0) {
-        addSequence();
-    } else {
-        activeSeqId = currentJob.sequences[0].id;
-    }
+if (!currentJob.sequences || currentJob.sequences.length === 0) {
+    addSequence();
+    return;
+} else {
+    activeSeqId = getDefaultSequenceId();
+}
 
   if (!currentJob.inventory) currentJob.inventory = {};
 if (!Array.isArray(currentJob.inventory.items)) currentJob.inventory.items = [];
@@ -1708,12 +1716,14 @@ function renderInventorySequenceDropdown() {
     const dropdown = document.getElementById('inv-seq-select');
     if (!dropdown || !currentJob) return;
 
-    dropdown.innerHTML = currentJob.sequences.map((s, idx) => {
-        const moveLabel = s.moveType || 'New Sequence';
-        const packLabel = s.packOption || 'No Packing Set';
-        const label = `Seq #${idx + 1}: ${moveLabel} / ${packLabel}`;
-        return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
-    }).join('');
+  const defaultSeqId = activeSeqId || getDefaultSequenceId();
+
+dropdown.innerHTML = currentJob.sequences.map((s, idx) => {
+    const moveLabel = s.moveType || 'New Sequence';
+    const packLabel = s.packOption || 'No Packing Set';
+    const label = `Seq #${idx + 1}: ${moveLabel} / ${packLabel}`;
+    return `<option value="${s.id}" ${s.id == defaultSeqId ? 'selected' : ''}>${label}</option>`;
+}).join('');
 
 }
        function getActiveInventorySequence() {
@@ -2400,10 +2410,12 @@ function saveSimpleInputModal() {
             saveBtn.innerText = isSaved ? 'Change' : 'Save';
             saveBtn.className = `action-btn !h-12 !px-6 ${isSaved ? 'btn-change' : 'btn-save'}`;
 
-            document.getElementById('seq-switcher').innerHTML = currentJob.sequences.map((s, idx) => {
-                const label = s.moveType ? `Seq #${idx+1}: ${s.moveType}` : `Seq #${idx+1}: New Sequence`;
-                return `<option value="${s.id}" ${s.id == activeSeqId ? 'selected' : ''}>${label}</option>`;
-            }).join('');
+            const selectedSeqId = activeSeqId || getDefaultSequenceId();
+
+document.getElementById('seq-switcher').innerHTML = currentJob.sequences.map((s, idx) => {
+    const label = s.moveType ? `Seq #${idx+1}: ${s.moveType}` : `Seq #${idx+1}: New Sequence`;
+    return `<option value="${s.id}" ${s.id == selectedSeqId ? 'selected' : ''}>${label}</option>`;
+}).join('');
             
             document.getElementById('active-sequence-ui').innerHTML = `
                 <div class="grid grid-cols-2 gap-4">
@@ -2583,32 +2595,46 @@ function updatePropData(f, v) {
     document.getElementById('content-' + t).classList.remove('hidden');
     document.getElementById('nav-' + t).classList.add('active');
 
-    if (t === 'sequence') renderSequenceUI();
+    if (t === 'sequence') {
+    const defaultSeqId = getDefaultSequenceId();
+    if (defaultSeqId) {
+        activeSeqId = defaultSeqId;
+    }
+    renderSequenceUI();
+}
     if (t === 'address') renderAddressUI();
 
-    if (t === 'inventory') {
-        renderInventorySequenceDropdown();
-        renderInventoryDeliveryDropdown();
-        renderInventoryRoomDropdown();
-        renderInventoryFloorDropdown();
-        renderInventoryButtons();
-        rebuildLiveInventoryFromSequence(activeSeqId);
-        renderActionButtonStates();
-        updateUndoButtonState();
+   if (t === 'inventory') {
+    const defaultSeqId = getDefaultSequenceId();
+    if (defaultSeqId) {
+        activeSeqId = defaultSeqId;
     }
 
-    if (t === 'listed') {
-        listedSequenceFilter = activeSeqId ? String(activeSeqId) : "__all__";
-        listedDeliveryFilter =
-            currentJob &&
-            currentJob.inventory &&
-            currentJob.inventory.activeDeliveryId
-                ? String(currentJob.inventory.activeDeliveryId)
-                : "__all__";
-        listedTextFilter = "";
+    renderInventorySequenceDropdown();
+    renderInventoryDeliveryDropdown();
+    renderInventoryRoomDropdown();
+    renderInventoryFloorDropdown();
+    renderInventoryButtons();
+    rebuildLiveInventoryFromSequence(activeSeqId);
+    renderActionButtonStates();
+    updateUndoButtonState();
+}
 
-        renderListedInventory();
-    }
+if (t === 'listed') {
+    const defaultSeqId = getDefaultSequenceId();
+    listedSequenceFilter = defaultSeqId ? String(defaultSeqId) : "__all__";
+
+    listedDeliveryFilter =
+        currentJob &&
+        currentJob.inventory &&
+        currentJob.inventory.activeDeliveryId
+            ? String(currentJob.inventory.activeDeliveryId)
+            : "__all__";
+
+    listedTextFilter = "";
+
+    renderListedInventory();
+}
 }
 
 function splitManualName(fullName) {

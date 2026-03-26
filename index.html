@@ -1795,7 +1795,7 @@ function getInventoryDeliveryOptions() {
 
         return {
             id: deliveryId,
-            label: prop ? prop.label : 'Unknown Address'
+            label: prop ? getPropertyDisplayText(prop.id) : 'Unknown Address'
         };
     });
 }
@@ -2451,56 +2451,48 @@ function saveSimpleInputModal() {
     }
 
     if (simpleInputMode === "listed-edit-qty") {
-        const entryKey = simpleInputMeta && simpleInputMeta.entryKey;
-        const mergedEntry = window.__listedEntryMap && window.__listedEntryMap[entryKey];
-        if (!mergedEntry) return;
+    const entryKey = simpleInputMeta && simpleInputMeta.entryKey;
+    const mergedEntry = window.__listedEntryMap && window.__listedEntryMap[entryKey];
+    if (!mergedEntry) return;
 
-        const newQty = parseInt(rawValue, 10);
-        if (isNaN(newQty) || newQty < 1) {
-            setModalErrorText("simple-input-error-text", "Enter a valid quantity");
-            return;
-        }
-
-        const rawMatches = getRawEntriesForListedEntry(mergedEntry);
-        if (!rawMatches.length) return;
-
-        const currentTotalQty = rawMatches.reduce(function(sum, raw) {
-            return sum + Number(raw.qty || 0);
-        }, 0);
-
-        if (currentTotalQty < 1) return;
-
-        const ratio = newQty / currentTotalQty;
-
-        rawMatches.forEach(function(raw, index) {
-            let adjustedQty;
-
-            if (index === rawMatches.length - 1) {
-                const allocatedSoFar = rawMatches
-                    .slice(0, index)
-                    .reduce(function(sum, earlierRaw) {
-                        return sum + Number(earlierRaw.qty || 0);
-                    }, 0);
-
-                adjustedQty = Math.max(1, newQty - allocatedSoFar);
-            } else {
-                adjustedQty = Math.max(1, Math.round(Number(raw.qty || 0) * ratio));
-            }
-
-            raw.qty = adjustedQty;
-            raw.totalVolume = Number(raw.unitVolume || 0) * adjustedQty;
-        });
-
-        saveToDevice();
-
-        if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
-            rebuildLiveInventoryFromSequence(activeSeqId);
-        }
-
-        renderListedInventory();
-        closeSimpleInputModal();
+    const newQty = parseInt(rawValue, 10);
+    if (isNaN(newQty) || newQty < 1) {
+        setModalErrorText("simple-input-error-text", "Enter a valid quantity");
         return;
     }
+
+    const rawMatches = getRawEntriesForListedEntry(mergedEntry);
+    if (!rawMatches.length) return;
+
+    const currentTotalQty = rawMatches.reduce(function(sum, raw) {
+        return sum + Number(raw.qty || 0);
+    }, 0);
+
+    if (currentTotalQty < 1) return;
+
+    const qtyDifference = newQty - currentTotalQty;
+    const lastRaw = rawMatches[rawMatches.length - 1];
+    const lastRawCurrentQty = Number(lastRaw.qty || 0);
+    const newLastRawQty = lastRawCurrentQty + qtyDifference;
+
+    if (newLastRawQty < 1) {
+        setModalErrorText("simple-input-error-text", "Quantity is too low for this merged line");
+        return;
+    }
+
+    lastRaw.qty = newLastRawQty;
+    lastRaw.totalVolume = Number(lastRaw.unitVolume || 0) * newLastRawQty;
+
+    saveToDevice();
+
+    if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
+        rebuildLiveInventoryFromSequence(activeSeqId);
+    }
+
+    renderListedInventory();
+    closeSimpleInputModal();
+    return;
+}
 
     if (simpleInputMode === "listed-edit-note") {
         const entryKey = simpleInputMeta && simpleInputMeta.entryKey;
@@ -2562,11 +2554,11 @@ document.getElementById('seq-switcher').innerHTML = currentJob.sequences.map((s,
                 </div>
                 <div class="space-y-6 pt-4 border-t border-slate-200">
                     <div><label class="mini-label !text-blue-500 font-black">Collection Points</label>
-                        ${seq.collections.map((cId, i) => `<div class="flex gap-2 mb-2"><select ${status} onchange="updateStop('collections', ${i}, this.value)" class="input-field bg-blue-50">${currentJob.properties.map(p => `<option value="${p.id}" ${cId==p.id?'selected':''}>${p.label}</option>`).join('')}</select>${i>0&&!isSaved?`<button onclick="removeStop('collections',${i})" class="px-2 text-red-500">×</button>`:''}</div>`).join('')}
+                        ${seq.collections.map((cId, i) => `<div class="flex gap-2 mb-2"><select ${status} onchange="updateStop('collections', ${i}, this.value)" class="input-field bg-blue-50">${currentJob.properties.map(p => `<option value="${p.id}" ${cId==p.id?'selected':''}>${getPropertyDisplayText(p.id)}</option>`).join('')}</select>${i>0&&!isSaved?`<button onclick="removeStop('collections',${i})" class="px-2 text-red-500">×</button>`:''}</div>`).join('')}
                         ${!isSaved ? `<button onclick="addStop('collections')" class="add-stop-btn">+ Add Collection Stop</button>` : ''}
                     </div>
                     <div><label class="mini-label !text-green-600 font-black">Delivery Points</label>
-                        ${seq.deliveries.map((dId, i) => `<div class="flex gap-2 mb-2"><select ${status} onchange="updateStop('deliveries', ${i}, this.value)" class="input-field bg-green-50">${currentJob.properties.map(p => `<option value="${p.id}" ${dId==p.id?'selected':''}>${p.label}</option>`).join('')}</select>${i>0&&!isSaved?`<button onclick="removeStop('deliveries',${i})" class="px-2 text-red-500">×</button>`:''}</div>`).join('')}
+                        ${seq.deliveries.map((dId, i) => `<div class="flex gap-2 mb-2"><select ${status} onchange="updateStop('deliveries', ${i}, this.value)" class="input-field bg-green-50">${currentJob.properties.map(p => `<option value="${p.id}" ${dId==p.id?'selected':''}>${getPropertyDisplayText(p.id)}</option>`).join('')}</select>${i>0&&!isSaved?`<button onclick="removeStop('deliveries',${i})" class="px-2 text-red-500">×</button>`:''}</div>`).join('')}
                         ${!isSaved ? `<button onclick="addStop('deliveries')" class="add-stop-btn">+ Add Delivery Stop</button>` : ''}
                     </div>
                 </div>`;
@@ -3894,6 +3886,20 @@ function updateInventoryDisplay(logText = "No items added") {
         totalVolBox.innerText = totalVolume;
     }
 }
+function getPropertyDisplayText(propertyId) {
+    if (!currentJob || !Array.isArray(currentJob.properties)) return "Unknown Address";
+
+    const prop = currentJob.properties.find(function(p) {
+        return String(p.id) === String(propertyId);
+    });
+
+    if (!prop) return "Unknown Address";
+
+    const line1 = String(prop.line1 || "").trim();
+    const label = String(prop.label || "").trim();
+
+    return line1 || label || "Unknown Address";
+}
                  function getPropertyLabelById(propertyId) {
     if (!currentJob || !Array.isArray(currentJob.properties)) return "Unknown Address";
 
@@ -3901,7 +3907,7 @@ function updateInventoryDisplay(logText = "No items added") {
         return String(p.id) === String(propertyId);
     });
 
-    return prop ? prop.label : "Unknown Address";
+    return prop ? getPropertyDisplayText(prop.id) : "Unknown Address";
 }
 
 function getSequenceLabelById(sequenceId) {
@@ -3929,21 +3935,24 @@ function getListedInventoryItems() {
 }
 
 function getListedSequenceFilterOptions(items) {
-    const seen = {};
-    const options = [];
+    if (!currentJob || !Array.isArray(currentJob.sequences)) return [];
 
+    const itemSequenceIds = {};
     items.forEach(function(entry) {
         const key = String(entry.sequenceId || "");
-        if (!key || seen[key]) return;
-
-        seen[key] = true;
-        options.push({
-            value: key,
-            label: getSequenceLabelById(key)
-        });
+        if (key) itemSequenceIds[key] = true;
     });
 
-    return options;
+    return currentJob.sequences
+        .filter(function(seq) {
+            return itemSequenceIds[String(seq.id)];
+        })
+        .map(function(seq) {
+            return {
+                value: String(seq.id),
+                label: getSequenceLabelById(seq.id)
+            };
+        });
 }
 
 function getListedDeliveryFilterOptions(items) {
@@ -4172,6 +4181,8 @@ function getListedEntryMergeKey(entry) {
         : "";
 
     return [
+        entry.sequenceId || "",
+        entry.deliveryId || "",
         entry.roomName || "",
         entry.floorName || "",
         entry.itemName || "",

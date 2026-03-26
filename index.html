@@ -1152,7 +1152,7 @@ Enter as: Surname, First Name
         </div>
     </div>
 
-    <div id="listed-summary-bar" class="grid grid-cols-3 gap-3 mb-4"></div>
+    <div id="listed-summary-bar" class="grid grid-cols-1 gap-3 mb-4"></div>
 
     <div id="listed-inventory-output" class="space-y-4">
         <div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory saved</div>
@@ -1626,6 +1626,8 @@ if (!currentJob.sequences || currentJob.sequences.length === 0) {
 } else {
     setActiveSequenceToDefault();
 }
+if (!currentJob.inventory) currentJob.inventory = {};
+currentJob.inventory.activeDeliveryId = null;
 
   if (!currentJob.inventory) currentJob.inventory = {};
 if (!Array.isArray(currentJob.inventory.items)) currentJob.inventory.items = [];
@@ -2594,6 +2596,9 @@ function updatePropData(f, v) {
      function loadSequence(id) {
     activeSeqId = id;
 
+    if (!currentJob.inventory) currentJob.inventory = {};
+    currentJob.inventory.activeDeliveryId = null;
+
     const qtyInput = document.getElementById("inv-qty");
     if (qtyInput) qtyInput.value = 1;
 
@@ -2602,6 +2607,7 @@ function updatePropData(f, v) {
     renderInventoryDeliveryDropdown();
 
     rebuildLiveInventoryFromSequence(activeSeqId);
+    saveToDevice();
 }
         function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
         
@@ -2619,6 +2625,9 @@ function updatePropData(f, v) {
 
   if (t === 'inventory') {
     setActiveSequenceToDefault();
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    currentJob.inventory.activeDeliveryId = null;
 
     renderInventorySequenceDropdown();
     renderInventoryDeliveryDropdown();
@@ -4009,19 +4018,53 @@ function renderListedSummary(summary) {
             <div class="listed-stat-value">${summary.includedVolume}</div>
             <div class="listed-stat-sub">Cuft counted</div>
         </div>
-        <div class="listed-stat-card">
-            <div class="listed-stat-label">Saved Lines</div>
-            <div class="listed-stat-value">${summary.lineCount}</div>
-            <div class="listed-stat-sub">Raw records shown</div>
-        </div>
-        <div class="listed-stat-card">
-            <div class="listed-stat-label">Excluded Lines</div>
-            <div class="listed-stat-value">${summary.excludedCount}</div>
-            <div class="listed-stat-sub">Not in total volume</div>
-        </div>
     `;
 }
 
+function getListedBoxOrder(itemName) {
+    const name = String(itemName || "").toUpperCase().trim();
+
+    if (name === "AP BOX") return 1;
+    if (name === "CG BOX") return 2;
+    if (name === "BOOK BOX") return 3;
+    if (name === "LINEN BOX") return 4;
+    if (name === "WR BOX") return 5;
+
+    return 999;
+}
+
+function isListedBoxItem(itemName) {
+    return getListedBoxOrder(itemName) !== 999;
+}
+
+function sortListedRoomEntries(entries) {
+    return entries.slice().sort(function(a, b) {
+        const aExcluded = !!a.excluded;
+        const bExcluded = !!b.excluded;
+
+        // excluded always last
+        if (aExcluded !== bExcluded) {
+            return aExcluded ? 1 : -1;
+        }
+
+        const aIsBox = isListedBoxItem(a.itemName);
+        const bIsBox = isListedBoxItem(b.itemName);
+
+        // normal items before boxes
+        if (aIsBox !== bIsBox) {
+            return aIsBox ? 1 : -1;
+        }
+
+        // box order: AP / CG / BOOK / LINEN / WR
+        if (aIsBox && bIsBox) {
+            const boxDiff = getListedBoxOrder(a.itemName) - getListedBoxOrder(b.itemName);
+            if (boxDiff !== 0) return boxDiff;
+        }
+
+        // fallback alphabetical
+        return String(a.itemName || "").localeCompare(String(b.itemName || ""));
+    });
+}
 function groupInventoryItemsForListedView(items) {
     const grouped = {};
 
@@ -4067,7 +4110,7 @@ function groupInventoryItemsForListedView(items) {
                     roomName: room.roomName,
                     floorName: room.floorName,
                     totalVolume: room.totalVolume,
-                    entries: mergeListedInventoryEntries(room.entries)
+                    entries: sortListedRoomEntries(mergeListedInventoryEntries(room.entries))
                 };
             })
         };
@@ -4120,13 +4163,21 @@ function renderListedInventory() {
                 const isExcluded = !!entry.excluded;
 
                 return `
-                    <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
-                        <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">${entry.itemName || "-"}${tagText}</td>
-                        <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">${entry.qty || 0}</td>
-                        <td class="py-2 pr-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">${isExcluded ? '' : (entry.unitVolume || 0)}</td>
-                        <td class="py-2 text-[10px] font-black uppercase ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">${isExcluded ? '' : (entry.totalVolume || 0)}</td>
-                    </tr>
-                `;
+    <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
+        <td class="py-2 pr-2 text-[10px] font-black uppercase align-top break-words ${isExcluded ? 'text-slate-500 italic' : 'text-slate-900'}">
+            ${entry.itemName || "-"}${tagText}
+        </td>
+        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">
+            ${entry.qty || 0}
+        </td>
+        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">
+            ${isExcluded ? '' : (entry.unitVolume || 0)}
+        </td>
+        <td class="py-2 pl-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">
+            ${isExcluded ? '' : (entry.totalVolume || 0)}
+        </td>
+    </tr>
+`;
             }).join("");
 
             return `
@@ -4140,15 +4191,15 @@ function renderListedInventory() {
                     </div>
 
                     <div class="p-4">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b border-slate-300">
-                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
-                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Qty</th>
-                                    <th class="text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
-                                    <th class="text-left py-2 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
-                                </tr>
-                            </thead>
+    <table class="w-full table-fixed">
+        <thead>
+            <tr class="border-b border-slate-300">
+                <th class="w-[52%] text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
+                <th class="w-[12%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Qty</th>
+                <th class="w-[16%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
+                <th class="w-[20%] text-center py-2 pl-1 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
+            </tr>
+        </thead>
                             <tbody>
                                 ${rows}
                             </tbody>

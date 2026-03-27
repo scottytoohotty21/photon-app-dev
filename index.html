@@ -947,6 +947,89 @@
     font-size: 14px;
     font-weight: 900;
 }
+.signature-wrap {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #fff;
+    padding: 12px;
+}
+
+.signature-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.signature-title {
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #0f172a;
+}
+
+.signature-subtitle {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.signature-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.signature-btn {
+    min-width: 60px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.signature-btn.save {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.signature-btn.clear {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.signature-pad-shell {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.signature-pad {
+    display: block;
+    width: 100%;
+    height: 140px;
+    touch-action: none;
+    background: #ffffff;
+}
+
+.signature-meta {
+    margin-top: 8px;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
     </style>
 </head>
 <body class="p-4 pb-12">
@@ -1157,11 +1240,18 @@ Enter as: Surname, First Name
 
 <section id="content-listed" class="tab-content hidden bg-white p-5 rounded-2xl shadow-inner">
     <div class="flex items-center justify-between mb-4">
-        <div>
-            <div class="text-sm font-black text-slate-900 uppercase">Listed Inventory</div>
-            <div class="text-[10px] font-bold text-slate-400 uppercase">Saved inventory records grouped for quick review</div>
-        </div>
+    <div>
+        <div class="text-sm font-black text-slate-900 uppercase">Listed Inventory</div>
+        <div class="text-[10px] font-bold text-slate-400 uppercase">Saved inventory records grouped for quick review</div>
     </div>
+
+    <button
+        onclick="printListedInventoryPdf()"
+        class="bg-blue-600 text-white px-4 py-3 rounded-xl font-black text-[10px] uppercase"
+    >
+        Export PDF
+    </button>
+</div>
 
     <div class="grid grid-cols-12 gap-3 mb-4">
         <div class="col-span-4">
@@ -1184,11 +1274,11 @@ Enter as: Surname, First Name
         </div>
     </div>
 
-    <div id="listed-summary-bar" class="grid grid-cols-1 gap-3 mb-4"></div>
-
     <div id="listed-inventory-output" class="space-y-4">
-        <div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory saved</div>
-    </div>
+    <div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory saved</div>
+</div>
+
+<div id="listed-footer-summary" class="grid grid-cols-2 gap-3 mt-4"></div>
 </section>
    <section id="content-schedule" class="tab-content hidden bg-white p-6 rounded-2xl shadow-inner">
 
@@ -1481,19 +1571,24 @@ const inventoryCategories = {
             estimatedHours: 0
         },
 
-        costing: {
-            crewCost: 0,
-            vehicleCost: 0,
-            otherCosts: 0,
-            totalCost: 0
-        },
+       costing: {
+    crewCost: 0,
+    vehicleCost: 0,
+    otherCosts: 0,
+    totalCost: 0
+},
 
-        sync: {
-            uploaded: false,
-            lastUploadedAt: "",
-            cloudId: "",
-            crmId: ""
-        },
+signature: {
+    image: "",
+    signedAt: ""
+},
+
+sync: {
+    uploaded: false,
+    lastUploadedAt: "",
+    cloudId: "",
+    crmId: ""
+},
 
         // current app compatibility
         name: "",
@@ -1554,6 +1649,11 @@ let listedDeliveryFilter = "__all__";
 let listedTextFilter = "";
 let simpleInputMode = "";
 let simpleInputMeta = null;
+let signaturePad = null;
+let signaturePadCtx = null;
+let signatureDrawing = false;
+let signatureLastX = 0;
+let signatureLastY = 0;
 function getDefaultSequenceId() {
     if (!currentJob || !Array.isArray(currentJob.sequences) || currentJob.sequences.length === 0) {
         return null;
@@ -4239,18 +4339,145 @@ function buildListedSummary(items) {
         lineCount: lineCount
     };
 }
+function buildMaterialsSummary(items) {
+    const summary = {
+        apBoxes: 0,
+        cgBoxes: 0,
+        bookBoxes: 0,
+        linenBoxes: 0,
+        wrBoxes: 0,
 
-function renderListedSummary(summary) {
-    const bar = document.getElementById("listed-summary-bar");
-    if (!bar) return;
+        singleMattressBags: 0,
+        doubleMattressBags: 0,
+        kingMattressBags: 0,
 
-    bar.innerHTML = `
-        <div class="listed-stat-card">
-            <div class="listed-stat-label">Included Volume</div>
-            <div class="listed-stat-value">${summary.includedVolume}</div>
-            <div class="listed-stat-sub">Cuft counted</div>
+        armchairCovers: 0,
+        sofa2Covers: 0,
+        sofa3Covers: 0,
+        sofa4Covers: 0,
+
+        mirrorPicturePacks: 0,
+        wineDividers: 0
+    };
+
+    items.forEach(function(entry) {
+        if (entry.excluded) return;
+
+        const itemName = String(entry.itemName || "").toUpperCase().trim();
+        const qty = Number(entry.qty || 0);
+
+        // entered box totals
+        if (itemName === "AP BOX") summary.apBoxes += qty;
+        if (itemName === "CG BOX") summary.cgBoxes += qty;
+        if (itemName === "BOOK BOX") summary.bookBoxes += qty;
+        if (itemName === "LINEN BOX") summary.linenBoxes += qty;
+        if (itemName === "WR BOX") summary.wrBoxes += qty;
+
+        // auto materials from furniture
+        if (itemName === "BED (SINGLE)") summary.singleMattressBags += qty;
+        if (itemName === "BED (DOUBLE)") summary.doubleMattressBags += qty;
+        if (itemName === "BED (KING)") summary.kingMattressBags += qty;
+
+        if (itemName === "ARMCHAIR") summary.armchairCovers += qty;
+        if (itemName === "SOFA 2 SEAT") summary.sofa2Covers += qty;
+        if (itemName === "SOFA 3 SEAT") summary.sofa3Covers += qty;
+        if (itemName === "SOFA 4 SEAT") summary.sofa4Covers += qty;
+
+        // optional specials if these items exist in inventory later
+        if (itemName === "MIRROR / PICTURE PACK") summary.mirrorPicturePacks += qty;
+        if (itemName === "WINE DIVIDER") summary.wineDividers += qty;
+
+        // extra mattress rules
+        if (itemName === "BUNK BED") summary.singleMattressBags += (qty * 2);
+        if (itemName === "TRUNDLE BED") summary.singleMattressBags += (qty * 2);
+    });
+
+    return summary;
+}
+function renderListedSummary(summary, materials) {
+    const topBar = document.getElementById("listed-summary-bar");
+    const footerBar = document.getElementById("listed-footer-summary");
+
+    if (topBar) {
+        topBar.innerHTML = "";
+    }
+
+    if (!footerBar) return;
+
+    footerBar.innerHTML = `
+        <div class="signature-wrap">
+    <div class="signature-head">
+        <div>
+            <div class="signature-title">Customer Signature</div>
+            <div class="signature-subtitle">Sign with finger or stylus</div>
+        </div>
+
+        <div class="signature-actions">
+            <button class="signature-btn clear" onclick="clearSignaturePad()">Clear</button>
+            <button class="signature-btn save" onclick="saveSignaturePad()">Save</button>
+        </div>
+    </div>
+
+    <div class="signature-pad-shell">
+        <canvas id="signature-pad" class="signature-pad"></canvas>
+    </div>
+
+    <div class="signature-meta">
+        Signed:
+        <span id="signature-signed-at">
+            ${
+                currentJob && currentJob.signature && currentJob.signature.signedAt
+                    ? new Date(currentJob.signature.signedAt).toLocaleString("en-GB")
+                    : "Not signed"
+            }
+        </span>
+    </div>
+</div>
+
+        <div class="listed-footer-stack">
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Included Volume</div>
+                <div class="listed-stat-value">${summary.includedVolume}</div>
+                <div class="listed-stat-sub">Cuft counted</div>
+            </div>
+
+           <div class="listed-stat-card">
+    <div class="listed-stat-label">Materials Summary</div>
+
+    <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5">
+        <div class="space-y-1">
+            <div class="text-slate-400 pb-1">Cartons</div>
+            <div>AP Boxes: ${materials.apBoxes}</div>
+            <div>CG Boxes: ${materials.cgBoxes}</div>
+            <div>Book Boxes: ${materials.bookBoxes}</div>
+            <div>Linen Boxes: ${materials.linenBoxes}</div>
+            <div>WR Boxes: ${materials.wrBoxes}</div>
+
+            <div class="pt-2 text-slate-400">Mattress Bags</div>
+            <div>Single: ${materials.singleMattressBags}</div>
+            <div>Double: ${materials.doubleMattressBags}</div>
+            <div>King: ${materials.kingMattressBags}</div>
+        </div>
+
+        <div class="space-y-1">
+            <div class="text-slate-400 pb-1">Sofa Covers</div>
+            <div>Armchair: ${materials.armchairCovers}</div>
+            <div>2-Seater: ${materials.sofa2Covers}</div>
+            <div>3-Seater: ${materials.sofa3Covers}</div>
+            <div>4-Seater: ${materials.sofa4Covers}</div>
+
+            <div class="pt-2 text-slate-400">Special Packs</div>
+            <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
+            <div>Wine Dividers: ${materials.wineDividers}</div>
+        </div>
+    </div>
+</div>
         </div>
     `;
+
+    setTimeout(function() {
+        initSignaturePad();
+    }, 0);
 }
 
 function getListedBoxOrder(itemName) {
@@ -4357,7 +4584,9 @@ function renderListedInventory() {
     renderListedInventoryFilters(allItems);
 
     const filteredItems = filterListedInventoryItems(allItems);
-    renderListedSummary(buildListedSummary(filteredItems));
+    const listedSummary = buildListedSummary(filteredItems);
+const materialsSummary = buildMaterialsSummary(filteredItems);
+renderListedSummary(listedSummary, materialsSummary);
 
     if (filteredItems.length === 0) {
         container.innerHTML = `<div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory matches current view</div>`;
@@ -4522,6 +4751,601 @@ function syncLiveInventoryFromRawForActiveSequence() {
     recalculateTotalVolume();
 }
 
+function initSignaturePad() {
+    const canvas = document.getElementById("signature-pad");
+    if (!canvas) return;
+
+    signaturePad = canvas;
+    signaturePadCtx = canvas.getContext("2d");
+
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = 140;
+
+    signaturePadCtx.lineCap = "round";
+    signaturePadCtx.lineJoin = "round";
+    signaturePadCtx.lineWidth = 2.5;
+    signaturePadCtx.strokeStyle = "#0f172a";
+
+    signaturePadCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (currentJob && currentJob.signature && currentJob.signature.image) {
+        loadSignatureImageToCanvas(currentJob.signature.image);
+    }
+
+    canvas.onmousedown = startSignatureDraw;
+    canvas.onmousemove = moveSignatureDraw;
+    canvas.onmouseup = endSignatureDraw;
+    canvas.onmouseleave = endSignatureDraw;
+
+    canvas.ontouchstart = startSignatureDraw;
+    canvas.ontouchmove = moveSignatureDraw;
+    canvas.ontouchend = endSignatureDraw;
+}
+
+function getSignaturePoint(e) {
+    if (!signaturePad) return { x: 0, y: 0 };
+
+    const rect = signaturePad.getBoundingClientRect();
+
+    if (e.touches && e.touches.length > 0) {
+        return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+        };
+    }
+
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+}
+
+function startSignatureDraw(e) {
+    if (!signaturePadCtx) return;
+
+    e.preventDefault();
+
+    const point = getSignaturePoint(e);
+    signatureDrawing = true;
+    signatureLastX = point.x;
+    signatureLastY = point.y;
+}
+
+function moveSignatureDraw(e) {
+    if (!signatureDrawing || !signaturePadCtx) return;
+
+    e.preventDefault();
+
+    const point = getSignaturePoint(e);
+
+    signaturePadCtx.beginPath();
+    signaturePadCtx.moveTo(signatureLastX, signatureLastY);
+    signaturePadCtx.lineTo(point.x, point.y);
+    signaturePadCtx.stroke();
+
+    signatureLastX = point.x;
+    signatureLastY = point.y;
+}
+
+function endSignatureDraw(e) {
+    if (!signatureDrawing) return;
+    if (e) e.preventDefault();
+
+    signatureDrawing = false;
+}
+
+function clearSignaturePad() {
+    if (!signaturePad || !signaturePadCtx || !currentJob) return;
+
+    signaturePadCtx.clearRect(0, 0, signaturePad.width, signaturePad.height);
+
+    if (!currentJob.signature) {
+        currentJob.signature = { image: "", signedAt: "" };
+    }
+
+    currentJob.signature.image = "";
+    currentJob.signature.signedAt = "";
+
+    const signedAtEl = document.getElementById("signature-signed-at");
+    if (signedAtEl) signedAtEl.innerText = "Not signed";
+
+    saveToDevice();
+}
+
+function saveSignaturePad() {
+    if (!signaturePad || !currentJob) return;
+
+    if (!currentJob.signature) {
+        currentJob.signature = { image: "", signedAt: "" };
+    }
+
+    currentJob.signature.image = signaturePad.toDataURL("image/png");
+    currentJob.signature.signedAt = new Date().toISOString();
+
+    const signedAtEl = document.getElementById("signature-signed-at");
+    if (signedAtEl) {
+        signedAtEl.innerText = new Date(currentJob.signature.signedAt).toLocaleString("en-GB");
+    }
+
+    saveToDevice();
+    updateInventoryDisplay("SIGNATURE SAVED");
+}
+
+function loadSignatureImageToCanvas(imageData) {
+    if (!signaturePadCtx || !signaturePad) return;
+    if (!imageData) return;
+
+    const img = new Image();
+    img.onload = function() {
+        signaturePadCtx.clearRect(0, 0, signaturePad.width, signaturePad.height);
+        signaturePadCtx.drawImage(img, 0, 0, signaturePad.width, signaturePad.height);
+    };
+    img.src = imageData;
+}
+function getPrintableListedSections(items) {
+    const groupedSections = groupInventoryItemsForListedView(items);
+
+    return groupedSections.map(function(section) {
+        const roomBlocks = section.rooms.map(function(room) {
+            const rows = room.entries.map(function(entry) {
+                const tags = [];
+
+                if (entry.dismantle) tags.push("DISMANTLE");
+                if (entry.expWrap) tags.push("EXP WRAP");
+                if (entry.crated && entry.crateDims) {
+                    tags.push(
+                        "CRATE: " +
+                        entry.crateDims.l + " x " +
+                        entry.crateDims.w + " x " +
+                        entry.crateDims.h + " " +
+                        entry.crateDims.unit
+                    );
+                }
+                if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
+                if (entry.excluded) tags.push("EXCLUDED");
+                if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
+
+                const tagText = tags.length ? " [" + tags.join("] [") + "]" : "";
+                const isExcluded = !!entry.excluded;
+
+                return `
+                    <tr>
+                        <td class="item-cell ${isExcluded ? 'excluded' : ''}">
+                            ${escapeHtml(entry.itemName || "-")}${escapeHtml(tagText)}
+                        </td>
+                        <td class="num-cell ${isExcluded ? 'excluded' : ''}">${entry.qty || 0}</td>
+                        <td class="num-cell ${isExcluded ? 'excluded' : ''}">${isExcluded ? "" : (entry.unitVolume || 0)}</td>
+                        <td class="num-cell ${isExcluded ? 'excluded' : ''}">${isExcluded ? "" : (entry.totalVolume || 0)}</td>
+                    </tr>
+                `;
+            }).join("");
+
+            return `
+                <div class="pdf-room-block">
+                    <div class="pdf-room-head">
+                        <div>
+                            <div class="pdf-room-title">${escapeHtml(room.roomName)}</div>
+                            <div class="pdf-room-floor">Floor: ${escapeHtml(room.floorName)}</div>
+                        </div>
+                        <div class="pdf-room-total">${room.totalVolume} CUFT</div>
+                    </div>
+
+                    <table class="pdf-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Unit Vol</th>
+                                <th>Total Vol</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }).join("");
+
+        return `
+            <div class="pdf-section">
+                <div class="pdf-section-head">
+                    <div class="pdf-section-title">${escapeHtml(section.sequenceLabel)}</div>
+                    <div class="pdf-section-subtitle">Delivery To: ${escapeHtml(section.deliveryLabel)}</div>
+                </div>
+
+                <div class="pdf-section-body">
+                    ${roomBlocks}
+                    <div class="pdf-section-total">
+                        <span>Section Total</span>
+                        <strong>${section.totalVolume} CUFT</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function getPrintableMaterialsHtml(materials) {
+    return `
+        <div class="pdf-materials-grid">
+            <div>
+                <div class="pdf-mini-head">Cartons</div>
+                <div>AP Boxes: ${materials.apBoxes}</div>
+                <div>CG Boxes: ${materials.cgBoxes}</div>
+                <div>Book Boxes: ${materials.bookBoxes}</div>
+                <div>Linen Boxes: ${materials.linenBoxes}</div>
+                <div>WR Boxes: ${materials.wrBoxes}</div>
+
+                <div class="pdf-mini-head space-top">Mattress Bags</div>
+                <div>Single: ${materials.singleMattressBags}</div>
+                <div>Double: ${materials.doubleMattressBags}</div>
+                <div>King: ${materials.kingMattressBags}</div>
+            </div>
+
+            <div>
+                <div class="pdf-mini-head">Sofa Covers</div>
+                <div>Armchair: ${materials.armchairCovers}</div>
+                <div>2-Seater: ${materials.sofa2Covers}</div>
+                <div>3-Seater: ${materials.sofa3Covers}</div>
+                <div>4-Seater: ${materials.sofa4Covers}</div>
+
+                <div class="pdf-mini-head space-top">Special Packs</div>
+                <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
+                <div>Wine Dividers: ${materials.wineDividers}</div>
+            </div>
+        </div>
+    `;
+}
+
+function printListedInventoryPdf() {
+    if (!currentJob) return;
+
+    const allItems = getListedInventoryItems();
+    const filteredItems = filterListedInventoryItems(allItems);
+
+    if (!filteredItems.length) {
+        alert("No listed inventory to export.");
+        return;
+    }
+
+    const listedSummary = buildListedSummary(filteredItems);
+    const materialsSummary = buildMaterialsSummary(filteredItems);
+    const sectionsHtml = getPrintableListedSections(filteredItems);
+
+    const customerName =
+        (currentJob.customer && currentJob.customer.displayName) ||
+        currentJob.name ||
+        "---";
+
+    const reference = currentJob.ref || "---";
+
+    const seqLabel =
+        listedSequenceFilter === "__all__"
+            ? "All Sequences"
+            : getSequenceLabelById(listedSequenceFilter);
+
+    const deliveryLabel =
+        listedDeliveryFilter === "__all__"
+            ? "All Deliveries"
+            : getPropertyLabelById(listedDeliveryFilter);
+
+    const signedAt =
+        currentJob.signature && currentJob.signature.signedAt
+            ? new Date(currentJob.signature.signedAt).toLocaleString("en-GB")
+            : "Not signed";
+
+    const signatureHtml =
+        currentJob.signature && currentJob.signature.image
+            ? `<img src="${currentJob.signature.image}" class="pdf-signature-image" alt="Signature">`
+            : `<div class="pdf-signature-empty">No signature saved</div>`;
+
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+        alert("Popup blocked. Please allow popups and try again.");
+        return;
+    }
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Photon Listed Inventory PDF</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    color: #0f172a;
+                    margin: 24px;
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
+
+                .pdf-topbar {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 20px;
+                    margin-bottom: 20px;
+                    border-bottom: 2px solid #cbd5e1;
+                    padding-bottom: 12px;
+                }
+
+                .pdf-title {
+                    font-size: 22px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    margin-bottom: 4px;
+                }
+
+                .pdf-sub {
+                    font-size: 11px;
+                    color: #475569;
+                    text-transform: uppercase;
+                    margin-top: 2px;
+                }
+
+                .pdf-filter-bar {
+                    margin-bottom: 20px;
+                    padding: 12px;
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                }
+
+                .pdf-filter-line {
+                    margin-bottom: 4px;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                }
+
+                .pdf-section {
+                    border: 1px solid #cbd5e1;
+                    margin-bottom: 18px;
+                    page-break-inside: avoid;
+                }
+
+                .pdf-section-head {
+                    background: #0f172a;
+                    color: white;
+                    padding: 10px 12px;
+                }
+
+                .pdf-section-title {
+                    font-size: 13px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                }
+
+                .pdf-section-subtitle {
+                    font-size: 10px;
+                    margin-top: 4px;
+                    text-transform: uppercase;
+                    color: #cbd5e1;
+                }
+
+                .pdf-section-body {
+                    padding: 12px;
+                }
+
+                .pdf-room-block {
+                    margin-bottom: 14px;
+                    border: 1px solid #e2e8f0;
+                }
+
+                .pdf-room-head {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 12px;
+                    background: #f8fafc;
+                    padding: 8px 10px;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+
+                .pdf-room-title {
+                    font-size: 11px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                }
+
+                .pdf-room-floor {
+                    font-size: 10px;
+                    color: #64748b;
+                    text-transform: uppercase;
+                    margin-top: 2px;
+                }
+
+                .pdf-room-total {
+                    font-size: 11px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                }
+
+                .pdf-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                .pdf-table th,
+                .pdf-table td {
+                    border-bottom: 1px solid #e2e8f0;
+                    padding: 8px;
+                    vertical-align: top;
+                }
+
+                .pdf-table th {
+                    text-align: left;
+                    font-size: 10px;
+                    text-transform: uppercase;
+                    color: #64748b;
+                }
+
+                .item-cell {
+                    width: 55%;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                }
+
+                .num-cell {
+                    width: 15%;
+                    text-align: center;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                }
+
+                .excluded {
+                    color: #94a3b8;
+                    font-style: italic;
+                }
+
+                .pdf-section-total {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    padding-top: 10px;
+                    margin-top: 10px;
+                    border-top: 1px solid #cbd5e1;
+                    text-transform: uppercase;
+                    font-size: 11px;
+                }
+
+                .pdf-footer-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                    margin-top: 24px;
+                    page-break-inside: avoid;
+                }
+
+                .pdf-card {
+                    border: 1px solid #cbd5e1;
+                    padding: 14px;
+                    background: #f8fafc;
+                }
+
+                .pdf-card-title {
+                    font-size: 11px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    margin-bottom: 10px;
+                    color: #475569;
+                }
+
+                .pdf-big-stat {
+                    font-size: 28px;
+                    font-weight: 800;
+                    line-height: 1;
+                    margin-bottom: 6px;
+                }
+
+                .pdf-small-note {
+                    font-size: 10px;
+                    color: #64748b;
+                    text-transform: uppercase;
+                }
+
+                .pdf-materials-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    line-height: 1.6;
+                }
+
+                .pdf-mini-head {
+                    color: #64748b;
+                    font-size: 10px;
+                    margin-bottom: 4px;
+                }
+
+                .space-top {
+                    margin-top: 12px;
+                }
+
+                .pdf-signature-image {
+                    width: 100%;
+                    max-height: 140px;
+                    object-fit: contain;
+                    display: block;
+                    background: white;
+                    border: 1px solid #cbd5e1;
+                }
+
+                .pdf-signature-empty {
+                    height: 140px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: white;
+                    border: 1px dashed #cbd5e1;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    font-size: 11px;
+                }
+
+                @media print {
+                    body {
+                        margin: 12mm;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="pdf-topbar">
+                <div>
+                    <div class="pdf-title">Photon Listed Inventory</div>
+                    <div class="pdf-sub">Customer: ${escapeHtml(customerName)}</div>
+                    <div class="pdf-sub">Ref: ${escapeHtml(reference)}</div>
+                </div>
+
+                <div>
+                    <div class="pdf-sub">Exported: ${new Date().toLocaleString("en-GB")}</div>
+                </div>
+            </div>
+
+            <div class="pdf-filter-bar">
+                <div class="pdf-filter-line"><strong>Sequence View:</strong> ${escapeHtml(seqLabel)}</div>
+                <div class="pdf-filter-line"><strong>Delivery View:</strong> ${escapeHtml(deliveryLabel)}</div>
+                <div class="pdf-filter-line"><strong>Search Filter:</strong> ${escapeHtml(listedTextFilter || "None")}</div>
+            </div>
+
+            ${sectionsHtml}
+
+            <div class="pdf-footer-grid">
+                <div class="pdf-card">
+                    <div class="pdf-card-title">Customer Signature</div>
+                    ${signatureHtml}
+                    <div class="pdf-small-note" style="margin-top: 8px;">Signed: ${escapeHtml(signedAt)}</div>
+                </div>
+
+                <div>
+                    <div class="pdf-card" style="margin-bottom: 16px;">
+                        <div class="pdf-card-title">Included Volume</div>
+                        <div class="pdf-big-stat">${listedSummary.includedVolume}</div>
+                        <div class="pdf-small-note">Cuft counted</div>
+                    </div>
+
+                    <div class="pdf-card">
+                        <div class="pdf-card-title">Materials Summary</div>
+                        ${getPrintableMaterialsHtml(materialsSummary)}
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+
+    setTimeout(function() {
+        printWindow.focus();
+        printWindow.print();
+    }, 400);
+}
 window.onload = function () {
     renderDashboard();
 };    </script>

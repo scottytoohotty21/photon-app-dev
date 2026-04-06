@@ -6040,44 +6040,8 @@ function getCleanInventoryQtyValue(rawValue) {
 }
 
 function syncLiveInventoryFromRawForActiveSequence() {
-    if (!currentJob) return;
-
-    inventoryItems = [];
-
-    const rawItems = getRawInventoryItemsForSequence(activeSeqId);
-
-    rawItems.forEach(function(entry) {
-        let existing = inventoryItems.find(function(i) {
-            return (
-                i.item === entry.itemName &&
-                i.roomName === entry.roomName &&
-                i.floorName === entry.floorName &&
-                String(i.deliveryId || "") === String(entry.deliveryId || "")
-            );
-        });
-
-        const unitVolume = Number(entry.unitVolume || 0);
-        const qty = Number(entry.qty || 0);
-
-        if (existing) {
-            existing.qty += qty;
-        } else {
-            inventoryItems.push({
-                item: entry.itemName,
-                displayName: entry.itemName,
-                volume: unitVolume,
-                qty: qty,
-                dismantle: !!entry.dismantle,
-                expWrap: !!entry.expWrap,
-                excluded: !!entry.excluded,
-                roomName: entry.roomName || "",
-                floorName: entry.floorName || "",
-                deliveryId: entry.deliveryId || ""
-            });
-        }
-    });
-
-    recalculateTotalVolume();
+    if (!currentJob || !activeSeqId) return;
+    rebuildLiveInventoryFromSequence(activeSeqId);
 }
 
 function initSignaturePad() {

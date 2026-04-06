@@ -1770,13 +1770,13 @@ Enter as: Surname, First Name
 </div>
 
         <nav class="nav-container">
-            <button onclick="switchTab('address')" id="nav-address" class="nav-btn active">1. Addresses</button>
-            <button onclick="switchTab('sequence')" id="nav-sequence" class="nav-btn">2. Sequence</button>
-            <button onclick="switchTab('inventory')" id="nav-inventory" class="nav-btn">3. Inventory</button>
-            <button onclick="switchTab('quote')" id="nav-quote" class="nav-btn">4. Quote</button>
-            <button onclick="switchTab('listed')" id="nav-listed" class="nav-btn">5. Listed Inv</button>
-            <button onclick="switchTab('schedule')" id="nav-schedule" class="nav-btn">6. Schedule</button> 
-        </nav>
+    <button onclick="switchTab('address')" id="nav-address" class="nav-btn active">1. Addresses</button>
+    <button onclick="switchTab('sequence')" id="nav-sequence" class="nav-btn">2. Sequence</button>
+    <button onclick="switchTab('inventory')" id="nav-inventory" class="nav-btn">3. Inventory</button>
+    <button onclick="switchTab('listed')" id="nav-listed" class="nav-btn">4. Listed Inv</button>
+    <button onclick="switchTab('schedule')" id="nav-schedule" class="nav-btn">5. Schedule</button>
+    <button onclick="switchTab('quote')" id="nav-quote" class="nav-btn">6. Summary & Pricing</button> 
+</nav>
 
         <section id="content-address" class="tab-content tab-content-wrapper bg-white p-5 rounded-2xl shadow-inner">
             <div class="flex gap-2 mb-6 items-center justify-between">
@@ -1934,10 +1934,7 @@ Enter as: Surname, First Name
 </div>
         </section>
         
-        <section id="content-quote" class="tab-content hidden">
-            <div class="p-12 text-center text-slate-400 font-bold italic uppercase">Move Plan & Pricing</div>
-        </section>
-
+        
 <section id="content-listed" class="tab-content hidden bg-white p-5 rounded-2xl shadow-inner">
     <div class="flex items-center justify-between mb-4">
     <div>
@@ -2215,6 +2212,9 @@ Enter as: Surname, First Name
             </div>
         </div>
     </div>
+</section>
+<section id="content-quote" class="tab-content hidden">
+    <div class="p-12 text-center text-slate-400 font-bold italic uppercase">Summary & Pricing</div>
 </section>
     </main>
 

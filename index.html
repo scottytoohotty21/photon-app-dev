@@ -2063,11 +2063,11 @@ Enter as: Surname, First Name
                     <div class="grid-2">
                         <div>
                             <label class="mini-label">Frame Beds</label>
-                            <input id="svc_frame" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
+                            <input id="svc_frame" type="number" min="0" class="field" value="0" readonly />
                         </div>
                         <div>
                             <label class="mini-label">Bunk Beds</label>
-                           <input id="svc_bunk" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
+                           <input id="svc_bunk" type="number" min="0" class="field" value="0" readonly />
                         </div>
                         <div>
                             <label class="mini-label">Custom Item Minutes (each side)</label>
@@ -2095,11 +2095,11 @@ Enter as: Surname, First Name
                         </div>
                         <div>
                             <label class="mini-label">Crating</label>
-                            <input id="svc_crate" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
+                            <input id="svc_crate" type="number" min="0" class="field" value="0" readonly />
                         </div>
                         <div>
                             <label class="mini-label">Export Wrap Volume (CUFT)</label>
-                            <input id="exportWrapVol" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
+                            <input id="exportWrapVol" type="number" min="0" class="field" value="0" readonly />
                         </div>
                     </div>
                 </div>
@@ -3139,6 +3139,13 @@ function buildCalculatorFeedForSequence(sequenceId) {
         wr: 0
     };
 
+    const special = {
+        frameBeds: 0,
+        bunkBeds: 0,
+        cratingItems: 0,
+        exportWrapVol: 0
+    };
+
     rawItems.forEach(function(entry) {
         if (entry.excluded) return;
 
@@ -3146,6 +3153,7 @@ function buildCalculatorFeedForSequence(sequenceId) {
         const entryQty = Number(entry.qty || 0);
         const unitVolume = Number(entry.unitVolume || 0);
         const totalVolume = Number(entry.totalVolume || 0);
+        const entryTotalVolume = totalVolume || (unitVolume * entryQty);
 
         if (itemName === "AP BOX") {
             qty.ap += entryQty;
@@ -3172,7 +3180,28 @@ function buildCalculatorFeedForSequence(sequenceId) {
             return;
         }
 
-        furnitureVol += totalVolume || (unitVolume * entryQty);
+        furnitureVol += entryTotalVolume;
+
+        if (entry.expWrap) {
+            special.exportWrapVol += entryTotalVolume;
+        }
+
+        if (entry.crated) {
+            special.cratingItems += entryQty;
+        }
+
+        if (entry.dismantle) {
+            if (itemName === "BUNK BED") {
+                special.bunkBeds += entryQty;
+            } else if (
+                itemName === "BED (SINGLE)" ||
+                itemName === "BED (DOUBLE)" ||
+                itemName === "BED (KING)" ||
+                itemName === "FRAME BED"
+            ) {
+                special.frameBeds += entryQty;
+            }
+        }
     });
 
     const seqIndex = currentJob.sequences.findIndex(function(seq) {
@@ -3186,6 +3215,12 @@ function buildCalculatorFeedForSequence(sequenceId) {
         packOption: getSequencePackOptionForCalculator(sequence),
         furnitureVol: Math.round(furnitureVol * 100) / 100,
         qty: qty,
+        special: {
+            frameBeds: special.frameBeds,
+            bunkBeds: special.bunkBeds,
+            cratingItems: special.cratingItems,
+            exportWrapVol: Math.round(special.exportWrapVol * 100) / 100
+        },
         createdAt: new Date().toISOString()
     };
 }
@@ -6926,6 +6961,7 @@ function loadScheduleInputsFromActiveSequence() {
     if (!seq) return;
 
     const schedule = ensureSequenceScheduleShape(seq);
+    const photonFeed = getPhotonFeed();
 
     const transitHoursEl = document.getElementById("transitHours");
     const transitMinutesEl = document.getElementById("transitMinutes");
@@ -6949,16 +6985,16 @@ function loadScheduleInputsFromActiveSequence() {
     if (loadRateEl) loadRateEl.value = schedule.loadRate;
     if (unloadRateEl) unloadRateEl.value = schedule.unloadRate;
 
-    if (svcFrameEl) svcFrameEl.value = schedule.special.frameBeds;
-    if (svcBunkEl) svcBunkEl.value = schedule.special.bunkBeds;
+    if (svcFrameEl) svcFrameEl.value = photonFeed.special.frameBeds;
+    if (svcBunkEl) svcBunkEl.value = photonFeed.special.bunkBeds;
     if (svcCustomMinutesEl) svcCustomMinutesEl.value = schedule.special.customItemMinutes;
     if (svcCustomNoteEl) svcCustomNoteEl.value = schedule.special.customItemNote;
     if (svcUprightEl) svcUprightEl.value = schedule.special.uprightPianos;
     if (svcGrandEl) svcGrandEl.value = schedule.special.grandPianos;
     if (svcClockEl) svcClockEl.value = schedule.special.grandfatherClocks;
     if (svcApplianceEl) svcApplianceEl.value = schedule.special.appliances;
-    if (svcCrateEl) svcCrateEl.value = schedule.special.cratingItems;
-    if (exportWrapVolEl) exportWrapVolEl.value = schedule.exportWrapVol;
+    if (svcCrateEl) svcCrateEl.value = photonFeed.special.cratingItems;
+    if (exportWrapVolEl) exportWrapVolEl.value = photonFeed.special.exportWrapVol;
 }
 
 function saveScheduleInputsToActiveSequence() {
@@ -6985,17 +7021,13 @@ function saveScheduleInputsToActiveSequence() {
     schedule.loftVol = getNum("loftVol", 0);
     schedule.loadRate = getNum("loadRate", 125);
     schedule.unloadRate = getNum("unloadRate", 132);
-    schedule.exportWrapVol = getNum("exportWrapVol", 0);
 
-    schedule.special.frameBeds = getNum("svc_frame", 0);
-    schedule.special.bunkBeds = getNum("svc_bunk", 0);
     schedule.special.customItemMinutes = getNum("svc_custom_minutes", 0);
     schedule.special.customItemNote = getText("svc_custom_note", "");
     schedule.special.uprightPianos = getNum("svc_upright", 0);
     schedule.special.grandPianos = getNum("svc_grand", 0);
     schedule.special.grandfatherClocks = getNum("svc_clock", 0);
     schedule.special.appliances = getNum("svc_appliance", 0);
-    schedule.special.cratingItems = getNum("svc_crate", 0);
 
     saveToDevice();
 }
@@ -7007,19 +7039,27 @@ function handleScheduleInputChange() {
 function getPhotonFeed() {
     const raw = localStorage.getItem("photon_calculator_feed");
 
+    const emptyFeed = {
+        sequenceLabel: "—",
+        packOption: "none",
+        furnitureVol: 0,
+        qty: {
+            ap: 0,
+            cg: 0,
+            books: 0,
+            linen: 0,
+            wr: 0
+        },
+        special: {
+            frameBeds: 0,
+            bunkBeds: 0,
+            cratingItems: 0,
+            exportWrapVol: 0
+        }
+    };
+
     if (!raw) {
-        return {
-            sequenceLabel: "—",
-            packOption: "none",
-            furnitureVol: 0,
-            qty: {
-                ap: 0,
-                cg: 0,
-                books: 0,
-                linen: 0,
-                wr: 0
-            }
-        };
+        return emptyFeed;
     }
 
     try {
@@ -7035,21 +7075,16 @@ function getPhotonFeed() {
                 books: Number(parsed.qty?.books || 0),
                 linen: Number(parsed.qty?.linen || 0),
                 wr: Number(parsed.qty?.wr || 0)
+            },
+            special: {
+                frameBeds: Number(parsed.special?.frameBeds || 0),
+                bunkBeds: Number(parsed.special?.bunkBeds || 0),
+                cratingItems: Number(parsed.special?.cratingItems || 0),
+                exportWrapVol: Number(parsed.special?.exportWrapVol || 0)
             }
         };
     } catch (err) {
-        return {
-            sequenceLabel: "—",
-            packOption: "none",
-            furnitureVol: 0,
-            qty: {
-                ap: 0,
-                cg: 0,
-                books: 0,
-                linen: 0,
-                wr: 0
-            }
-        };
+        return emptyFeed;
     }
 }
 
@@ -7102,8 +7137,8 @@ function getState(){
         boxVolumes: BOX_VOLUMES,
 
         special: {
-            frame: num("svc_frame"),
-            bunk: num("svc_bunk"),
+            frame: Number(photonFeed.special?.frameBeds || 0),
+            bunk: Number(photonFeed.special?.bunkBeds || 0),
             customMinutes: num("svc_custom_minutes"),
             customNote: document.getElementById("svc_custom_note")
                 ? document.getElementById("svc_custom_note").value.trim()
@@ -7112,10 +7147,10 @@ function getState(){
             grand: num("svc_grand"),
             clock: num("svc_clock"),
             appliance: num("svc_appliance"),
-            crate: num("svc_crate")
+            crate: Number(photonFeed.special?.cratingItems || 0)
         },
 
-        exportWrapVol: num("exportWrapVol")
+        exportWrapVol: Number(photonFeed.special?.exportWrapVol || 0)
     };
 }
 function calcPacking(state){
@@ -7510,28 +7545,38 @@ function renderScheduleCalculator(){
         renderScheduleSequenceDropdown();
 
     const packing = calcPacking(state);
-    const boxVolume = round2(calcBoxVolume(state));
-    const totalVolume = round2(state.furnitureVol + boxVolume);
+const boxVolume = round2(calcBoxVolume(state));
+const totalVolume = round2(state.furnitureVol + boxVolume);
 
-    const furnitureDisplay = document.getElementById("furnitureVolDisplay");
-    if (furnitureDisplay) furnitureDisplay.textContent = state.furnitureVol;
+const furnitureDisplay = document.getElementById("furnitureVolDisplay");
+if (furnitureDisplay) furnitureDisplay.textContent = state.furnitureVol;
 
-    const apDisplay = document.getElementById("qty_ap_display");
-    if (apDisplay) apDisplay.textContent = state.qty.ap;
+const apDisplay = document.getElementById("qty_ap_display");
+if (apDisplay) apDisplay.textContent = state.qty.ap;
 
-    const cgDisplay = document.getElementById("qty_cg_display");
-    if (cgDisplay) cgDisplay.textContent = state.qty.cg;
+const cgDisplay = document.getElementById("qty_cg_display");
+if (cgDisplay) cgDisplay.textContent = state.qty.cg;
 
-    const booksDisplay = document.getElementById("qty_books_display");
-    if (booksDisplay) booksDisplay.textContent = state.qty.books;
+const booksDisplay = document.getElementById("qty_books_display");
+if (booksDisplay) booksDisplay.textContent = state.qty.books;
 
-    const linenDisplay = document.getElementById("qty_linen_display");
-    if (linenDisplay) linenDisplay.textContent = state.qty.linen;
+const linenDisplay = document.getElementById("qty_linen_display");
+if (linenDisplay) linenDisplay.textContent = state.qty.linen;
 
-    const wrDisplay = document.getElementById("qty_wr_display");
-    if (wrDisplay) wrDisplay.textContent = state.qty.wr;
+const wrDisplay = document.getElementById("qty_wr_display");
+if (wrDisplay) wrDisplay.textContent = state.qty.wr;
 
-    const special = calcSpecialLabour(state);
+const svcFrameEl = document.getElementById("svc_frame");
+const svcBunkEl = document.getElementById("svc_bunk");
+const svcCrateEl = document.getElementById("svc_crate");
+const exportWrapVolEl = document.getElementById("exportWrapVol");
+
+if (svcFrameEl) svcFrameEl.value = state.special.frame;
+if (svcBunkEl) svcBunkEl.value = state.special.bunk;
+if (svcCrateEl) svcCrateEl.value = state.special.crate;
+if (exportWrapVolEl) exportWrapVolEl.value = state.exportWrapVol;
+
+const special = calcSpecialLabour(state);
     const loading = calcLoading(totalVolume, state.loadRate, special.loadSideHours);
     const unloading = calcUnloading(totalVolume, state.unloadRate, special.unloadSideHours);
 

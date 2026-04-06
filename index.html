@@ -2001,11 +2001,11 @@ Enter as: Surname, First Name
                     <div class="grid-2">
                         <div>
                             <label class="mini-label">Transit Hours</label>
-                            <input id="transitHours" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="transitHours" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Transit Minutes</label>
-                            <input id="transitMinutes" type="number" min="0" max="59" class="field" value="30" oninput="renderScheduleCalculator()" />
+                            <input id="transitMinutes" type="number" min="0" max="59" class="field" value="30" oninput="handleScheduleInputChange()" />
                         </div>
                     </div>
                 </div>
@@ -2019,15 +2019,15 @@ Enter as: Surname, First Name
                         </div>
                         <div>
                             <label class="mini-label">Loft Effects Volume (CUFT)</label>
-                            <input id="loftVol" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="loftVol" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Loading Rate (CUFT / Man-Hour)</label>
-                            <input id="loadRate" type="number" min="1" class="field" value="125" oninput="renderScheduleCalculator()" />
+                            <input id="loadRate" type="number" min="1" class="field" value="125" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Unloading Rate (CUFT / Man-Hour)</label>
-                            <input id="unloadRate" type="number" min="1" class="field" value="132" oninput="renderScheduleCalculator()" />
+                            <input id="unloadRate" type="number" min="1" class="field" value="132" oninput="handleScheduleInputChange()" />
                         </div>
                     </div>
                 </div>
@@ -2063,43 +2063,43 @@ Enter as: Surname, First Name
                     <div class="grid-2">
                         <div>
                             <label class="mini-label">Frame Beds</label>
-                            <input id="svc_frame" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="svc_frame" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Bunk Beds</label>
-                            <input id="svc_bunk" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                           <input id="svc_bunk" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Custom Item Minutes (each side)</label>
-                            <input id="svc_custom_minutes" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="svc_custom_minutes" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Custom Item Note</label>
-                            <input id="svc_custom_note" type="text" maxlength="40" class="field" value="" oninput="renderScheduleCalculator()" />
+                            <input id="svc_custom_note" type="text" maxlength="40" class="field" value="" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Upright Pianos</label>
-                            <input id="svc_upright" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="svc_upright" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Baby / Grand Pianos</label>
-                            <input id="svc_grand" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="svc_grand" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Grandfather Clocks</label>
-                            <input id="svc_clock" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="svc_clock" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Washing Machines / Dishwashers</label>
-                            <input id="svc_appliance" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="svc_appliance" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Crating</label>
-                            <input id="svc_crate" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="svc_crate" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                         <div>
                             <label class="mini-label">Export Wrap Volume (CUFT)</label>
-                            <input id="exportWrapVol" type="number" min="0" class="field" value="0" oninput="renderScheduleCalculator()" />
+                            <input id="exportWrapVol" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
                         </div>
                     </div>
                 </div>
@@ -2395,8 +2395,10 @@ function createEmptySequenceSchedule() {
         moveDate: "",
         transitHours: 0,
         transitMinutes: 30,
+        loftVol: 0,
         loadRate: 125,
         unloadRate: 132,
+        exportWrapVol: 0,
         manualDays: [],
         special: {
             frameBeds: 0,
@@ -2591,6 +2593,15 @@ function saveInventoryContext() {
                 seq.schedule = createEmptySequenceSchedule();
             }
 
+            const defaults = createEmptySequenceSchedule();
+
+            if (seq.schedule.transitHours === undefined) seq.schedule.transitHours = defaults.transitHours;
+            if (seq.schedule.transitMinutes === undefined) seq.schedule.transitMinutes = defaults.transitMinutes;
+            if (seq.schedule.loftVol === undefined) seq.schedule.loftVol = defaults.loftVol;
+            if (seq.schedule.loadRate === undefined) seq.schedule.loadRate = defaults.loadRate;
+            if (seq.schedule.unloadRate === undefined) seq.schedule.unloadRate = defaults.unloadRate;
+            if (seq.schedule.exportWrapVol === undefined) seq.schedule.exportWrapVol = defaults.exportWrapVol;
+
             if (!Array.isArray(seq.schedule.manualDays)) {
                 seq.schedule.manualDays = [];
             }
@@ -2598,6 +2609,16 @@ function saveInventoryContext() {
             if (!seq.schedule.special) {
                 seq.schedule.special = createEmptySequenceSchedule().special;
             }
+
+            if (seq.schedule.special.frameBeds === undefined) seq.schedule.special.frameBeds = defaults.special.frameBeds;
+            if (seq.schedule.special.bunkBeds === undefined) seq.schedule.special.bunkBeds = defaults.special.bunkBeds;
+            if (seq.schedule.special.uprightPianos === undefined) seq.schedule.special.uprightPianos = defaults.special.uprightPianos;
+            if (seq.schedule.special.grandPianos === undefined) seq.schedule.special.grandPianos = defaults.special.grandPianos;
+            if (seq.schedule.special.grandfatherClocks === undefined) seq.schedule.special.grandfatherClocks = defaults.special.grandfatherClocks;
+            if (seq.schedule.special.appliances === undefined) seq.schedule.special.appliances = defaults.special.appliances;
+            if (seq.schedule.special.cratingItems === undefined) seq.schedule.special.cratingItems = defaults.special.cratingItems;
+            if (seq.schedule.special.customItemMinutes === undefined) seq.schedule.special.customItemMinutes = defaults.special.customItemMinutes;
+            if (seq.schedule.special.customItemNote === undefined) seq.schedule.special.customItemNote = defaults.special.customItemNote;
         });
     });
 }
@@ -3976,6 +3997,7 @@ function updatePropData(f, v) {
      function loadSequence(id) {
     activeSeqId = id;
     loadManualScheduleFromActiveSequence();
+        loadScheduleInputsFromActiveSequence();
     if (!currentJob.inventory) currentJob.inventory = {};
     currentJob.inventory.activeSequenceId = id;
     currentJob.inventory.activeDeliveryId = null;
@@ -4063,6 +4085,7 @@ function updatePropData(f, v) {
         }
 
         loadManualScheduleFromActiveSequence();
+                loadScheduleInputsFromActiveSequence();
         saveCalculatorFeedForActiveSequence();
                 renderScheduleSequenceDropdown();
         renderScheduleCalculator();
@@ -6719,6 +6742,15 @@ function ensureSequenceScheduleShape(seq) {
         seq.schedule = createEmptySequenceSchedule();
     }
 
+    const defaults = createEmptySequenceSchedule();
+
+    if (seq.schedule.transitHours === undefined) seq.schedule.transitHours = defaults.transitHours;
+    if (seq.schedule.transitMinutes === undefined) seq.schedule.transitMinutes = defaults.transitMinutes;
+    if (seq.schedule.loftVol === undefined) seq.schedule.loftVol = defaults.loftVol;
+    if (seq.schedule.loadRate === undefined) seq.schedule.loadRate = defaults.loadRate;
+    if (seq.schedule.unloadRate === undefined) seq.schedule.unloadRate = defaults.unloadRate;
+    if (seq.schedule.exportWrapVol === undefined) seq.schedule.exportWrapVol = defaults.exportWrapVol;
+
     if (!Array.isArray(seq.schedule.manualDays)) {
         seq.schedule.manualDays = [];
     }
@@ -6726,6 +6758,16 @@ function ensureSequenceScheduleShape(seq) {
     if (!seq.schedule.special) {
         seq.schedule.special = createEmptySequenceSchedule().special;
     }
+
+    if (seq.schedule.special.frameBeds === undefined) seq.schedule.special.frameBeds = defaults.special.frameBeds;
+    if (seq.schedule.special.bunkBeds === undefined) seq.schedule.special.bunkBeds = defaults.special.bunkBeds;
+    if (seq.schedule.special.uprightPianos === undefined) seq.schedule.special.uprightPianos = defaults.special.uprightPianos;
+    if (seq.schedule.special.grandPianos === undefined) seq.schedule.special.grandPianos = defaults.special.grandPianos;
+    if (seq.schedule.special.grandfatherClocks === undefined) seq.schedule.special.grandfatherClocks = defaults.special.grandfatherClocks;
+    if (seq.schedule.special.appliances === undefined) seq.schedule.special.appliances = defaults.special.appliances;
+    if (seq.schedule.special.cratingItems === undefined) seq.schedule.special.cratingItems = defaults.special.cratingItems;
+    if (seq.schedule.special.customItemMinutes === undefined) seq.schedule.special.customItemMinutes = defaults.special.customItemMinutes;
+    if (seq.schedule.special.customItemNote === undefined) seq.schedule.special.customItemNote = defaults.special.customItemNote;
 
     return seq.schedule;
 }
@@ -6799,6 +6841,89 @@ function handleScheduleSequenceChange(sequenceId) {
     if (!sequenceId) return;
     loadSequence(sequenceId);
     switchTab('schedule');
+}
+function loadScheduleInputsFromActiveSequence() {
+    const seq = getActiveSequenceRecord();
+    if (!seq) return;
+
+    const schedule = ensureSequenceScheduleShape(seq);
+
+    const transitHoursEl = document.getElementById("transitHours");
+    const transitMinutesEl = document.getElementById("transitMinutes");
+    const loftVolEl = document.getElementById("loftVol");
+    const loadRateEl = document.getElementById("loadRate");
+    const unloadRateEl = document.getElementById("unloadRate");
+    const svcFrameEl = document.getElementById("svc_frame");
+    const svcBunkEl = document.getElementById("svc_bunk");
+    const svcCustomMinutesEl = document.getElementById("svc_custom_minutes");
+    const svcCustomNoteEl = document.getElementById("svc_custom_note");
+    const svcUprightEl = document.getElementById("svc_upright");
+    const svcGrandEl = document.getElementById("svc_grand");
+    const svcClockEl = document.getElementById("svc_clock");
+    const svcApplianceEl = document.getElementById("svc_appliance");
+    const svcCrateEl = document.getElementById("svc_crate");
+    const exportWrapVolEl = document.getElementById("exportWrapVol");
+
+    if (transitHoursEl) transitHoursEl.value = schedule.transitHours;
+    if (transitMinutesEl) transitMinutesEl.value = schedule.transitMinutes;
+    if (loftVolEl) loftVolEl.value = schedule.loftVol;
+    if (loadRateEl) loadRateEl.value = schedule.loadRate;
+    if (unloadRateEl) unloadRateEl.value = schedule.unloadRate;
+
+    if (svcFrameEl) svcFrameEl.value = schedule.special.frameBeds;
+    if (svcBunkEl) svcBunkEl.value = schedule.special.bunkBeds;
+    if (svcCustomMinutesEl) svcCustomMinutesEl.value = schedule.special.customItemMinutes;
+    if (svcCustomNoteEl) svcCustomNoteEl.value = schedule.special.customItemNote;
+    if (svcUprightEl) svcUprightEl.value = schedule.special.uprightPianos;
+    if (svcGrandEl) svcGrandEl.value = schedule.special.grandPianos;
+    if (svcClockEl) svcClockEl.value = schedule.special.grandfatherClocks;
+    if (svcApplianceEl) svcApplianceEl.value = schedule.special.appliances;
+    if (svcCrateEl) svcCrateEl.value = schedule.special.cratingItems;
+    if (exportWrapVolEl) exportWrapVolEl.value = schedule.exportWrapVol;
+}
+
+function saveScheduleInputsToActiveSequence() {
+    const seq = getActiveSequenceRecord();
+    if (!seq) return;
+
+    const schedule = ensureSequenceScheduleShape(seq);
+
+    const getNum = function(id, fallback) {
+        const el = document.getElementById(id);
+        if (!el) return fallback;
+        const value = parseFloat(el.value);
+        return Number.isFinite(value) ? value : fallback;
+    };
+
+    const getText = function(id, fallback) {
+        const el = document.getElementById(id);
+        if (!el) return fallback;
+        return String(el.value || "").trim();
+    };
+
+    schedule.transitHours = getNum("transitHours", 0);
+    schedule.transitMinutes = getNum("transitMinutes", 30);
+    schedule.loftVol = getNum("loftVol", 0);
+    schedule.loadRate = getNum("loadRate", 125);
+    schedule.unloadRate = getNum("unloadRate", 132);
+    schedule.exportWrapVol = getNum("exportWrapVol", 0);
+
+    schedule.special.frameBeds = getNum("svc_frame", 0);
+    schedule.special.bunkBeds = getNum("svc_bunk", 0);
+    schedule.special.customItemMinutes = getNum("svc_custom_minutes", 0);
+    schedule.special.customItemNote = getText("svc_custom_note", "");
+    schedule.special.uprightPianos = getNum("svc_upright", 0);
+    schedule.special.grandPianos = getNum("svc_grand", 0);
+    schedule.special.grandfatherClocks = getNum("svc_clock", 0);
+    schedule.special.appliances = getNum("svc_appliance", 0);
+    schedule.special.cratingItems = getNum("svc_crate", 0);
+
+    saveToDevice();
+}
+
+function handleScheduleInputChange() {
+    saveScheduleInputsToActiveSequence();
+    renderScheduleCalculator();
 }
 function getPhotonFeed() {
     const raw = localStorage.getItem("photon_calculator_feed");

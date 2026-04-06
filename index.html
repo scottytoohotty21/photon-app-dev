@@ -1988,11 +1988,11 @@ Enter as: Surname, First Name
                 <div class="panel-subtitle">Manual for now, ready to be fed from the previous app tab later</div>
             </div>
             <div class="panel-body">
-                <div class="section-block">
+                             <div class="section-block">
                     <div class="section-title">Sequence</div>
                     <div>
                         <label class="mini-label">Sequence</label>
-                        <div id="sequenceLabelDisplay" class="field" style="background:#f8fafc;">—</div>
+                        <select id="schedule-seq-select" class="field" onchange="handleScheduleSequenceChange(this.value)"></select>
                     </div>
                 </div>
 
@@ -2729,6 +2729,7 @@ renderInventoryDeliveryDropdown();
 renderInventoryRoomDropdown();
 renderInventoryFloorDropdown();
 renderInventoryButtons();
+renderScheduleSequenceDropdown();
 loadManualScheduleFromActiveSequence();
 rebuildLiveInventoryFromSequence(activeSeqId);
 saveCalculatorFeedForActiveSequence();
@@ -3844,6 +3845,7 @@ function renderDashboard() {
 renderSequenceUI();
 renderInventorySequenceDropdown();
 renderInventoryDeliveryDropdown();
+renderScheduleSequenceDropdown();
 saveToDevice();
         }
         function copySequence() {
@@ -3863,6 +3865,7 @@ activeSeqId = copy.id;
 renderSequenceUI();
 renderInventorySequenceDropdown();
 renderInventoryDeliveryDropdown();
+renderScheduleSequenceDropdown();
 saveToDevice();
         }
         function deleteSequence() {
@@ -3872,6 +3875,7 @@ saveToDevice();
 renderSequenceUI();
 renderInventorySequenceDropdown();
 renderInventoryDeliveryDropdown();
+renderScheduleSequenceDropdown();
 saveToDevice();
         }
     function addProperty() {
@@ -3949,7 +3953,8 @@ function updatePropData(f, v) {
 
     renderSequenceUI();
     renderInventorySequenceDropdown();
-    renderInventoryDeliveryDropdown();
+        renderScheduleSequenceDropdown();
+        renderInventoryDeliveryDropdown();
 
     saveInventoryContext();
     rebuildLiveInventoryFromSequence(activeSeqId);
@@ -4027,6 +4032,7 @@ function updatePropData(f, v) {
 
         loadManualScheduleFromActiveSequence();
         saveCalculatorFeedForActiveSequence();
+                renderScheduleSequenceDropdown();
         renderScheduleCalculator();
     }
     if (t === 'listed') {
@@ -6742,6 +6748,26 @@ function saveManualScheduleToActiveSequence() {
 
     saveToDevice();
 }
+function renderScheduleSequenceDropdown() {
+    const dropdown = document.getElementById("schedule-seq-select");
+    if (!dropdown || !currentJob || !Array.isArray(currentJob.sequences)) return;
+
+    const selectedSeqId = activeSeqId || getDefaultSequenceId();
+
+    dropdown.innerHTML = currentJob.sequences.map(function(seq, idx) {
+        const moveLabel = seq.moveType || "New Sequence";
+        const packLabel = seq.packOption || "No Packing Set";
+        const label = "Seq #" + (idx + 1) + ": " + moveLabel + " / " + packLabel;
+        const selected = String(seq.id) === String(selectedSeqId) ? "selected" : "";
+        return '<option value="' + seq.id + '" ' + selected + '>' + label + '</option>';
+    }).join("");
+}
+
+function handleScheduleSequenceChange(sequenceId) {
+    if (!sequenceId) return;
+    loadSequence(sequenceId);
+    switchTab('schedule');
+}
 function getPhotonFeed() {
     const raw = localStorage.getItem("photon_calculator_feed");
 
@@ -7245,8 +7271,7 @@ function renderScheduleCalculator(){
     const photonFeed = getPhotonFeed();
     const state = getState();
 
-    const sequenceLabelDisplay = document.getElementById("sequenceLabelDisplay");
-    if (sequenceLabelDisplay) sequenceLabelDisplay.textContent = photonFeed.sequenceLabel || "—";
+        renderScheduleSequenceDropdown();
 
     const packing = calcPacking(state);
     const boxVolume = round2(calcBoxVolume(state));

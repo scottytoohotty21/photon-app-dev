@@ -3202,6 +3202,29 @@ function saveCalculatorFeedForActiveSequence() {
         renderScheduleCalculator();
     }
 }
+function buildLiveInventoryKeyFromValues(data) {
+    return [
+        String(data.itemName || ""),
+        String(data.roomName || ""),
+        String(data.floorName || ""),
+        String(data.deliveryId || ""),
+        Number(data.unitVolume || 0),
+        !!data.excluded,
+        !!data.dismantle,
+        !!data.expWrap,
+        String(data.note || ""),
+        String(data.damage || ""),
+        !!data.crated,
+        data.crateDims
+            ? [
+                data.crateDims.l || "",
+                data.crateDims.w || "",
+                data.crateDims.h || "",
+                data.crateDims.unit || ""
+            ].join("|")
+            : ""
+    ].join("||");
+}
 function getLiveInventoryGroupKey(entry) {
     return [
         String(entry.itemName || ""),
@@ -4213,10 +4236,29 @@ function addBox(boxCode) {
 
     const itemName = itemNameMap[boxCode] || (boxCode + " BOX");
 
+    const deliveryId = currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "";
+    const roomName = currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "";
+    const floorName = currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "";
+
+    const liveKey = getLiveInventoryGroupKey({
+        itemName: itemName,
+        deliveryId: deliveryId,
+        roomName: roomName,
+        floorName: floorName,
+        unitVolume: boxVolume,
+        excluded: false,
+        dismantle: false,
+        expWrap: false,
+        note: "",
+        damage: "",
+        crated: false,
+        crateDims: null
+    });
+
     lastAddedItemName = itemName;
 
     let existing = inventoryItems.find(function(i) {
-        return i.item === itemName;
+        return i.liveKey === liveKey;
     });
 
     const previousQty = existing ? existing.qty : 0;
@@ -4225,18 +4267,29 @@ function addBox(boxCode) {
         existing.qty += qty;
     } else {
         inventoryItems.push({
+            liveKey: liveKey,
             item: itemName,
             displayName: itemName,
             volume: boxVolume,
-            qty: qty
+            qty: qty,
+            roomName: roomName,
+            floorName: floorName,
+            deliveryId: deliveryId,
+            dismantle: false,
+            expWrap: false,
+            excluded: false,
+            note: "",
+            damage: "",
+            crated: false,
+            crateDims: null
         });
     }
 
     const rawEntryId = saveRawInventoryEntry({
         sequenceId: activeSeqId,
-        deliveryId: currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "",
-        roomName: currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "",
-        floorName: currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "",
+        deliveryId: deliveryId,
+        roomName: roomName,
+        floorName: floorName,
         itemName: itemName,
         qty: qty,
         unitVolume: boxVolume,
@@ -4247,6 +4300,7 @@ function addBox(boxCode) {
     inventoryHistory.push({
         type: "item",
         itemName: itemName,
+        liveKey: liveKey,
         qtyAdded: qty,
         previousQty: previousQty,
         rawEntryId: rawEntryId
@@ -4263,7 +4317,7 @@ function addBox(boxCode) {
     if (qtyInput) qtyInput.value = 1;
     renderActionButtonStates();
     updateUndoButtonState();
-saveCalculatorFeedForActiveSequence();
+    saveCalculatorFeedForActiveSequence();
 }
 
 function addVolume(amount) {
@@ -4327,10 +4381,29 @@ function addInventoryItem(itemName) {
     const qtyInput = document.getElementById("inv-qty");
     const qty = getInventoryAddQty();
 
+    const deliveryId = currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "";
+    const roomName = currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "";
+    const floorName = currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "";
+
+    const liveKey = getLiveInventoryGroupKey({
+        itemName: item.item,
+        deliveryId: deliveryId,
+        roomName: roomName,
+        floorName: floorName,
+        unitVolume: item.volume,
+        excluded: false,
+        dismantle: false,
+        expWrap: false,
+        note: "",
+        damage: "",
+        crated: false,
+        crateDims: null
+    });
+
     lastAddedItemName = itemName;
 
     let existing = inventoryItems.find(function(i) {
-        return i.item === itemName;
+        return i.liveKey === liveKey;
     });
     const previousQty = existing ? existing.qty : 0;
 
@@ -4338,18 +4411,29 @@ function addInventoryItem(itemName) {
         existing.qty += qty;
     } else {
         inventoryItems.push({
+            liveKey: liveKey,
             item: item.item,
             displayName: item.item,
             volume: item.volume,
-            qty: qty
+            qty: qty,
+            roomName: roomName,
+            floorName: floorName,
+            deliveryId: deliveryId,
+            dismantle: false,
+            expWrap: false,
+            excluded: false,
+            note: "",
+            damage: "",
+            crated: false,
+            crateDims: null
         });
     }
 
     const rawEntryId = saveRawInventoryEntry({
         sequenceId: activeSeqId,
-        deliveryId: currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "",
-        roomName: currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "",
-        floorName: currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "",
+        deliveryId: deliveryId,
+        roomName: roomName,
+        floorName: floorName,
         itemName: item.item,
         qty: qty,
         unitVolume: item.volume,
@@ -4360,6 +4444,7 @@ function addInventoryItem(itemName) {
     inventoryHistory.push({
         type: "item",
         itemName: itemName,
+        liveKey: liveKey,
         qtyAdded: qty,
         previousQty: previousQty,
         rawEntryId: rawEntryId
@@ -4376,7 +4461,7 @@ function addInventoryItem(itemName) {
     if (qtyInput) qtyInput.value = 1;
     renderActionButtonStates();
     updateUndoButtonState();
-saveCalculatorFeedForActiveSequence();
+    saveCalculatorFeedForActiveSequence();
 }
 function addMiscItem() {
     const overlay = document.getElementById("misc-overlay");
@@ -4460,10 +4545,29 @@ function saveMiscModal() {
     const qty = getInventoryAddQty();
     const miscKey = "MISC-" + cleanName.toUpperCase();
 
+    const deliveryId = currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "";
+    const roomName = currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "";
+    const floorName = currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "";
+
+    const liveKey = getLiveInventoryGroupKey({
+        itemName: cleanName,
+        deliveryId: deliveryId,
+        roomName: roomName,
+        floorName: floorName,
+        unitVolume: unitVolume,
+        excluded: false,
+        dismantle: false,
+        expWrap: false,
+        note: "",
+        damage: "",
+        crated: false,
+        crateDims: null
+    });
+
     lastAddedItemName = miscKey;
 
     let existing = inventoryItems.find(function(i) {
-        return i.item === miscKey;
+        return i.liveKey === liveKey;
     });
 
     const previousQty = existing ? existing.qty : 0;
@@ -4473,19 +4577,30 @@ function saveMiscModal() {
         existing.volume = unitVolume;
     } else {
         inventoryItems.push({
+            liveKey: liveKey,
             item: miscKey,
             displayName: cleanName,
             volume: unitVolume,
             qty: qty,
-            isMisc: true
+            isMisc: true,
+            roomName: roomName,
+            floorName: floorName,
+            deliveryId: deliveryId,
+            dismantle: false,
+            expWrap: false,
+            excluded: false,
+            note: "",
+            damage: "",
+            crated: false,
+            crateDims: null
         });
     }
 
     const rawEntryId = saveRawInventoryEntry({
         sequenceId: activeSeqId,
-        deliveryId: currentJob && currentJob.inventory ? currentJob.inventory.activeDeliveryId : "",
-        roomName: currentJob && currentJob.inventory ? currentJob.inventory.activeRoomName : "",
-        floorName: currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "",
+        deliveryId: deliveryId,
+        roomName: roomName,
+        floorName: floorName,
         itemName: cleanName,
         qty: qty,
         unitVolume: unitVolume,
@@ -4496,6 +4611,7 @@ function saveMiscModal() {
     inventoryHistory.push({
         type: "item",
         itemName: miscKey,
+        liveKey: liveKey,
         qtyAdded: qty,
         previousQty: previousQty,
         rawEntryId: rawEntryId
@@ -4509,8 +4625,8 @@ function saveMiscModal() {
     triggerInventoryPulse("current", "blue");
     triggerInventoryPulse("total", "blue");
     updateUndoButtonState();
-renderActionButtonStates();
-saveCalculatorFeedForActiveSequence();
+    renderActionButtonStates();
+    saveCalculatorFeedForActiveSequence();
 
     if (qtyInput) qtyInput.value = 1;
 
@@ -5099,6 +5215,7 @@ function undoLastInventoryAction() {
 
     if (action.type === "item") {
         const item = inventoryItems.find(function(i) {
+            if (action.liveKey) return i.liveKey === action.liveKey;
             return i.item === action.itemName;
         });
 
@@ -5107,6 +5224,7 @@ function undoLastInventoryAction() {
 
             if (item.qty <= 0) {
                 inventoryItems = inventoryItems.filter(function(i) {
+                    if (action.liveKey) return i.liveKey !== action.liveKey;
                     return i.item !== action.itemName;
                 });
             }
@@ -5116,8 +5234,7 @@ function undoLastInventoryAction() {
             removeRawInventoryEntry(action.rawEntryId);
         }
 
-        currentItemVolume = item.excluded ? 0 : (item.volume * item.qty);
-recalculateTotalVolume();
+        recalculateTotalVolume();
         currentItemVolume = 0;
 
         updateInventoryDisplay("UNDO " + action.qtyAdded + " X " + action.itemName.toUpperCase());
@@ -5140,15 +5257,6 @@ recalculateTotalVolume();
     }
 
     else if (action.type === "qty-edit") {
-        const item = inventoryItems.find(function(i) {
-            return i.item === action.itemName;
-        });
-
-        if (item) {
-            item.qty = action.previousQty;
-            currentItemVolume = item.volume * item.qty;
-        }
-
         if (action.rawEntryId) {
             const rawEntry = findRawInventoryEntry(action.rawEntryId);
             if (rawEntry && action.previousRawQty !== null && action.previousRawQty !== undefined) {
@@ -5158,22 +5266,15 @@ recalculateTotalVolume();
             }
         }
 
+        syncLiveInventoryFromRawForActiveSequence();
         recalculateTotalVolume();
 
-        const label = item ? (item.displayName || item.item) : action.itemName;
+        const rawEntry = action.rawEntryId ? findRawInventoryEntry(action.rawEntryId) : null;
+        const label = rawEntry ? (rawEntry.itemName || action.itemName) : action.itemName;
         updateInventoryDisplay("UNDO QTY " + String(label).toUpperCase());
     }
 
     else if (action.type === "volume-edit") {
-        const item = inventoryItems.find(function(i) {
-            return i.item === action.itemName;
-        });
-
-        if (item) {
-            item.volume = action.previousVolume;
-            currentItemVolume = item.volume * item.qty;
-        }
-
         if (action.rawEntryId) {
             const rawEntry = findRawInventoryEntry(action.rawEntryId);
             if (rawEntry && action.previousRawVolume !== null && action.previousRawVolume !== undefined) {
@@ -5183,11 +5284,13 @@ recalculateTotalVolume();
             }
         }
 
+        syncLiveInventoryFromRawForActiveSequence();
         recalculateTotalVolume();
 
-        const label = item ? (item.displayName || item.item) : action.itemName;
+        const label = action.itemName;
         updateInventoryDisplay("UNDO VOL " + String(label).toUpperCase());
     }
+
     else if (action.type === "note") {
         if (action.rawEntryId) {
             removeRawInventoryEntry(action.rawEntryId);
@@ -5196,43 +5299,47 @@ recalculateTotalVolume();
         currentItemVolume = 0;
         updateInventoryDisplay("UNDO NOTE");
     }
+
     else if (action.type === "note-edit") {
-    const rawEntry = findRawInventoryEntry(action.rawEntryId);
-    if (rawEntry) {
-        rawEntry.note = action.previousNote || "";
-        saveToDevice();
+        const rawEntry = findRawInventoryEntry(action.rawEntryId);
+        if (rawEntry) {
+            rawEntry.note = action.previousNote || "";
+            saveToDevice();
+            syncLiveInventoryFromRawForActiveSequence();
 
-        const tags = [];
-        if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-        if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-        if (rawEntry.excluded) tags.push("[EXCLUDED]");
-        if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+            const tags = [];
+            if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+            if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+            if (rawEntry.excluded) tags.push("[EXCLUDED]");
+            if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
 
-        const label = (rawEntry.itemName || "ITEM").toUpperCase();
-        updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
-    }
-}
-
-else if (action.type === "damage-edit") {
-    const rawEntry = findRawInventoryEntry(action.rawEntryId);
-    if (rawEntry) {
-        rawEntry.damage = action.previousDamage || "";
-        saveToDevice();
-
-        const tags = [];
-        if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-        if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-        if (rawEntry.crated && rawEntry.crateDims) {
-            tags.push("[CRATE: " + rawEntry.crateDims.l + " x " + rawEntry.crateDims.w + " x " + rawEntry.crateDims.h + " " + rawEntry.crateDims.unit + "]");
+            const label = (rawEntry.itemName || "ITEM").toUpperCase();
+            updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
         }
-        if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
-        if (rawEntry.excluded) tags.push("[EXCLUDED]");
-        if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
-
-        const label = (rawEntry.itemName || "ITEM").toUpperCase();
-        updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
     }
-}
+
+    else if (action.type === "damage-edit") {
+        const rawEntry = findRawInventoryEntry(action.rawEntryId);
+        if (rawEntry) {
+            rawEntry.damage = action.previousDamage || "";
+            saveToDevice();
+            syncLiveInventoryFromRawForActiveSequence();
+
+            const tags = [];
+            if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+            if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+            if (rawEntry.crated && rawEntry.crateDims) {
+                tags.push("[CRATE: " + rawEntry.crateDims.l + " x " + rawEntry.crateDims.w + " x " + rawEntry.crateDims.h + " " + rawEntry.crateDims.unit + "]");
+            }
+            if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
+            if (rawEntry.excluded) tags.push("[EXCLUDED]");
+            if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
+
+            const label = (rawEntry.itemName || "ITEM").toUpperCase();
+            updateInventoryDisplay(tags.length ? (label + " " + tags.join(" ")) : label);
+        }
+    }
+
     triggerInventoryPulse("undo", "red");
     triggerInventoryPulse("total", "red");
     triggerHaptic("error");
@@ -5240,7 +5347,7 @@ else if (action.type === "damage-edit") {
     const qtyInput = document.getElementById("inv-qty");
     if (qtyInput) qtyInput.value = 1;
 
-renderActionButtonStates();
+    renderActionButtonStates();
     updateUndoButtonState();
     saveCalculatorFeedForActiveSequence();
 }

@@ -4188,13 +4188,20 @@ let total = crew + vehicle + other;
 document.getElementById("total-cost").value = total;
 
 }
+function getInventoryAddQty() {
+    const qtyInput = document.getElementById("inv-qty");
+    if (!qtyInput) return 1;
+
+    const qty = parseInt(qtyInput.value, 10);
+    return (Number.isFinite(qty) && qty > 0) ? qty : 1;
+}
 function addBox(boxCode) {
     const boxVolume = BOX_VOLUMES[boxCode];
     if (!boxVolume) return;
 
     const clickedBtn = event && event.currentTarget ? event.currentTarget : null;
     const qtyInput = document.getElementById("inv-qty");
-    const qty = 1;
+    const qty = getInventoryAddQty();
 
     const itemNameMap = {
         "AP": "AP BOX",
@@ -4262,7 +4269,7 @@ saveCalculatorFeedForActiveSequence();
 function addVolume(amount) {
     const clickedBtn = event && event.currentTarget ? event.currentTarget : null;
     const qtyInput = document.getElementById("inv-qty");
-    const qty = 1;
+    const qty = getInventoryAddQty();
 
     const volumeEntryName = "VOL-" + amount + "-" + Date.now();
     const displayName = amount + " CUFT";
@@ -4318,7 +4325,7 @@ function addInventoryItem(itemName) {
 
     const clickedBtn = event && event.currentTarget ? event.currentTarget : null;
     const qtyInput = document.getElementById("inv-qty");
-    const qty = 1;
+    const qty = getInventoryAddQty();
 
     lastAddedItemName = itemName;
 
@@ -4450,7 +4457,7 @@ function saveMiscModal() {
 
     setModalErrorText("misc-error-text", "");
 
-    const qty = 1;
+    const qty = getInventoryAddQty();
     const miscKey = "MISC-" + cleanName.toUpperCase();
 
     lastAddedItemName = miscKey;

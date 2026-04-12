@@ -4049,18 +4049,37 @@ function saveSimpleInputModal() {
 
     if (currentTotalQty < 1) return;
 
-    const qtyDifference = newQty - currentTotalQty;
+    if (newQty === currentTotalQty) {
+    closeSimpleInputModal();
+    return;
+}
+
+if (newQty > currentTotalQty) {
     const lastRaw = rawMatches[rawMatches.length - 1];
-    const lastRawCurrentQty = Number(lastRaw.qty || 0);
-    const newLastRawQty = lastRawCurrentQty + qtyDifference;
+    const extraQty = newQty - currentTotalQty;
+    lastRaw.qty = Number(lastRaw.qty || 0) + extraQty;
+    lastRaw.totalVolume = Number(lastRaw.unitVolume || 0) * Number(lastRaw.qty || 0);
+} else {
+    let qtyToRemove = currentTotalQty - newQty;
 
-    if (newLastRawQty < 1) {
-        setModalErrorText("simple-input-error-text", "Quantity is too low for this merged line");
-        return;
+    for (let i = rawMatches.length - 1; i >= 0; i--) {
+        const raw = rawMatches[i];
+        const rawQty = Number(raw.qty || 0);
+
+        if (qtyToRemove <= 0) break;
+
+        if (rawQty <= qtyToRemove) {
+            qtyToRemove -= rawQty;
+            currentJob.inventory.items = currentJob.inventory.items.filter(function(item) {
+                return item.id !== raw.id;
+            });
+        } else {
+            raw.qty = rawQty - qtyToRemove;
+            raw.totalVolume = Number(raw.unitVolume || 0) * raw.qty;
+            qtyToRemove = 0;
+        }
     }
-
-    lastRaw.qty = newLastRawQty;
-    lastRaw.totalVolume = Number(lastRaw.unitVolume || 0) * newLastRawQty;
+}
 
     saveToDevice();
 

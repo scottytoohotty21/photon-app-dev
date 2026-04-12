@@ -7114,6 +7114,16 @@ const QUOTE_OPTIONAL_COST_CHOICES = [
     "Crating",
     "Shuttle Surcharge"
 ];
+const QUOTE_CORE_COST_CHOICES = [
+    "Vans",
+    "Crew",
+    "Mileage",
+    "Consumables",
+    "Cartons",
+    "Export Wrap",
+    "Nights Out",
+    "Custom"
+];
 
 const QUOTE_ADDITIONAL_SERVICE_CHOICES = [
     "Custom",
@@ -7640,18 +7650,106 @@ function handleQuoteNotesChange(value) {
     saveToDevice();
 }
 
-function handleQuoteSavePricing() {
-    quotePricingSaved = true;
+function handleQuoteCreateQuote() {
     const seq = getQuoteSelectedSequence();
     if (!seq) return;
+
+    const sequenceId = String(seq.id);
+    const state = ensureQuoteSequenceState(sequenceId);
+    const totals = getQuoteCommercialTotals(sequenceId);
+    const scope = buildQuoteScopeSnapshot(sequenceId);
+    const QUOTE_CORE_COST_CHOICES = [
+    "Vans",
+    "Crew",
+    "Mileage",
+    "Consumables",
+    "Cartons",
+    "Export Wrap",
+    "Nights Out",
+    "Custom"
+];
+
+    const coreLines = getQuotePricingLines(sequenceId)
+        .map(function(line) {
+            const label = getQuoteLineLabel(line) || line.label || "Line";
+            return label + ": £" + quoteMoney(calcQuoteLineTotal(line));
+        })
+        .join("\n");
+
+    const additionalLines = getQuoteAdditionalCostLines(sequenceId)
+        .filter(function(line) { return !!line.label; })
+        .map(function(line) {
+            const label = getQuoteLineLabel(line) || line.label || "Line";
+            return label + ": £" + quoteMoney(calcQuoteLineTotal(line));
+        })
+        .join("\n");
+
+    const quoteText =
+`QUOTE SUMMARY
+
+Sequence:
+${getSequenceLabelById(sequenceId)}
+
+Move Type:
+${scope.moveType}
+
+Packing Type:
+${scope.packingType}
+
+Included Volume:
+${scope.includedVolume} cuft
+
+Cartons:
+${scope.cartonsTotal}
+
+CORE COSTS
+${coreLines || "None"}
+
+OPTIONAL ADDITIONAL SERVICES
+${additionalLines || "None"}
+
+TOTAL COST BASE
+£${quoteMoney(totals.totalCostBase)}
+
+CUSTOMER PRICE
+£${quoteMoney(totals.customerPrice)}
+
+GROSS MARGIN
+£${quoteMoney(totals.grossMargin)} (${quoteMoney(totals.grossMarginPct)}%)
+
+QUOTE NOTES
+${state.quoteNotes || "None"}
+`;
+
+    alert(quoteText);
+}
+
+function handleQuoteSavePricing() {
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+
+    const sequenceId = String(seq.id);
+    ensureQuoteSequenceState(sequenceId);
+
+    quotePricingSaved = true;
     saveToDevice();
-    updateQuoteCommercialDisplays(String(seq.id));
-}
+    updateQuoteCommercialDisplays(sequenceId);
 
-function handleQuoteCreateQuote() {
-    alert("Create Quote is ready to be wired into the quote output.");
+    alert("Pricing saved.");
 }
+function handleQuoteSavePricing() {
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
 
+    const sequenceId = String(seq.id);
+    ensureQuoteSequenceState(sequenceId);
+
+    quotePricingSaved = true;
+    saveToDevice();
+    updateQuoteCommercialDisplays(sequenceId);
+
+    alert("Pricing saved.");
+}
 function bindQuoteShellEvents() {
     const sequenceSelect = document.getElementById("quote-sequenceSelect");
     const customerInput = document.getElementById("quote-customerPriceInput");
@@ -7689,6 +7787,27 @@ function bindQuoteShellEvents() {
 function renderQuoteTab() {
     renderQuoteTabShellOnly();
     bindQuoteShellEvents();
+
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+
+    const sequenceId = String(seq.id);
+
+    renderQuotePricingGrid(sequenceId);
+    renderQuoteAdditionalCostsGrid(sequenceId);
+
+    const addPricingBtn = document.getElementById("quote-addPricingLineBtn");
+    const addAdditionalBtn = document.getElementById("quote-addAdditionalCostLineBtn");
+
+    if (addPricingBtn) {
+        addPricingBtn.onclick = addQuotePricingLine;
+    }
+
+    if (addAdditionalBtn) {
+        addAdditionalBtn.onclick = addQuoteAdditionalCostLine;
+    }
+
+    updateQuoteCommercialDisplays(sequenceId);
 }
 const BOX_RATES = {
     ap: 10,
@@ -7721,6 +7840,272 @@ const TASK_OPTIONS = [
     "Load and Travel",
     "Deliver and Crew Return"
 ];
+function getQuoteLineLabel(line) {
+    if (!line) return "";
+    if (line.label === "Custom") {
+        return line.customLabel || "";
+    }
+    return line.label || "";
+}
+
+function updateQuoteLine(sequenceId, lineId, field, value, lineType) {
+    const state = ensureQuoteSequenceState(sequenceId);
+    if (!state) return;
+
+    const targetLines = lineType === "additional"
+        ? state.additionalCostLines
+        : state.pricingLines;
+
+    const line = targetLines.find(function(item) {
+        return item.id === lineId;
+    });
+
+    if (!line) return;
+
+    if (field === "label") {
+        line.label = value;
+
+        if (value !== "Custom") {
+            line.customLabel = "";
+        }
+    } else if (field === "customLabel") {
+        line.customLabel = value;
+    } else if (field === "qty") {
+        line.qty = Number(value || 0);
+    } else if (field === "unitCost") {
+        line.unitCost = Number(value || 0);
+    }
+
+    quotePricingSaved = false;
+    saveToDevice();
+    renderQuoteTab();
+}
+
+function addQuotePricingLine() {
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+
+    const state = ensureQuoteSequenceState(seq.id);
+    state.pricingLines.push({
+        id: createQuoteLineId(),
+        label: "Custom",
+        customLabel: "",
+        qty: 0,
+        unitCost: 0
+    });
+
+    quotePricingSaved = false;
+    saveToDevice();
+    renderQuoteTab();
+}
+
+function addQuoteAdditionalCostLine() {
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+
+    const state = ensureQuoteSequenceState(seq.id);
+    state.additionalCostLines.push({
+        id: createQuoteLineId(),
+        label: "Custom",
+        customLabel: "",
+        qty: 0,
+        unitCost: 0
+    });
+
+    quotePricingSaved = false;
+    saveToDevice();
+    renderQuoteTab();
+}
+
+function deleteQuoteLine(sequenceId, lineId, lineType) {
+    const state = ensureQuoteSequenceState(sequenceId);
+    if (!state) return;
+
+    if (lineType === "additional") {
+        state.additionalCostLines = state.additionalCostLines.filter(function(line) {
+            return line.id !== lineId;
+        });
+    } else {
+        state.pricingLines = state.pricingLines.filter(function(line) {
+            return line.id !== lineId;
+        });
+    }
+
+    quotePricingSaved = false;
+    saveToDevice();
+    renderQuoteTab();
+}
+
+function renderQuotePricingGrid(sequenceId) {
+    const grid = document.getElementById("quote-pricingGrid");
+    if (!grid) return;
+
+    const lines = getQuotePricingLines(sequenceId);
+
+    grid.innerHTML = `
+        <div class="space-y-3">
+            ${lines.map(function(line) {
+                const total = calcQuoteLineTotal(line);
+                const isCustom = line.label === "Custom";
+
+                return `
+                    <div class="grid grid-cols-12 gap-2 items-end border border-slate-200 rounded-xl p-3">
+                        <div class="col-span-4">
+                            <label class="mini-label">Cost Type</label>
+                            <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'core')">
+                                ${QUOTE_CORE_COST_CHOICES.map(function(choice) {
+                                    return `<option value="${choice}" ${line.label === choice ? "selected" : ""}>${choice}</option>`;
+                                }).join("")}
+                            </select>
+                        </div>
+
+                        <div class="col-span-3">
+                            <label class="mini-label">Custom Label</label>
+                            <input
+                                type="text"
+                                class="field"
+                                value="${escapeHtml(line.customLabel || "")}"
+                                ${isCustom ? "" : "disabled"}
+                                oninput="updateQuoteLine('${sequenceId}','${line.id}','customLabel',this.value,'core')"
+                                placeholder="Custom name"
+                            >
+                        </div>
+
+                        <div class="col-span-1">
+                            <label class="mini-label">Qty</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="field"
+                                value="${Number(line.qty || 0)}"
+                                oninput="updateQuoteLine('${sequenceId}','${line.id}','qty',this.value,'core')"
+                            >
+                        </div>
+
+                        <div class="col-span-2">
+                            <label class="mini-label">Unit Cost</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="field"
+                                value="${Number(line.unitCost || 0)}"
+                                oninput="updateQuoteLine('${sequenceId}','${line.id}','unitCost',this.value,'core')"
+                            >
+                        </div>
+
+                        <div class="col-span-1">
+                            <label class="mini-label">Total</label>
+                            <div class="field" style="background:#f8fafc;">${quoteMoney(total)}</div>
+                        </div>
+
+                        <div class="col-span-1">
+                            <button
+                                type="button"
+                                class="action-btn btn-change"
+                                style="width:100%;height:44px;"
+                                onclick="deleteQuoteLine('${sequenceId}','${line.id}','core')"
+                            >
+                                Del
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+function renderQuoteAdditionalCostsGrid(sequenceId) {
+    const grid = document.getElementById("quote-additionalCostsGrid");
+    if (!grid) return;
+
+    const lines = getQuoteAdditionalCostLines(sequenceId);
+
+    if (!lines.length) {
+        grid.innerHTML = `
+            <div class="border border-slate-200 rounded-xl p-4 text-[10px] font-bold uppercase text-slate-400">
+                No optional services added
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = `
+        <div class="space-y-3">
+            ${lines.map(function(line) {
+                const total = calcQuoteLineTotal(line);
+                const isCustom = line.label === "Custom";
+
+                return `
+                    <div class="grid grid-cols-12 gap-2 items-end border border-slate-200 rounded-xl p-3">
+                        <div class="col-span-4">
+                            <label class="mini-label">Service Type</label>
+                            <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'additional')">
+                                ${QUOTE_ADDITIONAL_SERVICE_CHOICES.map(function(choice) {
+                                    return `<option value="${choice}" ${line.label === choice ? "selected" : ""}>${choice}</option>`;
+                                }).join("")}
+                            </select>
+                        </div>
+
+                        <div class="col-span-3">
+                            <label class="mini-label">Custom Label</label>
+                            <input
+                                type="text"
+                                class="field"
+                                value="${escapeHtml(line.customLabel || "")}"
+                                ${isCustom ? "" : "disabled"}
+                                oninput="updateQuoteLine('${sequenceId}','${line.id}','customLabel',this.value,'additional')"
+                                placeholder="Custom name"
+                            >
+                        </div>
+
+                        <div class="col-span-1">
+                            <label class="mini-label">Qty</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="field"
+                                value="${Number(line.qty || 0)}"
+                                oninput="updateQuoteLine('${sequenceId}','${line.id}','qty',this.value,'additional')"
+                            >
+                        </div>
+
+                        <div class="col-span-2">
+                            <label class="mini-label">Unit Cost</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="field"
+                                value="${Number(line.unitCost || 0)}"
+                                oninput="updateQuoteLine('${sequenceId}','${line.id}','unitCost',this.value,'additional')"
+                            >
+                        </div>
+
+                        <div class="col-span-1">
+                            <label class="mini-label">Total</label>
+                            <div class="field" style="background:#f8fafc;">${quoteMoney(total)}</div>
+                        </div>
+
+                        <div class="col-span-1">
+                            <button
+                                type="button"
+                                class="action-btn btn-change"
+                                style="width:100%;height:44px;"
+                                onclick="deleteQuoteLine('${sequenceId}','${line.id}','additional')"
+                            >
+                                Del
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
 function createId(){
     return `day_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
 }

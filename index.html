@@ -532,6 +532,18 @@ button {
     min-height: 40px;
     line-height: 1.2;
 }
+
+#tool-disconnect,
+#tool-handyman {
+    min-width: 88px;
+    height: 44px;
+}
+
+#tool-disconnect,
+#tool-handyman {
+    min-width: 88px;
+    height: 50px;
+}
         .inv-tool-btn.active {
             background: #3b82f6;
             color: white;
@@ -1586,6 +1598,10 @@ button {
     color: #0f172a;
     font-family: 'Inter', sans-serif;
 }
+.inventory-search-input-short {
+    flex: 0 1 220px;
+    min-width: 140px;
+}
 
 .inventory-search-input:focus {
     border-color: #3b82f6;
@@ -1868,42 +1884,59 @@ Enter as: Surname, First Name
 </div>
 
             <div class="flex gap-2 mb-4">
-                <div class="flex-grow log-bar">2 X SOFA 3 SEAT [EXC]</div>
-               <div
-    id="inv-current-volume"
-    class="w-20 vol-box"
-    onclick="openVolumeOverride()"
->
-    <span class="mini-label !mb-0 text-red-600">Vol</span>
-    <span class="text-sm font-black">50</span>
+    <div class="flex-grow log-bar">2 X SOFA 3 SEAT [EXC]</div>
+    <div
+        id="inv-current-volume"
+        class="w-20 vol-box"
+        onclick="openVolumeOverride()"
+    >
+        <span class="mini-label !mb-0 text-red-600">Vol</span>
+        <span class="text-sm font-black">50</span>
+    </div>
+    <button
+        id="undo-btn"
+        onclick="undoLastInventoryAction()"
+        class="w-20 undo-btn-style font-black text-xs uppercase"
+    >
+        Undo
+    </button>
 </div>
-               <button
-    id="undo-btn"
-    onclick="undoLastInventoryAction()"
-    class="w-20 undo-btn-style font-black text-xs uppercase"
->
-    Undo
-</button>
-            </div>
 
                        <div class="inventory-search-row mb-3">
-                <input
-                    type="text"
-                    id="inventory-search-input"
-                    class="inventory-search-input"
-                    placeholder="Search inventory items..."
-                    oninput="handleInventorySearch(this.value)"
-                >
-                <button
-                    type="button"
-                    class="inventory-search-clear"
-                    onclick="clearInventorySearch()"
-                >
-                    Clear
-                </button>
-            </div>
+    <button
+        id="tool-disconnect"
+        class="inv-tool-btn"
+        onclick="toggleItemAction('disconnect')"
+    >
+        Disconnect
+    </button>
 
-            <div id="inventory-search-count" class="inventory-search-count">Showing all items</div>
+    <button
+        id="tool-handyman"
+        class="inv-tool-btn"
+        onclick="toggleItemAction('handyman')"
+    >
+        Handyman
+    </button>
+
+    <input
+        type="text"
+        id="inventory-search-input"
+        class="inventory-search-input inventory-search-input-short"
+        placeholder="Search..."
+        oninput="handleInventorySearch(this.value)"
+    >
+
+    <button
+        type="button"
+        class="inventory-search-clear"
+        onclick="clearInventorySearch()"
+    >
+        Clear
+    </button>
+</div>
+
+<div id="inventory-search-count" class="inventory-search-count">Showing all items</div>
 
             <div class="grid grid-cols-5 gap-1">
     <div class="col-span-4 inventory-picker-shell">
@@ -2948,6 +2981,8 @@ function buildRawInventoryEntry(entryData) {
         kind: entryData.kind || "item",
         dismantle: !!entryData.dismantle,
         expWrap: !!entryData.expWrap,
+        disconnect: !!entryData.disconnect,
+        handyman: !!entryData.handyman,
         excluded: !!entryData.excluded,
         note: entryData.note || "",
         crated: !!entryData.crated,
@@ -3008,6 +3043,8 @@ function recalculateTotalVolume() {
 function renderActionButtonStates() {
     const dismantleBtn = document.getElementById("tool-dismantle");
     const expWrapBtn = document.getElementById("tool-expwrap");
+    const disconnectBtn = document.getElementById("tool-disconnect");
+    const handymanBtn = document.getElementById("tool-handyman");
     const excludeBtn = document.getElementById("tool-exclude");
     const crateBtn = document.getElementById("tool-crate");
     const damageBtn = document.getElementById("tool-damage");
@@ -3019,6 +3056,14 @@ function renderActionButtonStates() {
 
     if (expWrapBtn) {
         expWrapBtn.classList.toggle("active", !!(rawEntry && rawEntry.expWrap));
+    }
+
+    if (disconnectBtn) {
+        disconnectBtn.classList.toggle("active", !!(rawEntry && rawEntry.disconnect));
+    }
+
+    if (handymanBtn) {
+        handymanBtn.classList.toggle("active", !!(rawEntry && rawEntry.handyman));
     }
 
     if (excludeBtn) {
@@ -3054,6 +3099,16 @@ function toggleItemAction(actionName) {
         liveItem.expWrap = !!rawEntry.expWrap;
     }
 
+    if (actionName === "disconnect") {
+        rawEntry.disconnect = !rawEntry.disconnect;
+        liveItem.disconnect = !!rawEntry.disconnect;
+    }
+
+    if (actionName === "handyman") {
+        rawEntry.handyman = !rawEntry.handyman;
+        liveItem.handyman = !!rawEntry.handyman;
+    }
+
     if (actionName === "excluded") {
         rawEntry.excluded = !rawEntry.excluded;
         liveItem.excluded = !!rawEntry.excluded;
@@ -3066,6 +3121,8 @@ function toggleItemAction(actionName) {
     const tags = [];
     if (rawEntry.dismantle) tags.push("[DISMANTLE]");
     if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+    if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.excluded) tags.push("[EXCLUDED]");
 
     const label = (rawEntry.itemName || "ITEM").toUpperCase();
@@ -3131,19 +3188,14 @@ function buildCalculatorFeedForSequence(sequenceId) {
     const rawItems = getRawInventoryItemsForSequence(sequenceId);
 
     let furnitureVol = 0;
+    let disconnectApplianceCount = 0;
+
     const qty = {
         ap: 0,
         cg: 0,
         books: 0,
         linen: 0,
         wr: 0
-    };
-
-    const special = {
-        frameBeds: 0,
-        bunkBeds: 0,
-        cratingItems: 0,
-        exportWrapVol: 0
     };
 
     rawItems.forEach(function(entry) {
@@ -3153,7 +3205,6 @@ function buildCalculatorFeedForSequence(sequenceId) {
         const entryQty = Number(entry.qty || 0);
         const unitVolume = Number(entry.unitVolume || 0);
         const totalVolume = Number(entry.totalVolume || 0);
-        const entryTotalVolume = totalVolume || (unitVolume * entryQty);
 
         if (itemName === "AP BOX") {
             qty.ap += entryQty;
@@ -3180,28 +3231,17 @@ function buildCalculatorFeedForSequence(sequenceId) {
             return;
         }
 
-        furnitureVol += entryTotalVolume;
-
-        if (entry.expWrap) {
-            special.exportWrapVol += entryTotalVolume;
+        if (
+            entry.disconnect &&
+            (
+                itemName === "WASHING MACHINE" ||
+                itemName === "DISHWASHER"
+            )
+        ) {
+            disconnectApplianceCount += entryQty;
         }
 
-        if (entry.crated) {
-            special.cratingItems += entryQty;
-        }
-
-        if (entry.dismantle) {
-            if (itemName === "BUNK BED") {
-                special.bunkBeds += entryQty;
-            } else if (
-                itemName === "BED (SINGLE)" ||
-                itemName === "BED (DOUBLE)" ||
-                itemName === "BED (KING)" ||
-                itemName === "FRAME BED"
-            ) {
-                special.frameBeds += entryQty;
-            }
-        }
+        furnitureVol += totalVolume || (unitVolume * entryQty);
     });
 
     const seqIndex = currentJob.sequences.findIndex(function(seq) {
@@ -3215,12 +3255,7 @@ function buildCalculatorFeedForSequence(sequenceId) {
         packOption: getSequencePackOptionForCalculator(sequence),
         furnitureVol: Math.round(furnitureVol * 100) / 100,
         qty: qty,
-        special: {
-            frameBeds: special.frameBeds,
-            bunkBeds: special.bunkBeds,
-            cratingItems: special.cratingItems,
-            exportWrapVol: Math.round(special.exportWrapVol * 100) / 100
-        },
+        disconnectApplianceCount: disconnectApplianceCount,
         createdAt: new Date().toISOString()
     };
 }
@@ -3270,6 +3305,8 @@ function getLiveInventoryGroupKey(entry) {
         !!entry.excluded,
         !!entry.dismantle,
         !!entry.expWrap,
+        !!entry.disconnect,
+        !!entry.handyman,
         String(entry.note || ""),
         String(entry.damage || ""),
         !!entry.crated,
@@ -3314,22 +3351,24 @@ function rebuildLiveInventoryFromSequence(sequenceId) {
             existing.qty += qty;
         } else {
             inventoryItems.push({
-                liveKey: liveKey,
-                item: entry.itemName,
-                displayName: entry.itemName,
-                volume: unitVolume,
-                qty: qty,
-                dismantle: !!entry.dismantle,
-                expWrap: !!entry.expWrap,
-                excluded: !!entry.excluded,
-                roomName: entry.roomName || "",
-                floorName: entry.floorName || "",
-                deliveryId: entry.deliveryId || "",
-                note: entry.note || "",
-                damage: entry.damage || "",
-                crated: !!entry.crated,
-                crateDims: entry.crateDims || null
-            });
+    liveKey: liveKey,
+    item: entry.itemName,
+    displayName: entry.itemName,
+    volume: unitVolume,
+    qty: qty,
+    dismantle: !!entry.dismantle,
+    expWrap: !!entry.expWrap,
+    disconnect: !!entry.disconnect,
+    handyman: !!entry.handyman,
+    excluded: !!entry.excluded,
+    roomName: entry.roomName || "",
+    floorName: entry.floorName || "",
+    deliveryId: entry.deliveryId || "",
+    note: entry.note || "",
+    damage: entry.damage || "",
+    crated: !!entry.crated,
+    crateDims: entry.crateDims || null
+});
         }
     });
 
@@ -4814,6 +4853,8 @@ function saveCrateModal() {
     const tags = [];
     if (rawEntry.dismantle) tags.push("[DISMANTLE]");
     if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.excluded) tags.push("[EXCLUDED]");
     if (rawEntry.crated && rawEntry.crateDims) {
         tags.push(
@@ -4883,6 +4924,8 @@ function saveNoteModal() {
     const tags = [];
     if (rawEntry.dismantle) tags.push("[DISMANTLE]");
     if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.crated && rawEntry.crateDims) {
         tags.push(
             "[CRATE: " +
@@ -5038,6 +5081,8 @@ function saveDamageModal() {
     const tags = [];
     if (rawEntry.dismantle) tags.push("[DISMANTLE]");
     if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.crated && rawEntry.crateDims) {
         tags.push(
             "[CRATE: " +
@@ -5106,6 +5151,8 @@ function updateLastItemQty(newQty) {
     const tags = [];
     if (rawEntry.dismantle) tags.push("[DISMANTLE]");
     if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.crated && rawEntry.crateDims) {
         tags.push(
             "[CRATE: " +
@@ -5345,6 +5392,8 @@ function undoLastInventoryAction() {
             const tags = [];
             if (rawEntry.dismantle) tags.push("[DISMANTLE]");
             if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+            if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+if (rawEntry.handyman) tags.push("[HANDYMAN]");
             if (rawEntry.excluded) tags.push("[EXCLUDED]");
             if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
 
@@ -5625,9 +5674,11 @@ function getRawEntriesForListedEntry(entry) {
             String(raw.itemName || "") === String(entry.itemName || "") &&
             Number(raw.unitVolume || 0) === Number(entry.unitVolume || 0) &&
             !!raw.excluded === !!entry.excluded &&
-            !!raw.dismantle === !!entry.dismantle &&
-            !!raw.expWrap === !!entry.expWrap &&
-            String(raw.note || "") === String(entry.note || "") &&
+!!raw.dismantle === !!entry.dismantle &&
+!!raw.expWrap === !!entry.expWrap &&
+!!raw.disconnect === !!entry.disconnect &&
+!!raw.handyman === !!entry.handyman &&
+String(raw.note || "") === String(entry.note || "") &&
             String(raw.damage || "") === String(entry.damage || "") &&
             !!raw.crated === !!entry.crated &&
             rawCrateText === crateText
@@ -5723,6 +5774,8 @@ function getListedEntryMergeKey(entry) {
         !!entry.excluded,
         !!entry.dismantle,
         !!entry.expWrap,
+        !!entry.disconnect,
+        !!entry.handyman,
         entry.note || "",
         entry.damage || "",
         !!entry.crated,
@@ -6078,20 +6131,22 @@ window.__listedEntryMap = window.__listedEntryMap || {};
 window.__listedEntryMap[entryKey] = entry;
                 const tags = [];
 
-                if (entry.dismantle) tags.push("DISMANTLE");
-                if (entry.expWrap) tags.push("EXP WRAP");
-                if (entry.crated && entry.crateDims) {
-                    tags.push(
-                        "CRATE: " +
-                        entry.crateDims.l + " x " +
-                        entry.crateDims.w + " x " +
-                        entry.crateDims.h + " " +
-                        entry.crateDims.unit
-                    );
-                }
-                if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
-                if (entry.excluded) tags.push("EXCLUDED");
-                if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
+if (entry.dismantle) tags.push("DISMANTLE");
+if (entry.expWrap) tags.push("EXP WRAP");
+if (entry.disconnect) tags.push("DISCONNECT");
+if (entry.handyman) tags.push("HANDYMAN");
+if (entry.crated && entry.crateDims) {
+    tags.push(
+        "CRATE: " +
+        entry.crateDims.l + " x " +
+        entry.crateDims.w + " x " +
+        entry.crateDims.h + " " +
+        entry.crateDims.unit
+    );
+}
+if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
+if (entry.excluded) tags.push("EXCLUDED");
+if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
 
                 const tagText = tags.length ? ` [${tags.join("] [")}]` : "";
                 const isExcluded = !!entry.excluded;
@@ -7039,27 +7094,20 @@ function handleScheduleInputChange() {
 function getPhotonFeed() {
     const raw = localStorage.getItem("photon_calculator_feed");
 
-    const emptyFeed = {
-        sequenceLabel: "—",
-        packOption: "none",
-        furnitureVol: 0,
-        qty: {
-            ap: 0,
-            cg: 0,
-            books: 0,
-            linen: 0,
-            wr: 0
-        },
-        special: {
-            frameBeds: 0,
-            bunkBeds: 0,
-            cratingItems: 0,
-            exportWrapVol: 0
-        }
-    };
-
     if (!raw) {
-        return emptyFeed;
+        return {
+            sequenceLabel: "—",
+            packOption: "none",
+            furnitureVol: 0,
+            qty: {
+                ap: 0,
+                cg: 0,
+                books: 0,
+                linen: 0,
+                wr: 0
+            },
+            disconnectApplianceCount: 0
+        };
     }
 
     try {
@@ -7076,15 +7124,22 @@ function getPhotonFeed() {
                 linen: Number(parsed.qty?.linen || 0),
                 wr: Number(parsed.qty?.wr || 0)
             },
-            special: {
-                frameBeds: Number(parsed.special?.frameBeds || 0),
-                bunkBeds: Number(parsed.special?.bunkBeds || 0),
-                cratingItems: Number(parsed.special?.cratingItems || 0),
-                exportWrapVol: Number(parsed.special?.exportWrapVol || 0)
-            }
+            disconnectApplianceCount: Number(parsed.disconnectApplianceCount || 0)
         };
     } catch (err) {
-        return emptyFeed;
+        return {
+            sequenceLabel: "—",
+            packOption: "none",
+            furnitureVol: 0,
+            qty: {
+                ap: 0,
+                cg: 0,
+                books: 0,
+                linen: 0,
+                wr: 0
+            },
+            disconnectApplianceCount: 0
+        };
     }
 }
 
@@ -7117,6 +7172,11 @@ function getIncludedKeys(packOption){
 
 function getState(){
     const photonFeed = getPhotonFeed();
+
+    const manualApplianceCount = num("svc_appliance");
+    const disconnectApplianceCount = Number(photonFeed.disconnectApplianceCount || 0);
+    const totalApplianceCount = manualApplianceCount + disconnectApplianceCount;
+
     return {
         packOption: photonFeed.packOption || "none",
         furnitureVol: photonFeed.furnitureVol || 0,
@@ -7137,8 +7197,8 @@ function getState(){
         boxVolumes: BOX_VOLUMES,
 
         special: {
-            frame: Number(photonFeed.special?.frameBeds || 0),
-            bunk: Number(photonFeed.special?.bunkBeds || 0),
+            frame: num("svc_frame"),
+            bunk: num("svc_bunk"),
             customMinutes: num("svc_custom_minutes"),
             customNote: document.getElementById("svc_custom_note")
                 ? document.getElementById("svc_custom_note").value.trim()
@@ -7146,11 +7206,13 @@ function getState(){
             upright: num("svc_upright"),
             grand: num("svc_grand"),
             clock: num("svc_clock"),
-            appliance: num("svc_appliance"),
-            crate: Number(photonFeed.special?.cratingItems || 0)
+            appliance: totalApplianceCount,
+            manualApplianceCount: manualApplianceCount,
+            disconnectApplianceCount: disconnectApplianceCount,
+            crate: num("svc_crate")
         },
 
-        exportWrapVol: Number(photonFeed.special?.exportWrapVol || 0)
+        exportWrapVol: num("exportWrapVol")
     };
 }
 function calcPacking(state){
@@ -7609,18 +7671,18 @@ const special = calcSpecialLabour(state);
         `Two regular frame beds and 50 cuft of export wrap are treated as already included before extra special time is added.`;
 
     document.getElementById("specialText").textContent =
-        `Frame beds: ${special.breakdown.frame.toFixed(2)} hrs extra after first ${special.breakdown.includedFrameBeds} included · ` +
-        `Bunk beds: ${special.breakdown.bunk.toFixed(2)} hrs · ` +
-        `${state.special.customNote ? state.special.customNote : "Custom item"}: ${special.breakdown.custom.toFixed(2)} hrs · ` +
-        `Upright pianos: ${special.breakdown.upright.toFixed(2)} hrs · ` +
-        `Baby / grand pianos: ${special.breakdown.grand.toFixed(2)} hrs · ` +
-        `Grandfather clocks: ${special.breakdown.clock.toFixed(2)} hrs · ` +
-        `Appliances: ${special.breakdown.appliance.toFixed(2)} hrs · ` +
-        `Crating: ${special.breakdown.crate.toFixed(2)} hrs · ` +
-        `Loft effects: ${special.breakdown.loft.toFixed(2)} hrs · ` +
-        `Export wrapping: ${special.breakdown.exportWrap.toFixed(2)} hrs extra after first ${special.breakdown.includedExportWrapVol} cuft included · ` +
-        `Transit impact: ${special.breakdown.transit.toFixed(2)} hrs after first 30 mins included. ` +
-        `Load side specials: ${special.loadSideHours.toFixed(2)} hrs · Unload side specials: ${special.unloadSideHours.toFixed(2)} hrs.`;
+    `Frame beds: ${special.breakdown.frame.toFixed(2)} hrs extra after first ${special.breakdown.includedFrameBeds} included · ` +
+    `Bunk beds: ${special.breakdown.bunk.toFixed(2)} hrs · ` +
+    `${state.special.customNote ? state.special.customNote : "Custom item"}: ${special.breakdown.custom.toFixed(2)} hrs · ` +
+    `Upright pianos: ${special.breakdown.upright.toFixed(2)} hrs · ` +
+    `Baby / grand pianos: ${special.breakdown.grand.toFixed(2)} hrs · ` +
+    `Grandfather clocks: ${special.breakdown.clock.toFixed(2)} hrs · ` +
+    `Appliances: ${special.breakdown.appliance.toFixed(2)} hrs (${state.special.manualApplianceCount} manual + ${state.special.disconnectApplianceCount} from Disconnect) · ` +
+    `Crating: ${special.breakdown.crate.toFixed(2)} hrs · ` +
+    `Loft effects: ${special.breakdown.loft.toFixed(2)} hrs · ` +
+    `Export wrapping: ${special.breakdown.exportWrap.toFixed(2)} hrs extra after first ${special.breakdown.includedExportWrapVol} cuft included · ` +
+    `Transit impact: ${special.breakdown.transit.toFixed(2)} hrs after first 30 mins included. ` +
+    `Load side specials: ${special.loadSideHours.toFixed(2)} hrs · Unload side specials: ${special.unloadSideHours.toFixed(2)} hrs.`;
 
     renderSchedulePlanner();
     renderValidation(packing, loading, unloading, special, state);

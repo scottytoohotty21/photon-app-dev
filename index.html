@@ -2446,6 +2446,15 @@ function createEmptySequenceSchedule() {
         }
     };
 }
+function createEmptySequenceQuote() {
+    return {
+        customerPrice: 0,
+        quoteNotes: "",
+        pricingSaved: false,
+        pricingLines: [],
+        additionalCostLines: []
+    };
+}
         function createEmptyJob(overrides = {}) {
     const now = new Date().toISOString();
     const defaultProperties = createDefaultProperties();
@@ -2748,15 +2757,16 @@ document.getElementById('hdr-ref').innerText =
 if (!currentJob.sequences || currentJob.sequences.length === 0) {
     const id = Date.now();
     currentJob.sequences.push({
-    id: id,
-    moveType: "",
-    packOption: "",
-    vol: 0,
-    isSaved: false,
-    collections: [currentJob.properties[0].id],
-    deliveries: [currentJob.properties[1] ? currentJob.properties[1].id : currentJob.properties[0].id],
-    schedule: createEmptySequenceSchedule()
-});
+        id: id,
+        moveType: "",
+        packOption: "",
+        vol: 0,
+        isSaved: false,
+        collections: [currentJob.properties[0].id],
+        deliveries: [currentJob.properties[1] ? currentJob.properties[1].id : currentJob.properties[0].id],
+        schedule: createEmptySequenceSchedule(),
+        quote: createEmptySequenceQuote()
+    });
     activeSeqId = id;
 } else {
     setActiveSequenceToDefault();
@@ -3979,45 +3989,52 @@ function renderDashboard() {
             filterFiles();
         }
 
-        function addSequence() {
-            const id = Date.now();
-            currentJob.sequences.push({
-    id: id,
-    moveType: "",
-    packOption: "",
-    vol: 0,
-    isSaved: false,
-    collections: [currentJob.properties[0].id],
-    deliveries: [currentJob.properties[1] ? currentJob.properties[1].id : currentJob.properties[0].id],
-    schedule: createEmptySequenceSchedule()
-});
-            activeSeqId = id;
-renderSequenceUI();
-renderInventorySequenceDropdown();
-renderInventoryDeliveryDropdown();
-renderScheduleSequenceDropdown();
-saveToDevice();
-        }
-        function copySequence() {
-            const original = currentJob.sequences.find(s => s.id == activeSeqId);
-            const copy = JSON.parse(JSON.stringify(original));
-            copy.schedule = copy.schedule || createEmptySequenceSchedule();
-            copy.id = Date.now(); copy.isSaved = false;
-            copy.schedule.manualDays = Array.isArray(copy.schedule.manualDays)
-    ? copy.schedule.manualDays.map(day => ({
-        ...day,
-        id: "day_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
-        groupId: day.groupId || ("grp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7))
-    }))
-    : [];
-            currentJob.sequences.push(copy);
-activeSeqId = copy.id;
-renderSequenceUI();
-renderInventorySequenceDropdown();
-renderInventoryDeliveryDropdown();
-renderScheduleSequenceDropdown();
-saveToDevice();
-        }
+ function addSequence() {
+    const id = Date.now();
+    currentJob.sequences.push({
+        id: id,
+        moveType: "",
+        packOption: "",
+        vol: 0,
+        isSaved: false,
+        collections: [currentJob.properties[0].id],
+        deliveries: [currentJob.properties[1] ? currentJob.properties[1].id : currentJob.properties[0].id],
+        schedule: createEmptySequenceSchedule(),
+        quote: createEmptySequenceQuote()
+    });
+    activeSeqId = id;
+    renderSequenceUI();
+    renderInventorySequenceDropdown();
+    renderInventoryDeliveryDropdown();
+    renderScheduleSequenceDropdown();
+    saveToDevice();
+}
+    function copySequence() {
+    const original = currentJob.sequences.find(s => s.id == activeSeqId);
+    const copy = JSON.parse(JSON.stringify(original));
+
+    copy.schedule = copy.schedule || createEmptySequenceSchedule();
+    copy.quote = copy.quote || createEmptySequenceQuote();
+
+    copy.id = Date.now();
+    copy.isSaved = false;
+
+    copy.schedule.manualDays = Array.isArray(copy.schedule.manualDays)
+        ? copy.schedule.manualDays.map(day => ({
+            ...day,
+            id: "day_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+            groupId: day.groupId || ("grp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7))
+        }))
+        : [];
+
+    currentJob.sequences.push(copy);
+    activeSeqId = copy.id;
+    renderSequenceUI();
+    renderInventorySequenceDropdown();
+    renderInventoryDeliveryDropdown();
+    renderScheduleSequenceDropdown();
+    saveToDevice();
+}
         function deleteSequence() {
             if(currentJob.sequences.length <= 1) return;
             currentJob.sequences = currentJob.sequences.filter(s => s.id != activeSeqId);

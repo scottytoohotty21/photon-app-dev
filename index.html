@@ -2979,6 +2979,9 @@ lastAddedRawEntryId = null;
 inventoryItems = [];
 inventoryHistory = [];
             
+ensureCostingStore();
+currentJob.costingQuote.selectedSequenceId = String(activeSeqId || getDefaultSequenceId() || "");
+
 renderAddressUI();
 renderInventorySequenceDropdown();
 renderInventoryDeliveryDropdown();
@@ -3472,6 +3475,13 @@ function saveCalculatorFeedForActiveSequence() {
 
     if (typeof renderScheduleCalculator === "function") {
         renderScheduleCalculator();
+    }
+
+    if (typeof renderQuoteTab === "function") {
+        const quoteTab = document.getElementById('content-quote');
+        if (quoteTab && !quoteTab.classList.contains('hidden')) {
+            renderQuoteTab();
+        }
     }
 }
 function buildLiveInventoryKeyFromValues(data) {
@@ -4404,6 +4414,16 @@ function updatePropData(f, v) {
         listedDeliveryFilter = "__all__";
         listedTextFilter = "";
         renderListedInventory();
+    }
+
+    if (t === 'quote') {
+        ensureCostingStore();
+
+        if (!currentJob.costingQuote.selectedSequenceId) {
+            currentJob.costingQuote.selectedSequenceId = String(activeSeqId || getDefaultSequenceId() || "");
+        }
+
+        renderQuoteTab();
     }
 }
 
@@ -7070,6 +7090,606 @@ function printListedInventoryPdf() {
         printWindow.print();
     }, 400);
 }
+/* =========================
+   COSTING & QUOTING STATE
+========================= */
+
+const QUOTE_MANDATORY_LABELS = ["Vans", "Crew", "Mileage", "Consumables", "Cartons", "Export Wrap", "Nights Out"];
+const QUOTE_PRICING_DEFAULTS = [
+    { label: "Vans", qty: 0, unitCost: 120 },
+    { label: "Crew", qty: 0, unitCost: 200 },
+    { label: "Mileage", qty: 0, unitCost: 0.45 },
+    { label: "Consumables", qty: 0, unitCost: 0 },
+    { label: "Cartons", qty: 0, unitCost: 2.5 },
+    { label: "Export Wrap", qty: 0, unitCost: 0.3 },
+    { label: "Nights Out", qty: 0, unitCost: 40 }
+];
+
+const QUOTE_OPTIONAL_COST_CHOICES = [
+    "Custom",
+    "Handyman",
+    "Parking Admin",
+    "Hoist / Crane",
+    "Ferry",
+    "Crating",
+    "Shuttle Surcharge"
+];
+
+const QUOTE_ADDITIONAL_SERVICE_CHOICES = [
+    "Custom",
+    "Handyman",
+    "Parking Admin",
+    "Hoist / Crane",
+    "Ferry",
+    "Crating",
+    "Shuttle Surcharge",
+    "Electrician",
+    "Plumber",
+    "Cleaner",
+    "Decorator",
+    "Specialist Contractor"
+];
+
+let quotePricingSaved = false;
+
+function ensureCostingStore() {
+    if (!currentJob) return;
+
+    if (!currentJob.costingQuote) {
+        currentJob.costingQuote = {
+            selectedSequenceId: "",
+            bySequence: {}
+        };
+    }
+
+    if (!currentJob.costingQuote.bySequence) {
+        currentJob.costingQuote.bySequence = {};
+    }
+}
+
+function createEmptyQuoteSequenceState() {
+    return {
+        customerPrice: 0,
+        quoteNotes: "",
+        pricingLines: [],
+        additionalCostLines: []
+    };
+}
+
+function ensureQuoteSequenceState(sequenceId) {
+    ensureCostingStore();
+    if (!currentJob || !sequenceId) return null;
+
+    if (!currentJob.costingQuote.bySequence[String(sequenceId)]) {
+        currentJob.costingQuote.bySequence[String(sequenceId)] = createEmptyQuoteSequenceState();
+    }
+
+    const state = currentJob.costingQuote.bySequence[String(sequenceId)];
+
+    if (!Array.isArray(state.pricingLines)) state.pricingLines = [];
+    if (!Array.isArray(state.additionalCostLines)) state.additionalCostLines = [];
+    if (typeof state.quoteNotes !== "string") state.quoteNotes = "";
+    if (typeof state.customerPrice !== "number") state.customerPrice = Number(state.customerPrice || 0);
+
+    return state;
+}
+
+function getQuoteSelectedSequenceId() {
+    if (!currentJob || !Array.isArray(currentJob.sequences) || currentJob.sequences.length === 0) {
+        return "";
+    }
+
+    ensureCostingStore();
+
+    const savedId = currentJob.costingQuote.selectedSequenceId;
+    const exists = currentJob.sequences.some(function(seq) {
+        return String(seq.id) === String(savedId);
+    });
+
+    if (exists) return String(savedId);
+
+    return String(activeSeqId || currentJob.sequences[0].id);
+}
+
+function setQuoteSelectedSequenceId(sequenceId) {
+    ensureCostingStore();
+    if (!currentJob) return;
+
+    currentJob.costingQuote.selectedSequenceId = String(sequenceId || "");
+    quotePricingSaved = false;
+    saveToDevice();
+}
+
+function getQuoteSelectedSequence() {
+    if (!currentJob || !Array.isArray(currentJob.sequences)) return null;
+
+    const selectedId = getQuoteSelectedSequenceId();
+
+    return currentJob.sequences.find(function(seq) {
+        return String(seq.id) === String(selectedId);
+    }) || currentJob.sequences[0] || null;
+}
+
+function quoteMoney(value) {
+    return Number(value || 0).toFixed(2);
+}
+
+function createQuoteLineId() {
+    return "quote_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+}
+
+function getQuoteSequenceFeed(sequenceId) {
+    if (!currentJob) return null;
+
+    return buildCalculatorFeedForSequence(sequenceId);
+}
+
+function getQuoteScheduleRows(sequenceId) {
+    const seq = currentJob && currentJob.sequences
+        ? currentJob.sequences.find(function(s) { return String(s.id) === String(sequenceId); })
+        : null;
+
+    if (!seq || !seq.schedule || !Array.isArray(seq.schedule.manualDays)) return [];
+    return seq.schedule.manualDays;
+}
+
+function calcQuoteScheduleTotals(sequenceId) {
+    const rows = getQuoteScheduleRows(sequenceId);
+    const grouped = {};
+
+    rows.forEach(function(row) {
+        const groupKey = String(row.groupId || row.id || "");
+        if (!grouped[groupKey]) {
+            grouped[groupKey] = {
+                vans: 0,
+                crew: 0,
+                nightsOut: 0
+            };
+        }
+
+        const men = Number(row.men || 0);
+
+        grouped[groupKey].vans = Math.max(grouped[groupKey].vans, men > 0 ? 1 : 0);
+        grouped[groupKey].crew = Math.max(grouped[groupKey].crew, men);
+
+        const isNightOutTask =
+            String(row.task || "") === "Load and Travel" ||
+            String(row.task || "") === "Deliver and Crew Return";
+
+        if (isNightOutTask) {
+            grouped[groupKey].nightsOut = Math.max(grouped[groupKey].nightsOut, men);
+        }
+    });
+
+    return Object.values(grouped).reduce(function(acc, day) {
+        acc.vans += Number(day.vans || 0);
+        acc.crew += Number(day.crew || 0);
+        acc.nightsOut += Number(day.nightsOut || 0);
+        return acc;
+    }, { vans: 0, crew: 0, nightsOut: 0 });
+}
+
+function buildDefaultQuotePricingLines(sequenceId) {
+    const feed = getQuoteSequenceFeed(sequenceId);
+    const scheduleTotals = calcQuoteScheduleTotals(sequenceId);
+
+    const cartonQty = feed
+        ? Number(feed.qty.ap || 0) + Number(feed.qty.cg || 0) + Number(feed.qty.books || 0) + Number(feed.qty.linen || 0) + Number(feed.qty.wr || 0)
+        : 0;
+
+    const exportWrapQty = getActiveSequenceRecord() && String(getActiveSequenceRecord().id) === String(sequenceId)
+        ? Number(document.getElementById("exportWrapVol") ? document.getElementById("exportWrapVol").value : 0)
+        : (() => {
+            const seq = currentJob.sequences.find(function(s) { return String(s.id) === String(sequenceId); });
+            return Number(seq && seq.schedule ? seq.schedule.exportWrapVol || 0 : 0);
+        })();
+
+    return QUOTE_PRICING_DEFAULTS.map(function(item) {
+        let qty = Number(item.qty || 0);
+
+        if (item.label === "Vans") qty = scheduleTotals.vans;
+        if (item.label === "Crew") qty = scheduleTotals.crew;
+        if (item.label === "Cartons") qty = cartonQty;
+        if (item.label === "Export Wrap") qty = exportWrapQty;
+        if (item.label === "Nights Out") qty = scheduleTotals.nightsOut;
+
+        return {
+            id: createQuoteLineId(),
+            label: item.label,
+            customLabel: "",
+            qty: qty,
+            unitCost: Number(item.unitCost || 0)
+        };
+    });
+}
+
+function getQuotePricingLines(sequenceId) {
+    const state = ensureQuoteSequenceState(sequenceId);
+    if (!state) return [];
+
+    if (!state.pricingLines.length) {
+        state.pricingLines = buildDefaultQuotePricingLines(sequenceId);
+    }
+
+    syncQuotePricingFromSchedule(sequenceId);
+    return state.pricingLines;
+}
+
+function getQuoteAdditionalCostLines(sequenceId) {
+    const state = ensureQuoteSequenceState(sequenceId);
+    if (!state) return [];
+
+    if (!state.additionalCostLines.length) {
+        state.additionalCostLines = [];
+    }
+
+    return state.additionalCostLines;
+}
+
+function syncQuotePricingFromSchedule(sequenceId) {
+    const state = ensureQuoteSequenceState(sequenceId);
+    if (!state || !Array.isArray(state.pricingLines)) return;
+
+    const scheduleTotals = calcQuoteScheduleTotals(sequenceId);
+    const feed = getQuoteSequenceFeed(sequenceId);
+
+    const cartonQty = feed
+        ? Number(feed.qty.ap || 0) + Number(feed.qty.cg || 0) + Number(feed.qty.books || 0) + Number(feed.qty.linen || 0) + Number(feed.qty.wr || 0)
+        : 0;
+
+    const seq = currentJob.sequences.find(function(s) { return String(s.id) === String(sequenceId); });
+    const exportWrapQty = Number(seq && seq.schedule ? seq.schedule.exportWrapVol || 0 : 0);
+
+    state.pricingLines = state.pricingLines.map(function(line) {
+        if (line.label === "Vans") return { ...line, qty: scheduleTotals.vans };
+        if (line.label === "Crew") return { ...line, qty: scheduleTotals.crew };
+        if (line.label === "Cartons") return { ...line, qty: cartonQty };
+        if (line.label === "Export Wrap") return { ...line, qty: exportWrapQty };
+        if (line.label === "Nights Out") return { ...line, qty: scheduleTotals.nightsOut };
+        return line;
+    });
+}
+
+function calcQuoteLineTotal(line) {
+    return Number(line.qty || 0) * Number(line.unitCost || 0);
+}
+
+function calcQuoteCoreCostTotal(sequenceId) {
+    return getQuotePricingLines(sequenceId).reduce(function(sum, line) {
+        return sum + calcQuoteLineTotal(line);
+    }, 0);
+}
+
+function calcQuoteAdditionalCostTotal(sequenceId) {
+    return getQuoteAdditionalCostLines(sequenceId).reduce(function(sum, line) {
+        if (!line.label) return sum;
+        return sum + calcQuoteLineTotal(line);
+    }, 0);
+}
+
+function getQuoteCommercialTotals(sequenceId) {
+    const state = ensureQuoteSequenceState(sequenceId);
+    if (!state) {
+        return {
+            coreCosts: 0,
+            additionalCosts: 0,
+            totalCostBase: 0,
+            customerPrice: 0,
+            grossMargin: 0,
+            grossMarginPct: 0
+        };
+    }
+
+    const coreCosts = calcQuoteCoreCostTotal(sequenceId);
+    const additionalCosts = calcQuoteAdditionalCostTotal(sequenceId);
+    const totalCostBase = coreCosts;
+    const customerPrice = Number(state.customerPrice || 0);
+    const grossMargin = customerPrice - totalCostBase;
+    const grossMarginPct = customerPrice > 0 ? (grossMargin / customerPrice) * 100 : 0;
+
+    return {
+        coreCosts: coreCosts,
+        additionalCosts: additionalCosts,
+        totalCostBase: totalCostBase,
+        customerPrice: customerPrice,
+        grossMargin: grossMargin,
+        grossMarginPct: grossMarginPct
+    };
+}
+
+function buildQuoteScopeSnapshot(sequenceId) {
+    const seq = currentJob && currentJob.sequences
+        ? currentJob.sequences.find(function(s) { return String(s.id) === String(sequenceId); })
+        : null;
+
+    if (!seq) {
+        return {
+            moveType: "Not set",
+            packingType: "Not set",
+            includedVolume: 0,
+            cartonsTotal: 0,
+            exportWrapQty: 0,
+            specialCount: 0,
+            excludedCount: 0
+        };
+    }
+
+    const feed = getQuoteSequenceFeed(sequenceId);
+    const rawItems = getRawInventoryItemsForSequence(sequenceId);
+
+    let excludedCount = 0;
+    let specialCount = 0;
+
+    rawItems.forEach(function(item) {
+        if (item.excluded) excludedCount += Number(item.qty || 0);
+
+        if (
+            item.dismantle ||
+            item.expWrap ||
+            item.disconnect ||
+            item.handyman ||
+            item.crated ||
+            item.damage ||
+            item.note
+        ) {
+            specialCount += Number(item.qty || 0);
+        }
+    });
+
+    const cartonsTotal = feed
+        ? Number(feed.qty.ap || 0) + Number(feed.qty.cg || 0) + Number(feed.qty.books || 0) + Number(feed.qty.linen || 0) + Number(feed.qty.wr || 0)
+        : 0;
+
+    return {
+        moveType: seq.moveType || "Not set",
+        packingType: seq.packOption || "Not set",
+        includedVolume: Number(feed ? feed.furnitureVol || 0 : 0),
+        cartonsTotal: cartonsTotal,
+        exportWrapQty: Number(seq.schedule ? seq.schedule.exportWrapVol || 0 : 0),
+        specialCount: specialCount,
+        excludedCount: excludedCount
+    };
+}
+
+function renderQuoteSequenceSelect() {
+    const select = document.getElementById("quote-sequenceSelect");
+    if (!select || !currentJob || !Array.isArray(currentJob.sequences)) return;
+
+    const selectedId = getQuoteSelectedSequenceId();
+
+    select.innerHTML = currentJob.sequences.map(function(seq, idx) {
+        const moveLabel = seq.moveType || "New Sequence";
+        const packLabel = seq.packOption || "No Packing Set";
+        const label = "Seq #" + (idx + 1) + ": " + moveLabel + " / " + packLabel;
+        const selected = String(seq.id) === String(selectedId) ? "selected" : "";
+        return '<option value="' + seq.id + '" ' + selected + '>' + label + '</option>';
+    }).join("");
+}
+
+function renderQuoteScopeSnapshot(sequenceId) {
+    const target = document.getElementById("quote-scopeSnapshotCard");
+    if (!target) return;
+
+    const snap = buildQuoteScopeSnapshot(sequenceId);
+
+    target.innerHTML = `
+        <div class="grid grid-cols-2 gap-3">
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Move Type</div>
+                <div class="listed-stat-value" style="font-size:14px;">${escapeHtml(snap.moveType)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Packing Type</div>
+                <div class="listed-stat-value" style="font-size:14px;">${escapeHtml(snap.packingType)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Included Volume</div>
+                <div class="listed-stat-value">${snap.includedVolume}</div>
+                <div class="listed-stat-sub">Furniture cuft</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Cartons Total</div>
+                <div class="listed-stat-value">${snap.cartonsTotal}</div>
+                <div class="listed-stat-sub">All carton types</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Export Wrap</div>
+                <div class="listed-stat-value">${snap.exportWrapQty}</div>
+                <div class="listed-stat-sub">Current schedule value</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Flagged Specials</div>
+                <div class="listed-stat-value">${snap.specialCount}</div>
+                <div class="listed-stat-sub">Inventory flags / notes</div>
+            </div>
+            <div class="listed-stat-card col-span-2">
+                <div class="listed-stat-label">Excluded Items</div>
+                <div class="listed-stat-value">${snap.excludedCount}</div>
+                <div class="listed-stat-sub">Excluded from included move scope</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderQuoteCommercialSummary(sequenceId) {
+    const target = document.getElementById("quote-commercialSummaryCard");
+    if (!target) return;
+
+    const totals = getQuoteCommercialTotals(sequenceId);
+
+    target.innerHTML = `
+        <div class="grid grid-cols-2 gap-3">
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Total Cost Base</div>
+                <div class="listed-stat-value">${quoteMoney(totals.totalCostBase)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Sell Price</div>
+                <div class="listed-stat-value">${quoteMoney(totals.customerPrice)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Gross Margin £</div>
+                <div class="listed-stat-value">${quoteMoney(totals.grossMargin)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Gross Margin %</div>
+                <div class="listed-stat-value">${quoteMoney(totals.grossMarginPct)}%</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderQuoteAdditionalBreakdown(sequenceId) {
+    const target = document.getElementById("quote-additionalCostsBreakdownCard");
+    if (!target) return;
+
+    const lines = getQuoteAdditionalCostLines(sequenceId).filter(function(line) {
+        return !!line.label;
+    });
+
+    if (!lines.length) {
+        target.innerHTML = `
+            <div class="document-block">
+                <div class="document-heading">Optional Additional Cost Services</div>
+                <div class="document-empty">No optional services added</div>
+            </div>
+        `;
+        return;
+    }
+
+    target.innerHTML = `
+        <div class="document-block">
+            <div class="document-heading">Optional Additional Cost Services</div>
+            <div class="document-lines">
+                ${lines.map(function(line) {
+                    const label = line.customLabel || (line.label === "Custom" ? "Custom" : line.label);
+                    return `<div class="document-line">• ${escapeHtml(label)} — ${quoteMoney(calcQuoteLineTotal(line))}</div>`;
+                }).join("")}
+            </div>
+        </div>
+    `;
+}
+
+function updateQuoteCommercialDisplays(sequenceId) {
+    const totals = getQuoteCommercialTotals(sequenceId);
+
+    const totalCostsEl = document.getElementById("quote-totalCosts");
+    const additionalEl = document.getElementById("quote-additionalCostsTotalDisplay");
+    const customerEl = document.getElementById("quote-customerPriceDisplay");
+    const marginEl = document.getElementById("quote-grossMarginDisplay");
+    const marginSubEl = document.getElementById("quote-grossMarginSub");
+
+    if (totalCostsEl) totalCostsEl.textContent = quoteMoney(totals.totalCostBase);
+    if (additionalEl) additionalEl.textContent = quoteMoney(totals.additionalCosts);
+    if (customerEl) customerEl.textContent = quoteMoney(totals.customerPrice);
+    if (marginEl) marginEl.textContent = quoteMoney(totals.grossMargin);
+
+    if (marginSubEl) {
+        marginSubEl.textContent = totals.customerPrice > 0
+            ? `${quoteMoney(totals.grossMarginPct)}% margin on sell price${quotePricingSaved ? " · saved" : " · unsaved changes"}`
+            : `Customer price minus total costs${quotePricingSaved ? " · saved" : " · unsaved changes"}`;
+    }
+
+    renderQuoteCommercialSummary(sequenceId);
+    renderQuoteAdditionalBreakdown(sequenceId);
+}
+
+function renderQuoteTabShellOnly() {
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+
+    const sequenceId = String(seq.id);
+    const state = ensureQuoteSequenceState(sequenceId);
+
+    renderQuoteSequenceSelect();
+    renderQuoteScopeSnapshot(sequenceId);
+
+    const customerInput = document.getElementById("quote-customerPriceInput");
+    const notesInput = document.getElementById("quote-quoteNotesInput");
+
+    if (customerInput) customerInput.value = Number(state.customerPrice || 0);
+    if (notesInput) notesInput.value = state.quoteNotes || "";
+
+    updateQuoteCommercialDisplays(sequenceId);
+}
+
+function handleQuoteSequenceChange(value) {
+    if (!value) return;
+    setQuoteSelectedSequenceId(value);
+    renderQuoteTab();
+}
+
+function handleQuoteCustomerPriceChange(value) {
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+
+    const state = ensureQuoteSequenceState(seq.id);
+    state.customerPrice = Number(value || 0);
+    quotePricingSaved = false;
+    saveToDevice();
+    updateQuoteCommercialDisplays(String(seq.id));
+}
+
+function handleQuoteNotesChange(value) {
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+
+    const state = ensureQuoteSequenceState(seq.id);
+    state.quoteNotes = String(value || "");
+    quotePricingSaved = false;
+    saveToDevice();
+}
+
+function handleQuoteSavePricing() {
+    quotePricingSaved = true;
+    const seq = getQuoteSelectedSequence();
+    if (!seq) return;
+    saveToDevice();
+    updateQuoteCommercialDisplays(String(seq.id));
+}
+
+function handleQuoteCreateQuote() {
+    alert("Create Quote is ready to be wired into the quote output.");
+}
+
+function bindQuoteShellEvents() {
+    const sequenceSelect = document.getElementById("quote-sequenceSelect");
+    const customerInput = document.getElementById("quote-customerPriceInput");
+    const notesInput = document.getElementById("quote-quoteNotesInput");
+    const saveBtn = document.getElementById("quote-savePricingBtn");
+    const createBtn = document.getElementById("quote-createQuoteBtn");
+
+    if (sequenceSelect) {
+        sequenceSelect.onchange = function() {
+            handleQuoteSequenceChange(this.value);
+        };
+    }
+
+    if (customerInput) {
+        customerInput.oninput = function() {
+            handleQuoteCustomerPriceChange(this.value);
+        };
+    }
+
+    if (notesInput) {
+        notesInput.oninput = function() {
+            handleQuoteNotesChange(this.value);
+        };
+    }
+
+    if (saveBtn) {
+        saveBtn.onclick = handleQuoteSavePricing;
+    }
+
+    if (createBtn) {
+        createBtn.onclick = handleQuoteCreateQuote;
+    }
+}
+
+function renderQuoteTab() {
+    renderQuoteTabShellOnly();
+    bindQuoteShellEvents();
+}
 const BOX_RATES = {
     ap: 10,
     cg: 4,
@@ -7299,6 +7919,10 @@ function saveScheduleInputsToActiveSequence() {
 function handleScheduleInputChange() {
     saveScheduleInputsToActiveSequence();
     renderScheduleCalculator();
+
+    if (!document.getElementById('content-quote').classList.contains('hidden')) {
+        renderQuoteTab();
+    }
 }
 function getPhotonFeed() {
     const raw = localStorage.getItem("photon_calculator_feed");

@@ -1904,7 +1904,7 @@ Enter as: Surname, First Name
           <div class="grid grid-cols-12 gap-2 mb-3">
     <div class="col-span-3">
         <label class="mini-label">Seq</label>
-       <select id="inv-seq-select" onchange="loadSequence(this.value)" class="inv-header-select inv-top-field"></select>
+       <select id="inv-seq-select" onchange="handleInventorySequenceChange(this.value)" class="inv-header-select inv-top-field"></select>
     </div>
     <div class="col-span-3">
         <label class="mini-label">Delivery To</label>
@@ -3360,6 +3360,102 @@ function removeRawInventoryEntry(rawEntryId) {
         return String(entry.sequenceId) === String(sequenceId);
     });
 }
+function getSequenceInventoryTotal(sequenceId) {
+    const rawItems = getRawInventoryItemsForSequence(sequenceId);
+
+    return rawItems.reduce(function(sum, entry) {
+        if (entry.excluded) return sum;
+        return sum + Number(entry.totalVolume || 0);
+    }, 0);
+}
+
+function refreshInventoryVolumeDisplayForSequence(sequenceId) {
+    const total = getSequenceInventoryTotal(sequenceId);
+    totalVolume = total;
+
+    const totalVolBox = document.getElementById("inv-total-volume");
+    if (totalVolBox) {
+        totalVolBox.innerText = total;
+    }
+}
+function syncInventoryDisplayFromSequence(sequenceId) {
+    const rawItems = getRawInventoryItemsForSequence(sequenceId);
+
+    if (!rawItems.length) {
+        lastAddedItemName = null;
+        lastAddedRawEntryId = null;
+        currentItemVolume = 0;
+        totalVolume = 0;
+        updateInventoryDisplay("No items added");
+        return;
+    }
+
+    const lastRaw = rawItems[rawItems.length - 1];
+
+    lastAddedRawEntryId = lastRaw.id;
+    lastAddedItemName = lastRaw.itemName || null;
+    currentItemVolume = lastRaw.excluded ? 0 : Number(lastRaw.totalVolume || 0);
+
+    totalVolume = rawItems.reduce(function(sum, entry) {
+        if (entry.excluded) return sum;
+        return sum + Number(entry.totalVolume || 0);
+    }, 0);
+
+    const tags = [];
+    if (lastRaw.dismantle) tags.push("[DISMANTLE]");
+    if (lastRaw.expWrap) tags.push("[EXP WRAP]");
+    if (lastRaw.disconnect) tags.push("[DISCONNECT]");
+    if (lastRaw.handyman) tags.push("[HANDYMAN]");
+    if (lastRaw.crated && lastRaw.crateDims) {
+        tags.push(
+            "[CRATE: " +
+            lastRaw.crateDims.l + " x " +
+            lastRaw.crateDims.w + " x " +
+            lastRaw.crateDims.h + " " +
+            lastRaw.crateDims.unit + "]"
+        );
+    }
+    if (lastRaw.damage) tags.push("[DAMAGE: " + String(lastRaw.damage).toUpperCase() + "]");
+    if (lastRaw.excluded) tags.push("[EXCLUDED]");
+    if (lastRaw.note) tags.push("[NOTE: " + String(lastRaw.note).toUpperCase() + "]");
+
+    const label = (lastRaw.itemName || "ITEM").toUpperCase();
+    const qty = Number(lastRaw.qty || 0);
+
+    updateInventoryDisplay(
+        qty + " X " + label + (tags.length ? " " + tags.join(" ") : "")
+    );
+}
+
+function handleInventorySequenceChange(sequenceId) {
+    if (!currentJob) return;
+
+    activeSeqId = String(sequenceId);
+
+    if (!currentJob.inventory) currentJob.inventory = {};
+    currentJob.inventory.activeSequenceId = activeSeqId;
+    currentJob.inventory.activeDeliveryId = null;
+
+    inventoryReturnContext = {
+        sequenceId: activeSeqId,
+        deliveryId: null,
+        floorName: currentJob.inventory.activeFloor || "Ground",
+        roomName: currentJob.inventory.activeRoomName || "Hallway"
+    };
+
+    renderInventorySequenceDropdown();
+    renderInventoryDeliveryDropdown();
+    renderInventoryRoomDropdown();
+    renderInventoryFloorDropdown();
+
+    rebuildLiveInventoryFromSequence(activeSeqId);
+    syncInventoryDisplayFromSequence(activeSeqId);
+
+    renderActionButtonStates();
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
+    saveToDevice();
+}
 function getSequencePackOptionForCalculator(sequence) {
     const raw = String(sequence && sequence.packOption ? sequence.packOption : "").toLowerCase();
 
@@ -3563,35 +3659,40 @@ function rebuildLiveInventoryFromSequence(sequenceId) {
             existing.qty += qty;
         } else {
             inventoryItems.push({
-    liveKey: liveKey,
-    item: entry.itemName,
-    displayName: entry.itemName,
-    volume: unitVolume,
-    qty: qty,
-    dismantle: !!entry.dismantle,
-    expWrap: !!entry.expWrap,
-    disconnect: !!entry.disconnect,
-    handyman: !!entry.handyman,
-    excluded: !!entry.excluded,
-    roomName: entry.roomName || "",
-    floorName: entry.floorName || "",
-    deliveryId: entry.deliveryId || "",
-    note: entry.note || "",
-    damage: entry.damage || "",
-    crated: !!entry.crated,
-    crateDims: entry.crateDims || null
-});
+                liveKey: liveKey,
+                item: entry.itemName,
+                displayName: entry.itemName,
+                volume: unitVolume,
+                qty: qty,
+                dismantle: !!entry.dismantle,
+                expWrap: !!entry.expWrap,
+                disconnect: !!entry.disconnect,
+                handyman: !!entry.handyman,
+                excluded: !!entry.excluded,
+                roomName: entry.roomName || "",
+                floorName: entry.floorName || "",
+                deliveryId: entry.deliveryId || "",
+                note: entry.note || "",
+                damage: entry.damage || "",
+                crated: !!entry.crated,
+                crateDims: entry.crateDims || null
+            });
         }
     });
 
-    const lastRaw = rawItems[rawItems.length - 1];
-    if (lastRaw) {
-        lastAddedRawEntryId = lastRaw.id;
-        lastAddedItemName = lastRaw.itemName;
-        currentItemVolume = lastRaw.excluded ? 0 : Number(lastRaw.totalVolume || 0);
-    }
+    const rawSequenceTotal = rawItems.reduce(function(sum, entry) {
+        if (entry.excluded) return sum;
+        return sum + Number(entry.totalVolume || 0);
+    }, 0);
 
-    recalculateTotalVolume();
+    const lastRaw = rawItems[rawItems.length - 1] || null;
+
+    lastAddedRawEntryId = lastRaw ? lastRaw.id : null;
+    lastAddedItemName = lastRaw ? lastRaw.itemName : null;
+
+    currentItemVolume = 0;
+    totalVolume = rawSequenceTotal;
+
     updateInventoryDisplay("Sequence restored");
     updateUndoButtonState();
     renderActionButtonStates();
@@ -4083,13 +4184,14 @@ if (newQty > currentTotalQty) {
 
     saveToDevice();
 
-    if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
-        rebuildLiveInventoryFromSequence(activeSeqId);
-    }
+if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
+    rebuildLiveInventoryFromSequence(activeSeqId);
+}
 
-    renderListedInventory();
-    closeSimpleInputModal();
-    return;
+renderListedInventory();
+renderActionButtonStates();
+updateUndoButtonState();
+saveCalculatorFeedForActiveSequence();
 }
 
     if (simpleInputMode === "listed-edit-note") {
@@ -4106,13 +4208,14 @@ if (newQty > currentTotalQty) {
 
         saveToDevice();
 
-        if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
-            rebuildLiveInventoryFromSequence(activeSeqId);
-        }
+if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
+    rebuildLiveInventoryFromSequence(activeSeqId);
+}
 
-        renderListedInventory();
-        closeSimpleInputModal();
-        return;
+renderListedInventory();
+renderActionButtonStates();
+updateUndoButtonState();
+saveCalculatorFeedForActiveSequence();
     }
 }
         function renderSequenceUI() {
@@ -4347,8 +4450,9 @@ function updatePropData(f, v) {
 
     saveInventoryContext();
     rebuildLiveInventoryFromSequence(activeSeqId);
-    saveCalculatorFeedForActiveSequence();
-    saveToDevice();
+
+saveCalculatorFeedForActiveSequence();
+saveToDevice();
 }
         function triggerPulse(id) { const el = document.getElementById(id); if(el) { el.classList.remove('pulse-new'); void el.offsetWidth; el.classList.add('pulse-new'); } }
         
@@ -4406,10 +4510,11 @@ function updatePropData(f, v) {
         renderInventoryRoomDropdown();
         renderInventoryFloorDropdown();
         renderInventoryButtons();
-        rebuildLiveInventoryFromSequence(activeSeqId);
-        renderActionButtonStates();
-        updateUndoButtonState();
-        saveCalculatorFeedForActiveSequence();
+      rebuildLiveInventoryFromSequence(activeSeqId);
+syncInventoryDisplayFromSequence(activeSeqId);
+renderActionButtonStates();
+updateUndoButtonState();
+saveCalculatorFeedForActiveSequence();
     }
     if (t === 'schedule') {
         if (!activeSeqId && currentJob && currentJob.inventory && currentJob.inventory.activeSequenceId) {
@@ -5953,16 +6058,16 @@ function deleteListedEntry(entryKey) {
         return !rawIdsToDelete.includes(raw.id);
     });
 
-    saveToDevice();
+   saveToDevice();
 
-    if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
-        rebuildLiveInventoryFromSequence(activeSeqId);
-    }
+if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
+    rebuildLiveInventoryFromSequence(activeSeqId);
+}
 
-    renderListedInventory();
-    renderActionButtonStates();
-    updateUndoButtonState();
-    updateInventoryDisplay("LISTED LINE DELETED");
+renderListedInventory();
+renderActionButtonStates();
+updateUndoButtonState();
+saveCalculatorFeedForActiveSequence();
 }
 
 function editListedEntryQty(entryKey) {

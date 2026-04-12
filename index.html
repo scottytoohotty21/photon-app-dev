@@ -8383,16 +8383,16 @@ function loadScheduleInputsFromActiveSequence() {
     if (loadRateEl) loadRateEl.value = schedule.loadRate;
     if (unloadRateEl) unloadRateEl.value = schedule.unloadRate;
 
-    if (svcFrameEl) svcFrameEl.value = photonFeed.special.frameBeds;
-    if (svcBunkEl) svcBunkEl.value = photonFeed.special.bunkBeds;
+    if (svcFrameEl) svcFrameEl.value = photonFeed.special?.frameBeds || 0;
+    if (svcBunkEl) svcBunkEl.value = photonFeed.special?.bunkBeds || 0;
     if (svcCustomMinutesEl) svcCustomMinutesEl.value = schedule.special.customItemMinutes;
     if (svcCustomNoteEl) svcCustomNoteEl.value = schedule.special.customItemNote;
     if (svcUprightEl) svcUprightEl.value = schedule.special.uprightPianos;
     if (svcGrandEl) svcGrandEl.value = schedule.special.grandPianos;
     if (svcClockEl) svcClockEl.value = schedule.special.grandfatherClocks;
     if (svcApplianceEl) svcApplianceEl.value = schedule.special.appliances;
-    if (svcCrateEl) svcCrateEl.value = photonFeed.special.cratingItems;
-    if (exportWrapVolEl) exportWrapVolEl.value = photonFeed.special.exportWrapVol;
+    if (svcCrateEl) svcCrateEl.value = photonFeed.special?.cratingItems || 0;
+    if (exportWrapVolEl) exportWrapVolEl.value = photonFeed.special?.exportWrapVol || 0;
 }
 
 function saveScheduleInputsToActiveSequence() {
@@ -8439,6 +8439,35 @@ function handleScheduleInputChange() {
     }
 }
 function getPhotonFeed() {
+    if (currentJob && activeSeqId) {
+        const directFeed = buildCalculatorFeedForSequence(activeSeqId);
+
+        if (directFeed) {
+            const seq = getActiveSequenceRecord();
+            const schedule = seq ? ensureSequenceScheduleShape(seq) : createEmptySequenceSchedule();
+
+            return {
+                sequenceLabel: directFeed.sequenceLabel || "—",
+                packOption: directFeed.packOption || "none",
+                furnitureVol: Number(directFeed.furnitureVol || 0),
+                qty: {
+                    ap: Number(directFeed.qty?.ap || 0),
+                    cg: Number(directFeed.qty?.cg || 0),
+                    books: Number(directFeed.qty?.books || 0),
+                    linen: Number(directFeed.qty?.linen || 0),
+                    wr: Number(directFeed.qty?.wr || 0)
+                },
+                disconnectApplianceCount: Number(directFeed.disconnectApplianceCount || 0),
+                special: {
+                    frameBeds: Number(schedule.special?.frameBeds || 0),
+                    bunkBeds: Number(schedule.special?.bunkBeds || 0),
+                    cratingItems: Number(schedule.special?.cratingItems || 0),
+                    exportWrapVol: Number(schedule.exportWrapVol || 0)
+                }
+            };
+        }
+    }
+
     const raw = localStorage.getItem("photon_calculator_feed");
 
     if (!raw) {
@@ -8453,7 +8482,13 @@ function getPhotonFeed() {
                 linen: 0,
                 wr: 0
             },
-            disconnectApplianceCount: 0
+            disconnectApplianceCount: 0,
+            special: {
+                frameBeds: 0,
+                bunkBeds: 0,
+                cratingItems: 0,
+                exportWrapVol: 0
+            }
         };
     }
 
@@ -8471,7 +8506,13 @@ function getPhotonFeed() {
                 linen: Number(parsed.qty?.linen || 0),
                 wr: Number(parsed.qty?.wr || 0)
             },
-            disconnectApplianceCount: Number(parsed.disconnectApplianceCount || 0)
+            disconnectApplianceCount: Number(parsed.disconnectApplianceCount || 0),
+            special: {
+                frameBeds: 0,
+                bunkBeds: 0,
+                cratingItems: 0,
+                exportWrapVol: 0
+            }
         };
     } catch (err) {
         return {
@@ -8485,7 +8526,13 @@ function getPhotonFeed() {
                 linen: 0,
                 wr: 0
             },
-            disconnectApplianceCount: 0
+            disconnectApplianceCount: 0,
+            special: {
+                frameBeds: 0,
+                bunkBeds: 0,
+                cratingItems: 0,
+                exportWrapVol: 0
+            }
         };
     }
 }
@@ -8948,7 +8995,6 @@ function renderValidation(packing, loading, unloading, special, state){
 }
 
 function renderScheduleCalculator(){
-    const photonFeed = getPhotonFeed();
     const state = getState();
 
         renderScheduleSequenceDropdown();

@@ -4182,7 +4182,7 @@ if (newQty > currentTotalQty) {
     }
 }
 
-    saveToDevice();
+   saveToDevice();
 
 if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
     rebuildLiveInventoryFromSequence(activeSeqId);
@@ -4192,6 +4192,8 @@ renderListedInventory();
 renderActionButtonStates();
 updateUndoButtonState();
 saveCalculatorFeedForActiveSequence();
+closeSimpleInputModal();
+return;
 }
 
     if (simpleInputMode === "listed-edit-note") {
@@ -4216,6 +4218,8 @@ renderListedInventory();
 renderActionButtonStates();
 updateUndoButtonState();
 saveCalculatorFeedForActiveSequence();
+closeSimpleInputModal();
+return;
     }
 }
         function renderSequenceUI() {
@@ -6068,6 +6072,7 @@ renderListedInventory();
 renderActionButtonStates();
 updateUndoButtonState();
 saveCalculatorFeedForActiveSequence();
+updateInventoryDisplay("LISTED LINE DELETED");
 }
 
 function editListedEntryQty(entryKey) {

@@ -2170,7 +2170,7 @@ Enter as: Surname, First Name
                     <div class="section-title">Special Labour Inputs</div>
                     <div class="grid-2">
                         <div>
-                            <label class="mini-label">Frame Beds</label>
+                            <label class="mini-label">Beds</label>
                             <input id="svc_frame" type="number" min="0" class="field" value="0" readonly />
                         </div>
                         <div>
@@ -2199,7 +2199,7 @@ Enter as: Surname, First Name
                         </div>
                         <div>
                             <label class="mini-label">Washing Machines / Dishwashers</label>
-                            <input id="svc_appliance" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
+                            <input id="svc_appliance" type="number" min="0" class="field" value="0" readonly />
                         </div>
                         <div>
                             <label class="mini-label">Crating</label>
@@ -2626,16 +2626,16 @@ function createEmptySequenceSchedule() {
         exportWrapVol: 0,
         manualDays: [],
         special: {
-            frameBeds: 0,
-            bunkBeds: 0,
-            uprightPianos: 0,
-            grandPianos: 0,
-            grandfatherClocks: 0,
-            appliances: 0,
-            cratingItems: 0,
-            customItemMinutes: 0,
-            customItemNote: ""
-        }
+    beds: 0,
+    bunkBeds: 0,
+    uprightPianos: 0,
+    grandPianos: 0,
+    grandfatherClocks: 0,
+    appliances: 0,
+    cratingItems: 0,
+    customItemMinutes: 0,
+    customItemNote: ""
+}
     };
 }
 function createEmptySequenceQuote() {
@@ -2844,7 +2844,7 @@ function saveInventoryContext() {
                 seq.schedule.special = createEmptySequenceSchedule().special;
             }
 
-            if (seq.schedule.special.frameBeds === undefined) seq.schedule.special.frameBeds = defaults.special.frameBeds;
+           if (seq.schedule.special.beds === undefined) seq.schedule.special.beds = defaults.special.beds;
             if (seq.schedule.special.bunkBeds === undefined) seq.schedule.special.bunkBeds = defaults.special.bunkBeds;
             if (seq.schedule.special.uprightPianos === undefined) seq.schedule.special.uprightPianos = defaults.special.uprightPianos;
             if (seq.schedule.special.grandPianos === undefined) seq.schedule.special.grandPianos = defaults.special.grandPianos;
@@ -3488,8 +3488,13 @@ function buildCalculatorFeedForSequence(sequenceId) {
 
     const rawItems = getRawInventoryItemsForSequence(sequenceId);
 
-    let furnitureVol = 0;
-    let disconnectApplianceCount = 0;
+let furnitureVol = 0;
+let disconnectApplianceCount = 0;
+let dismantleCount = 0;
+let cratingItems = 0;
+let exportWrapVol = 0;
+let bedCount = 0;
+let bunkBedCount = 0;
 
     const qty = {
         ap: 0,
@@ -3533,32 +3538,66 @@ function buildCalculatorFeedForSequence(sequenceId) {
         }
 
         if (
-            entry.disconnect &&
-            (
-                itemName === "WASHING MACHINE" ||
-                itemName === "DISHWASHER"
-            )
-        ) {
-            disconnectApplianceCount += entryQty;
-        }
+    entry.disconnect &&
+    (
+        itemName === "WASHING MACHINE" ||
+        itemName === "DISHWASHER"
+    )
+) {
+    disconnectApplianceCount += entryQty;
+}
 
-        furnitureVol += totalVolume || (unitVolume * entryQty);
+if (entry.dismantle) {
+    dismantleCount += entryQty;
+}
+
+if (entry.crated) {
+    cratingItems += entryQty;
+}
+
+if (entry.expWrap) {
+    exportWrapVol += totalVolume || (unitVolume * entryQty);
+}
+
+if (entry.dismantle) {
+    if (
+        itemName === "BED (SINGLE)" ||
+        itemName === "BED (CHILDS)" ||
+        itemName === "BED (DOUBLE)" ||
+        itemName === "BED (QUEENSIZE)" ||
+        itemName === "BED (SUPERKING)" ||
+        itemName === "COT"
+    ) {
+        bedCount += entryQty;
+    }
+
+    if (itemName === "BED (BUNK BED)") {
+        bunkBedCount += entryQty;
+    }
+}
+
+furnitureVol += totalVolume || (unitVolume * entryQty);
     });
 
     const seqIndex = currentJob.sequences.findIndex(function(seq) {
         return String(seq.id) === String(sequenceId);
     });
 
-    return {
-        jobId: currentJob.id,
-        sequenceId: sequence.id,
-        sequenceLabel: "Sequence " + (seqIndex + 1),
-        packOption: getSequencePackOptionForCalculator(sequence),
-        furnitureVol: Math.round(furnitureVol * 100) / 100,
-        qty: qty,
-        disconnectApplianceCount: disconnectApplianceCount,
-        createdAt: new Date().toISOString()
-    };
+return {
+    jobId: currentJob.id,
+    sequenceId: sequence.id,
+    sequenceLabel: "Sequence " + (seqIndex + 1),
+    packOption: getSequencePackOptionForCalculator(sequence),
+    furnitureVol: Math.round(furnitureVol * 100) / 100,
+    qty: qty,
+    disconnectApplianceCount: disconnectApplianceCount,
+    dismantleCount: dismantleCount,
+    cratingItems: cratingItems,
+    exportWrapVol: Math.round(exportWrapVol * 100) / 100,
+    bedCount: bedCount,
+    bunkBedCount: bunkBedCount,
+    createdAt: new Date().toISOString()
+};
 }
 
 function saveCalculatorFeedForActiveSequence() {
@@ -7922,8 +7961,10 @@ function renderQuoteTab() {
 
     const sequenceId = String(seq.id);
 
-    renderQuotePricingGrid(sequenceId);
-    renderQuoteAdditionalCostsGrid(sequenceId);
+syncQuotePricingFromSchedule(sequenceId);
+
+renderQuotePricingGrid(sequenceId);
+renderQuoteAdditionalCostsGrid(sequenceId);
 
     const addPricingBtn = document.getElementById("quote-addPricingLineBtn");
     const addAdditionalBtn = document.getElementById("quote-addAdditionalCostLineBtn");
@@ -8088,8 +8129,8 @@ function renderQuotePricingGrid(sequenceId) {
                             </select>
                         </div>
 
-                        <div class="col-span-3">
-                            <label class="mini-label">Custom Label</label>
+                        <div class="col-span-2">
+    <label class="mini-label">Custom Label</label>
                             <input
                                 type="text"
                                 class="field"
@@ -8100,8 +8141,8 @@ function renderQuotePricingGrid(sequenceId) {
                             >
                         </div>
 
-                        <div class="col-span-1">
-                            <label class="mini-label">Qty</label>
+                        <div class="col-span-2">
+    <label class="mini-label">Qty</label>
                             <input
                                 type="number"
                                 min="0"
@@ -8178,8 +8219,8 @@ function renderQuoteAdditionalCostsGrid(sequenceId) {
                             </select>
                         </div>
 
-                        <div class="col-span-3">
-                            <label class="mini-label">Custom Label</label>
+                        <div class="col-span-2">
+    <label class="mini-label">Custom Label</label>
                             <input
                                 type="text"
                                 class="field"
@@ -8190,8 +8231,8 @@ function renderQuoteAdditionalCostsGrid(sequenceId) {
                             >
                         </div>
 
-                        <div class="col-span-1">
-                            <label class="mini-label">Qty</label>
+                        <div class="col-span-2">
+    <label class="mini-label">Qty</label>
                             <input
                                 type="number"
                                 min="0"
@@ -8271,7 +8312,7 @@ function ensureSequenceScheduleShape(seq) {
         seq.schedule.special = createEmptySequenceSchedule().special;
     }
 
-    if (seq.schedule.special.frameBeds === undefined) seq.schedule.special.frameBeds = defaults.special.frameBeds;
+    if (seq.schedule.special.beds === undefined) seq.schedule.special.beds = defaults.special.beds;
     if (seq.schedule.special.bunkBeds === undefined) seq.schedule.special.bunkBeds = defaults.special.bunkBeds;
     if (seq.schedule.special.uprightPianos === undefined) seq.schedule.special.uprightPianos = defaults.special.uprightPianos;
     if (seq.schedule.special.grandPianos === undefined) seq.schedule.special.grandPianos = defaults.special.grandPianos;
@@ -8383,14 +8424,14 @@ function loadScheduleInputsFromActiveSequence() {
     if (loadRateEl) loadRateEl.value = schedule.loadRate;
     if (unloadRateEl) unloadRateEl.value = schedule.unloadRate;
 
-    if (svcFrameEl) svcFrameEl.value = photonFeed.special?.frameBeds || 0;
+    if (svcFrameEl) svcFrameEl.value = photonFeed.special?.beds || 0;
     if (svcBunkEl) svcBunkEl.value = photonFeed.special?.bunkBeds || 0;
     if (svcCustomMinutesEl) svcCustomMinutesEl.value = schedule.special.customItemMinutes;
     if (svcCustomNoteEl) svcCustomNoteEl.value = schedule.special.customItemNote;
     if (svcUprightEl) svcUprightEl.value = schedule.special.uprightPianos;
     if (svcGrandEl) svcGrandEl.value = schedule.special.grandPianos;
     if (svcClockEl) svcClockEl.value = schedule.special.grandfatherClocks;
-    if (svcApplianceEl) svcApplianceEl.value = schedule.special.appliances;
+    if (svcApplianceEl) svcApplianceEl.value = photonFeed.disconnectApplianceCount || 0;
     if (svcCrateEl) svcCrateEl.value = photonFeed.special?.cratingItems || 0;
     if (exportWrapVolEl) exportWrapVolEl.value = photonFeed.special?.exportWrapVol || 0;
 }
@@ -8425,8 +8466,7 @@ function saveScheduleInputsToActiveSequence() {
     schedule.special.uprightPianos = getNum("svc_upright", 0);
     schedule.special.grandPianos = getNum("svc_grand", 0);
     schedule.special.grandfatherClocks = getNum("svc_clock", 0);
-    schedule.special.appliances = getNum("svc_appliance", 0);
-
+  
     saveToDevice();
 }
 
@@ -8446,25 +8486,26 @@ function getPhotonFeed() {
             const seq = getActiveSequenceRecord();
             const schedule = seq ? ensureSequenceScheduleShape(seq) : createEmptySequenceSchedule();
 
-            return {
-                sequenceLabel: directFeed.sequenceLabel || "—",
-                packOption: directFeed.packOption || "none",
-                furnitureVol: Number(directFeed.furnitureVol || 0),
-                qty: {
-                    ap: Number(directFeed.qty?.ap || 0),
-                    cg: Number(directFeed.qty?.cg || 0),
-                    books: Number(directFeed.qty?.books || 0),
-                    linen: Number(directFeed.qty?.linen || 0),
-                    wr: Number(directFeed.qty?.wr || 0)
-                },
-                disconnectApplianceCount: Number(directFeed.disconnectApplianceCount || 0),
-                special: {
-                    frameBeds: Number(schedule.special?.frameBeds || 0),
-                    bunkBeds: Number(schedule.special?.bunkBeds || 0),
-                    cratingItems: Number(schedule.special?.cratingItems || 0),
-                    exportWrapVol: Number(schedule.exportWrapVol || 0)
-                }
-            };
+           return {
+    sequenceLabel: directFeed.sequenceLabel || "—",
+    packOption: directFeed.packOption || "none",
+    furnitureVol: Number(directFeed.furnitureVol || 0),
+    qty: {
+        ap: Number(directFeed.qty?.ap || 0),
+        cg: Number(directFeed.qty?.cg || 0),
+        books: Number(directFeed.qty?.books || 0),
+        linen: Number(directFeed.qty?.linen || 0),
+        wr: Number(directFeed.qty?.wr || 0)
+    },
+    disconnectApplianceCount: Number(directFeed.disconnectApplianceCount || 0),
+    dismantleCount: Number(directFeed.dismantleCount || 0),
+    special: {
+        beds: Number(directFeed.bedCount || 0),
+        bunkBeds: Number(directFeed.bunkBedCount || 0),
+        cratingItems: Number(directFeed.cratingItems || 0),
+        exportWrapVol: Number(directFeed.exportWrapVol || 0)
+    }
+};
         }
     }
 
@@ -8482,38 +8523,40 @@ function getPhotonFeed() {
                 linen: 0,
                 wr: 0
             },
-            disconnectApplianceCount: 0,
-            special: {
-                frameBeds: 0,
-                bunkBeds: 0,
-                cratingItems: 0,
-                exportWrapVol: 0
-            }
+        disconnectApplianceCount: 0,
+dismantleCount: 0,
+special: {
+    beds: 0,
+    bunkBeds: 0,
+    cratingItems: 0,
+    exportWrapVol: 0
+}
         };
     }
 
     try {
         const parsed = JSON.parse(raw);
 
-        return {
-            sequenceLabel: parsed.sequenceLabel || "—",
-            packOption: parsed.packOption || "none",
-            furnitureVol: Number(parsed.furnitureVol || 0),
-            qty: {
-                ap: Number(parsed.qty?.ap || 0),
-                cg: Number(parsed.qty?.cg || 0),
-                books: Number(parsed.qty?.books || 0),
-                linen: Number(parsed.qty?.linen || 0),
-                wr: Number(parsed.qty?.wr || 0)
-            },
-            disconnectApplianceCount: Number(parsed.disconnectApplianceCount || 0),
-            special: {
-                frameBeds: 0,
-                bunkBeds: 0,
-                cratingItems: 0,
-                exportWrapVol: 0
-            }
-        };
+       return {
+    sequenceLabel: parsed.sequenceLabel || "—",
+    packOption: parsed.packOption || "none",
+    furnitureVol: Number(parsed.furnitureVol || 0),
+    qty: {
+        ap: Number(parsed.qty?.ap || 0),
+        cg: Number(parsed.qty?.cg || 0),
+        books: Number(parsed.qty?.books || 0),
+        linen: Number(parsed.qty?.linen || 0),
+        wr: Number(parsed.qty?.wr || 0)
+    },
+    disconnectApplianceCount: Number(parsed.disconnectApplianceCount || 0),
+    dismantleCount: Number(parsed.dismantleCount || 0),
+    special: {
+        beds: Number(parsed.bedCount || 0),
+        bunkBeds: Number(parsed.bunkBedCount || 0),
+        cratingItems: Number(parsed.cratingItems || 0),
+        exportWrapVol: Number(parsed.exportWrapVol || 0)
+    }
+};
     } catch (err) {
         return {
             sequenceLabel: "—",
@@ -8527,12 +8570,13 @@ function getPhotonFeed() {
                 wr: 0
             },
             disconnectApplianceCount: 0,
-            special: {
-                frameBeds: 0,
-                bunkBeds: 0,
-                cratingItems: 0,
-                exportWrapVol: 0
-            }
+dismantleCount: 0,
+special: {
+    beds: 0,
+    bunkBeds: 0,
+    cratingItems: 0,
+    exportWrapVol: 0
+}
         };
     }
 }
@@ -8567,9 +8611,8 @@ function getIncludedKeys(packOption){
 function getState(){
     const photonFeed = getPhotonFeed();
 
-    const manualApplianceCount = num("svc_appliance");
-    const disconnectApplianceCount = Number(photonFeed.disconnectApplianceCount || 0);
-    const totalApplianceCount = manualApplianceCount + disconnectApplianceCount;
+   const disconnectApplianceCount = Number(photonFeed.disconnectApplianceCount || 0);
+const totalApplianceCount = disconnectApplianceCount;
 
     return {
         packOption: photonFeed.packOption || "none",
@@ -8590,21 +8633,22 @@ function getState(){
 
         boxVolumes: BOX_VOLUMES,
 
-        special: {
-            frame: num("svc_frame"),
-            bunk: num("svc_bunk"),
-            customMinutes: num("svc_custom_minutes"),
-            customNote: document.getElementById("svc_custom_note")
-                ? document.getElementById("svc_custom_note").value.trim()
-                : "",
-            upright: num("svc_upright"),
-            grand: num("svc_grand"),
-            clock: num("svc_clock"),
-            appliance: totalApplianceCount,
-            manualApplianceCount: manualApplianceCount,
-            disconnectApplianceCount: disconnectApplianceCount,
-            crate: num("svc_crate")
-        },
+     special: {
+    beds: num("svc_frame"),
+    bunk: num("svc_bunk"),
+    customMinutes: num("svc_custom_minutes"),
+    customNote: document.getElementById("svc_custom_note")
+        ? document.getElementById("svc_custom_note").value.trim()
+        : "",
+    upright: num("svc_upright"),
+    grand: num("svc_grand"),
+    clock: num("svc_clock"),
+   appliance: totalApplianceCount,
+manualApplianceCount: 0,
+disconnectApplianceCount: disconnectApplianceCount,
+    dismantle: Number(photonFeed.dismantleCount || 0),
+    crate: num("svc_crate")
+},
 
         exportWrapVol: num("exportWrapVol")
     };
@@ -8629,18 +8673,19 @@ function calcBoxVolume(state){
 }
 
 function calcSpecialLabour(state){
-    const includedFrameBeds = 2;
+    const includedBeds = 2;
     const includedExportWrapVol = 50;
 
-    const extraFrameBeds = Math.max(0, state.special.frame - includedFrameBeds);
+    const extraBeds = Math.max(0, state.special.beds - includedBeds);
     const extraExportWrapVol = Math.max(0, state.exportWrapVol - includedExportWrapVol);
     const transitTotalMinutes = (state.transitHours * 60) + state.transitMinutes;
     const extraTransitMinutes = Math.max(0, transitTotalMinutes - 30);
 
-    const loadMinutes =
-        (extraFrameBeds * 15) +
-        (state.special.bunk * 30) +
-        (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
+   const loadMinutes =
+    (extraBeds * 15) +
+    (state.special.dismantle * 15) +
+    (state.special.bunk * 30) +
+    (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
         (state.special.upright * 25) +
         (state.special.grand * 60) +
         (state.special.clock * 30) +
@@ -8650,7 +8695,7 @@ function calcSpecialLabour(state){
         ((extraExportWrapVol / 100) * 25);
 
     const unloadMinutes =
-        (extraFrameBeds * 15) +
+        (extraBeds * 15) +
         (state.special.bunk * 30) +
         (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
         (state.special.upright * 25) +
@@ -8668,8 +8713,9 @@ function calcSpecialLabour(state){
         unloadSideHours: round2(unloadMinutes / 60),
         extraTransitHours: round2(extraTransitMinutes / 60),
         breakdown: {
-            frame: round2((extraFrameBeds * 30) / 60),
-            bunk: round2((state.special.bunk * 60) / 60),
+           beds: round2((extraBeds * 30) / 60),
+dismantle: round2((state.special.dismantle * 15) / 60),
+bunk: round2((state.special.bunk * 60) / 60),
             custom: round2(((state.special.customMinutes > 0 ? state.special.customMinutes * 2 : 0)) / 60),
             upright: round2((state.special.upright * 50) / 60),
             grand: round2((state.special.grand * 120) / 60),
@@ -8679,7 +8725,7 @@ function calcSpecialLabour(state){
             loft: round2(((state.loftVol / 100) * 20) / 60),
             exportWrap: round2(((extraExportWrapVol / 100) * 25) / 60),
             transit: round2(extraTransitMinutes / 60),
-            includedFrameBeds,
+            includedBeds,
             includedExportWrapVol
         }
     };
@@ -9026,7 +9072,7 @@ const svcBunkEl = document.getElementById("svc_bunk");
 const svcCrateEl = document.getElementById("svc_crate");
 const exportWrapVolEl = document.getElementById("exportWrapVol");
 
-if (svcFrameEl) svcFrameEl.value = state.special.frame;
+if (svcFrameEl) svcFrameEl.value = state.special.beds;
 if (svcBunkEl) svcBunkEl.value = state.special.bunk;
 if (svcCrateEl) svcCrateEl.value = state.special.crate;
 if (exportWrapVolEl) exportWrapVolEl.value = state.exportWrapVol;
@@ -9061,10 +9107,11 @@ const special = calcSpecialLabour(state);
         `Loft effects volume is used for extra loft labour only and does not change total move volume. ` +
         `Loading uses total volume ÷ ${state.loadRate} cuft per man-hour, then adds load-side specials. ` +
         `Unloading uses total volume ÷ ${state.unloadRate} cuft per man-hour, then adds unload-side specials. ` +
-        `Two regular frame beds and 50 cuft of export wrap are treated as already included before extra special time is added.`;
+       `Two standard beds and 50 cuft of export wrap are treated as already included before extra special time is added.`;
 
     document.getElementById("specialText").textContent =
-    `Frame beds: ${special.breakdown.frame.toFixed(2)} hrs extra after first ${special.breakdown.includedFrameBeds} included · ` +
+ `Beds: ${special.breakdown.beds.toFixed(2)} hrs extra after first ${special.breakdown.includedBeds} included · ` +
+`Dismantles: ${special.breakdown.dismantle.toFixed(2)} hrs · ` +
     `Bunk beds: ${special.breakdown.bunk.toFixed(2)} hrs · ` +
     `${state.special.customNote ? state.special.customNote : "Custom item"}: ${special.breakdown.custom.toFixed(2)} hrs · ` +
     `Upright pianos: ${special.breakdown.upright.toFixed(2)} hrs · ` +

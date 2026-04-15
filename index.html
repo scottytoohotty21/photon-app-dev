@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1793,6 +1793,67 @@ button {
 }
 @media (max-width: 680px){
     .summary-grid,.grid-2,.schedule-grid{grid-template-columns:1fr;}
+
+}
+/* QUOTE TAB FIXES */
+.quote-summary-strip .summary-card,
+.quote-summary-strip .summary-card-compact,
+.quote-summary-strip .quote-summary-card-tall {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.quote-summary-strip .summary-value {
+    font-size: clamp(18px, 2.4vw, 24px);
+    line-height: 1.05;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.quote-summary-card-tall .field {
+    min-width: 0;
+}
+
+.pricing-row {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    background: #ffffff;
+}
+
+.pricing-row.pricing-row-custom {
+    background: #eff6ff;
+    border-color: #93c5fd;
+}
+
+.pricing-row .field {
+    min-width: 0;
+}
+
+.quote-line-total {
+    background: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.quote-custom-label-wrap {
+    grid-column: span 3 / span 3;
+}
+
+.quote-type-wrap {
+    grid-column: span 3 / span 3;
+}
+
+.quote-qty-wrap,
+.quote-unit-wrap {
+    grid-column: span 2 / span 2;
+}
+
+.quote-total-wrap,
+.quote-del-wrap {
+    grid-column: span 1 / span 1;
 }
     </style>
 </head>
@@ -7452,15 +7513,20 @@ function buildDefaultQuotePricingLines(sequenceId) {
     const scheduleTotals = calcQuoteScheduleTotals(sequenceId);
 
     const cartonQty = feed
-        ? Number(feed.qty.ap || 0) + Number(feed.qty.cg || 0) + Number(feed.qty.books || 0) + Number(feed.qty.linen || 0) + Number(feed.qty.wr || 0)
+        ? Number(feed.qty.ap || 0) +
+          Number(feed.qty.cg || 0) +
+          Number(feed.qty.books || 0) +
+          Number(feed.qty.linen || 0) +
+          Number(feed.qty.wr || 0)
         : 0;
 
-    const exportWrapQty = getActiveSequenceRecord() && String(getActiveSequenceRecord().id) === String(sequenceId)
-        ? Number(document.getElementById("exportWrapVol") ? document.getElementById("exportWrapVol").value : 0)
-        : (() => {
-            const seq = currentJob.sequences.find(function(s) { return String(s.id) === String(sequenceId); });
-            return Number(seq && seq.schedule ? seq.schedule.exportWrapVol || 0 : 0);
-        })();
+    const exportWrapQty = feed
+        ? Number(
+            (feed.special && feed.special.exportWrapVol) ||
+            feed.exportWrapVol ||
+            0
+          )
+        : 0;
 
     return QUOTE_PRICING_DEFAULTS.map(function(item) {
         let qty = Number(item.qty || 0);
@@ -7512,11 +7578,20 @@ function syncQuotePricingFromSchedule(sequenceId) {
     const feed = getQuoteSequenceFeed(sequenceId);
 
     const cartonQty = feed
-        ? Number(feed.qty.ap || 0) + Number(feed.qty.cg || 0) + Number(feed.qty.books || 0) + Number(feed.qty.linen || 0) + Number(feed.qty.wr || 0)
+        ? Number(feed.qty.ap || 0) +
+          Number(feed.qty.cg || 0) +
+          Number(feed.qty.books || 0) +
+          Number(feed.qty.linen || 0) +
+          Number(feed.qty.wr || 0)
         : 0;
 
-    const seq = currentJob.sequences.find(function(s) { return String(s.id) === String(sequenceId); });
-    const exportWrapQty = Number(seq && seq.schedule ? seq.schedule.exportWrapVol || 0 : 0);
+    const exportWrapQty = feed
+        ? Number(
+            (feed.special && feed.special.exportWrapVol) ||
+            feed.exportWrapVol ||
+            0
+          )
+        : 0;
 
     state.pricingLines = state.pricingLines.map(function(line) {
         if (line.label === "Vans") return { ...line, qty: scheduleTotals.vans };
@@ -7905,19 +7980,7 @@ function handleQuoteSavePricing() {
 
     alert("Pricing saved.");
 }
-function handleQuoteSavePricing() {
-    const seq = getQuoteSelectedSequence();
-    if (!seq) return;
 
-    const sequenceId = String(seq.id);
-    ensureQuoteSequenceState(sequenceId);
-
-    quotePricingSaved = true;
-    saveToDevice();
-    updateQuoteCommercialDisplays(sequenceId);
-
-    alert("Pricing saved.");
-}
 function bindQuoteShellEvents() {
     const sequenceSelect = document.getElementById("quote-sequenceSelect");
     const customerInput = document.getElementById("quote-customerPriceInput");
@@ -8017,8 +8080,28 @@ function getQuoteLineLabel(line) {
     }
     return line.label || "";
 }
+function getQuoteLineById(sequenceId, lineId, lineType) {
+    const state = ensureQuoteSequenceState(sequenceId);
+    if (!state) return null;
 
-function updateQuoteLine(sequenceId, lineId, field, value, lineType) {
+    const targetLines = lineType === "additional"
+        ? state.additionalCostLines
+        : state.pricingLines;
+
+    return targetLines.find(function(item) {
+        return item.id === lineId;
+    }) || null;
+}
+
+function refreshQuoteLineTotal(sequenceId, lineId, lineType) {
+    const line = getQuoteLineById(sequenceId, lineId, lineType);
+    const totalEl = document.getElementById(`quote-line-total-${lineType}-${lineId}`);
+    if (!line || !totalEl) return;
+
+    totalEl.textContent = quoteMoney(calcQuoteLineTotal(line));
+}
+
+function updateQuoteLine(sequenceId, lineId, field, value, lineType, shouldRerender = false) {
     const state = ensureQuoteSequenceState(sequenceId);
     if (!state) return;
 
@@ -8034,7 +8117,6 @@ function updateQuoteLine(sequenceId, lineId, field, value, lineType) {
 
     if (field === "label") {
         line.label = value;
-
         if (value !== "Custom") {
             line.customLabel = "";
         }
@@ -8048,7 +8130,14 @@ function updateQuoteLine(sequenceId, lineId, field, value, lineType) {
 
     quotePricingSaved = false;
     saveToDevice();
-    renderQuoteTab();
+
+    if (shouldRerender) {
+        renderQuoteTab();
+        return;
+    }
+
+    refreshQuoteLineTotal(sequenceId, lineId, lineType);
+    updateQuoteCommercialDisplays(String(sequenceId));
 }
 
 function addQuotePricingLine() {
@@ -8119,66 +8208,71 @@ function renderQuotePricingGrid(sequenceId) {
                 const isCustom = line.label === "Custom";
 
                 return `
-                    <div class="grid grid-cols-12 gap-2 items-end border border-slate-200 rounded-xl p-3">
-                        <div class="col-span-4">
-                            <label class="mini-label">Cost Type</label>
-                            <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'core')">
-                                ${QUOTE_CORE_COST_CHOICES.map(function(choice) {
-                                    return `<option value="${choice}" ${line.label === choice ? "selected" : ""}>${choice}</option>`;
-                                }).join("")}
-                            </select>
-                        </div>
+                    <div class="pricing-row ${isCustom ? "pricing-row-custom" : ""}">
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="quote-type-wrap">
+                                <label class="mini-label">Cost Type</label>
+                                <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'core',true)">
+                                    ${QUOTE_CORE_COST_CHOICES.map(function(choice) {
+                                        return `<option value="${choice}" ${line.label === choice ? "selected" : ""}>${choice}</option>`;
+                                    }).join("")}
+                                </select>
+                            </div>
 
-                        <div class="col-span-2">
-    <label class="mini-label">Custom Label</label>
-                            <input
-                                type="text"
-                                class="field"
-                                value="${escapeHtml(line.customLabel || "")}"
-                                ${isCustom ? "" : "disabled"}
-                                oninput="updateQuoteLine('${sequenceId}','${line.id}','customLabel',this.value,'core')"
-                                placeholder="Custom name"
-                            >
-                        </div>
+                            <div class="quote-custom-label-wrap">
+                                <label class="mini-label">Custom Label</label>
+                                <input
+                                    type="text"
+                                    class="field"
+                                    value="${escapeHtml(line.customLabel || "")}"
+                                    ${isCustom ? "" : "disabled"}
+                                    oninput="updateQuoteLine('${sequenceId}','${line.id}','customLabel',this.value,'core',false)"
+                                    placeholder=""
+                                >
+                            </div>
 
-                        <div class="col-span-2">
-    <label class="mini-label">Qty</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                class="field"
-                                value="${Number(line.qty || 0)}"
-                                oninput="updateQuoteLine('${sequenceId}','${line.id}','qty',this.value,'core')"
-                            >
-                        </div>
+                            <div class="quote-qty-wrap">
+                                <label class="mini-label">Qty</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    class="field"
+                                    value="${Number(line.qty || 0)}"
+                                    oninput="updateQuoteLine('${sequenceId}','${line.id}','qty',this.value,'core',false)"
+                                >
+                            </div>
 
-                        <div class="col-span-2">
-                            <label class="mini-label">Unit Cost</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                class="field"
-                                value="${Number(line.unitCost || 0)}"
-                                oninput="updateQuoteLine('${sequenceId}','${line.id}','unitCost',this.value,'core')"
-                            >
-                        </div>
+                            <div class="quote-unit-wrap">
+                                <label class="mini-label">Unit Cost</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    class="field"
+                                    value="${Number(line.unitCost || 0)}"
+                                    oninput="updateQuoteLine('${sequenceId}','${line.id}','unitCost',this.value,'core',false)"
+                                >
+                            </div>
 
-                        <div class="col-span-1">
-                            <label class="mini-label">Total</label>
-                            <div class="field" style="background:#f8fafc;">${quoteMoney(total)}</div>
-                        </div>
+                            <div class="quote-total-wrap">
+                                <label class="mini-label">Total</label>
+                                <div
+                                    id="quote-line-total-core-${line.id}"
+                                    class="field quote-line-total"
+                                >${quoteMoney(total)}</div>
+                            </div>
 
-                        <div class="col-span-1">
-                            <button
-                                type="button"
-                                class="action-btn btn-change"
-                                style="width:100%;height:44px;"
-                                onclick="deleteQuoteLine('${sequenceId}','${line.id}','core')"
-                            >
-                                Del
-                            </button>
+                            <div class="quote-del-wrap">
+                                <button
+                                    type="button"
+                                    class="action-btn btn-change"
+                                    style="width:100%;height:44px;"
+                                    onclick="deleteQuoteLine('${sequenceId}','${line.id}','core')"
+                                >
+                                    Del
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -8209,66 +8303,71 @@ function renderQuoteAdditionalCostsGrid(sequenceId) {
                 const isCustom = line.label === "Custom";
 
                 return `
-                    <div class="grid grid-cols-12 gap-2 items-end border border-slate-200 rounded-xl p-3">
-                        <div class="col-span-4">
-                            <label class="mini-label">Service Type</label>
-                            <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'additional')">
-                                ${QUOTE_ADDITIONAL_SERVICE_CHOICES.map(function(choice) {
-                                    return `<option value="${choice}" ${line.label === choice ? "selected" : ""}>${choice}</option>`;
-                                }).join("")}
-                            </select>
-                        </div>
+                    <div class="pricing-row ${isCustom ? "pricing-row-custom" : ""}">
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="quote-type-wrap">
+                                <label class="mini-label">Service Type</label>
+                                <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'additional',true)">
+                                    ${QUOTE_ADDITIONAL_SERVICE_CHOICES.map(function(choice) {
+                                        return `<option value="${choice}" ${line.label === choice ? "selected" : ""}>${choice}</option>`;
+                                    }).join("")}
+                                </select>
+                            </div>
 
-                        <div class="col-span-2">
-    <label class="mini-label">Custom Label</label>
-                            <input
-                                type="text"
-                                class="field"
-                                value="${escapeHtml(line.customLabel || "")}"
-                                ${isCustom ? "" : "disabled"}
-                                oninput="updateQuoteLine('${sequenceId}','${line.id}','customLabel',this.value,'additional')"
-                                placeholder="Custom name"
-                            >
-                        </div>
+                            <div class="quote-custom-label-wrap">
+                                <label class="mini-label">Custom Label</label>
+                                <input
+                                    type="text"
+                                    class="field"
+                                    value="${escapeHtml(line.customLabel || "")}"
+                                    ${isCustom ? "" : "disabled"}
+                                    oninput="updateQuoteLine('${sequenceId}','${line.id}','customLabel',this.value,'additional',false)"
+                                    placeholder=""
+                                >
+                            </div>
 
-                        <div class="col-span-2">
-    <label class="mini-label">Qty</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                class="field"
-                                value="${Number(line.qty || 0)}"
-                                oninput="updateQuoteLine('${sequenceId}','${line.id}','qty',this.value,'additional')"
-                            >
-                        </div>
+                            <div class="quote-qty-wrap">
+                                <label class="mini-label">Qty</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    class="field"
+                                    value="${Number(line.qty || 0)}"
+                                    oninput="updateQuoteLine('${sequenceId}','${line.id}','qty',this.value,'additional',false)"
+                                >
+                            </div>
 
-                        <div class="col-span-2">
-                            <label class="mini-label">Unit Cost</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                class="field"
-                                value="${Number(line.unitCost || 0)}"
-                                oninput="updateQuoteLine('${sequenceId}','${line.id}','unitCost',this.value,'additional')"
-                            >
-                        </div>
+                            <div class="quote-unit-wrap">
+                                <label class="mini-label">Unit Cost</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    class="field"
+                                    value="${Number(line.unitCost || 0)}"
+                                    oninput="updateQuoteLine('${sequenceId}','${line.id}','unitCost',this.value,'additional',false)"
+                                >
+                            </div>
 
-                        <div class="col-span-1">
-                            <label class="mini-label">Total</label>
-                            <div class="field" style="background:#f8fafc;">${quoteMoney(total)}</div>
-                        </div>
+                            <div class="quote-total-wrap">
+                                <label class="mini-label">Total</label>
+                                <div
+                                    id="quote-line-total-additional-${line.id}"
+                                    class="field quote-line-total"
+                                >${quoteMoney(total)}</div>
+                            </div>
 
-                        <div class="col-span-1">
-                            <button
-                                type="button"
-                                class="action-btn btn-change"
-                                style="width:100%;height:44px;"
-                                onclick="deleteQuoteLine('${sequenceId}','${line.id}','additional')"
-                            >
-                                Del
-                            </button>
+                            <div class="quote-del-wrap">
+                                <button
+                                    type="button"
+                                    class="action-btn btn-change"
+                                    style="width:100%;height:44px;"
+                                    onclick="deleteQuoteLine('${sequenceId}','${line.id}','additional')"
+                                >
+                                    Del
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -9283,3 +9382,4 @@ window.onload = function () {
 </div>
 </body>
 </html>
+>

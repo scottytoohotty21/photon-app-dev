@@ -1765,77 +1765,97 @@ button {
 .validation-warn{background:var(--amber-50);border:1px solid var(--amber-200);color:var(--amber-800);}
 .validation-error{background:var(--red-50);border:1px solid var(--red-200);color:var(--red-800);}
 /* COSTING & QUOTING */
-.quote-shell{display:grid;gap:16px;align-items:start;}
-.quote-topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;}
-.quote-page-title{font-size:18px;font-weight:900;text-transform:uppercase;color:#0f172a;line-height:1;}
-.quote-page-subtitle{font-size:10px;font-weight:800;text-transform:uppercase;color:#64748b;margin-top:4px;}
+.quote-shell{display:block;}
+.quote-topbar{display:none;}
+
+.quote-bottom-layout{
+    display:grid;
+    grid-template-columns:320px minmax(0,1fr);
+    gap:16px;
+    align-items:start;
+}
+
+.quote-stack{display:grid;gap:16px;}
 
 .quote-summary-strip{
     position:sticky;
     top:12px;
-    z-index:30;
+    align-self:start;
+    z-index:20;
 }
-.quote-summary-strip .panel-body{padding:10px 14px;}
+
+.quote-summary-strip .panel-body{padding:10px 12px;}
 
 .quote-summary-bar-grid{
     display:grid;
-    grid-template-columns:1fr 1fr 1fr 1fr;
-    grid-template-areas:
-        "costs margin additional customer"
-        "sequence sequence save customer"
-        "sequence sequence create customer";
+    grid-template-columns:1fr;
     gap:8px;
-    align-items:start;
+}
+
+.quote-summary-strip .summary-card{
+    min-width:0;
+    overflow:hidden;
 }
 
 .summary-card-compact{
     min-height:auto;
-    padding:8px 12px;
+    padding:8px 10px;
 }
+
 .summary-card-compact .summary-value{
-    font-size:24px;
+    font-size:20px;
+    line-height:1;
 }
 
-.quote-summary-card-tall{grid-area:customer;}
-.quote-sequence-card{grid-area:sequence;}
-.quote-save-card{grid-area:save;display:flex;align-items:center;justify-content:center;}
-.quote-create-card{grid-area:create;display:flex;align-items:center;justify-content:center;}
-
-.quote-bottom-layout{
-    display:grid;
-    grid-template-columns:minmax(0,.40fr) minmax(0,.60fr);
-    gap:16px;
-    align-items:start;
+.quote-summary-strip .summary-label{
+    font-size:9px;
+    margin-bottom:6px;
 }
-.quote-stack{display:grid;gap:16px;}
 
-@media (max-width:980px){
-    .quote-summary-bar-grid{
-        grid-template-columns:1fr 1fr;
-        grid-template-areas:
-            "costs margin"
-            "additional customer"
-            "sequence sequence"
-            "save save"
-            "create create";
+.quote-summary-strip .summary-sub{
+    font-size:9px;
+    margin-top:6px;
+    line-height:1.25;
+}
+
+.quote-summary-card-tall{
+    grid-area:auto;
+}
+
+.quote-summary-card-tall .field{
+    min-width:0;
+}
+
+.quote-save-card{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.quote-save-card .action-btn{
+    width:100%;
+    height:38px;
+    font-size:10px;
+    padding:0 10px;
+}
+
+.quote-create-card{
+    display:none;
+}
+
+@media (max-width:1100px){
+    .quote-bottom-layout{
+        grid-template-columns:280px minmax(0,1fr);
+    }
+
+    .summary-card-compact .summary-value{
+        font-size:18px;
     }
 }
 
 @media (max-width:900px){
-    .quote-bottom-layout{grid-template-columns:1fr;}
-}
-
-@media (max-width:760px){
-    .quote-summary-bar-grid{
+    .quote-bottom-layout{
         grid-template-columns:1fr;
-        grid-template-areas:
-            "costs"
-            "margin"
-            "additional"
-            "customer"
-            "sequence"
-            "save"
-            "create";
     }
 
     .quote-summary-strip{
@@ -1853,25 +1873,6 @@ button {
 @media (max-width: 680px){
     .summary-grid,.grid-2,.schedule-grid{grid-template-columns:1fr;}
 
-}
-/* QUOTE TAB FIXES */
-.quote-summary-strip .summary-card,
-.quote-summary-strip .summary-card-compact,
-.quote-summary-strip .quote-summary-card-tall {
-    min-width: 0;
-    overflow: hidden;
-}
-
-.quote-summary-strip .summary-value {
-    font-size: clamp(18px, 2.4vw, 24px);
-    line-height: 1.05;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.quote-summary-card-tall .field {
-    min-width: 0;
 }
 
 .pricing-row {
@@ -1939,6 +1940,52 @@ button {
     .quote-line-grid{
         grid-template-columns:1fr 1fr;
     }
+}
+.toolbar{
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.document-block{
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    border-radius:14px;
+    padding:14px;
+}
+
+.document-heading{
+    font-size:10px;
+    font-weight:900;
+    text-transform:uppercase;
+    color:#94a3b8;
+    margin-bottom:8px;
+}
+
+.document-lines{
+    display:grid;
+    gap:6px;
+}
+
+.document-line{
+    font-size:11px;
+    font-weight:800;
+    color:#334155;
+    line-height:1.45;
+}
+
+.document-empty{
+    font-size:11px;
+    font-weight:800;
+    color:#94a3b8;
+    text-transform:uppercase;
+}
+
+.action-btn.white{
+    background:#ffffff;
+    color:#334155;
+    border:1.5px solid #cbd5e1;
 }
     </style>
 </head>
@@ -2472,78 +2519,57 @@ Enter as: Surname, First Name
 </section>
 <section id="content-quote" class="tab-content hidden bg-white p-5 rounded-2xl shadow-inner">
     <div class="quote-shell">
-        <div class="quote-topbar">
-            <div>
-                <div class="quote-page-title">Costing & Quoting</div>
-                <div class="quote-page-subtitle">Commercial costing, quote price, and optional service lines</div>
-            </div>
-        </div>
-
-        <div class="quote-summary-strip panel">
-            <div class="panel-body">
-                <div class="quote-summary-bar-grid">
-                    <div class="summary-card summary-card-compact" style="grid-area:costs;">
-                        <div class="summary-label">Total Costs</div>
-                        <div class="summary-value" id="quote-totalCosts">0.00</div>
+        <div class="quote-bottom-layout">
+            <div class="quote-stack quote-left-rail quote-summary-strip">
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-title">Commercial Summary</div>
+                        <div class="panel-subtitle">Cost base, sell price and gross margin</div>
                     </div>
-
-                    <div class="summary-card summary-card-compact" style="grid-area:margin;">
-                        <div class="summary-label">Gross Margin</div>
-                        <div class="summary-value" id="quote-grossMarginDisplay">0.00</div>
-                        <div class="summary-sub" id="quote-grossMarginSub">Customer price minus total costs</div>
+                    <div class="panel-body">
+                        <div id="quote-commercialSummaryCard"></div>
                     </div>
+                </div>
 
-                    <div class="summary-card summary-card-compact" style="grid-area:additional;">
-                        <div class="summary-label">Additional Costs Total</div>
-                        <div class="summary-value" id="quote-additionalCostsTotalDisplay">0.00</div>
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-title">Additional Costs Breakdown</div>
+                        <div class="panel-subtitle">Optional services added</div>
                     </div>
-
-                    <div class="summary-card summary-card-compact quote-summary-card-tall">
-                        <label class="mini-label">Enter Quote Price</label>
-                        <input id="quote-customerPriceInput" type="number" min="0" step="0.01" class="field" value="0" />
-                        <div style="height:4px"></div>
-                        <div class="summary-value" id="quote-customerPriceDisplay">0.00</div>
+                    <div class="panel-body">
+                        <div id="quote-additionalCostsBreakdownCard"></div>
                     </div>
+                </div>
 
-                    <div class="summary-card summary-card-compact quote-sequence-card">
-                        <label class="mini-label">Selected Sequence</label>
-                        <select id="quote-sequenceSelect" class="field"></select>
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-title">Controls</div>
+                        <div class="panel-subtitle">Sequence and pricing save</div>
                     </div>
+                    <div class="panel-body">
+                        <div class="space-y-3">
+                            <div>
+                                <label class="mini-label">Selected Sequence</label>
+                                <select id="quote-sequenceSelect" class="field"></select>
+                            </div>
 
-                    <div class="summary-card summary-card-compact quote-save-card">
-                        <button type="button" class="action-btn blue" id="quote-savePricingBtn" style="width:100%;">Save Pricing</button>
-                    </div>
+                            <div>
+                                <label class="mini-label">Enter Quote Price</label>
+                                <input id="quote-customerPriceInput" type="number" min="0" step="0.01" class="field" value="0" />
+                                <div style="height:6px"></div>
+                                <div class="listed-stat-card">
+                                    <div class="listed-stat-label">Quote Price</div>
+                                    <div class="listed-stat-value" id="quote-customerPriceDisplay">0.00</div>
+                                </div>
+                            </div>
 
-                    <div class="summary-card summary-card-compact quote-create-card">
-                        <button type="button" class="action-btn blue" id="quote-createQuoteBtn" style="width:100%;">Create Quote</button>
+                            <button type="button" class="action-btn quote-save-compact btn-save" id="quote-savePricingBtn">
+                                Save Pricing
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="quote-bottom-layout">
-            <div class="quote-stack">
-    <div class="panel">
-        <div class="panel-head">
-            <div class="panel-title">Pricing Context</div>
-            <div class="panel-subtitle">Light operational reference for pricing only</div>
-        </div>
-        <div class="panel-body">
-            <div id="quote-pricingContextCard"></div>
-        </div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-head">
-            <div class="panel-title">Quotation Notes / Assumptions</div>
-            <div class="panel-subtitle">Customer-facing wording and exclusions</div>
-        </div>
-        <div class="panel-body">
-            <label class="mini-label">Quote Notes</label>
-            <textarea id="quote-quoteNotesInput" class="field" placeholder="Example: Price assumes clear access, standard carry distances, and excludes specialist trades unless listed below."></textarea>
-        </div>
-    </div>
-</div>
 
             <div class="quote-stack">
                 <div class="panel">
@@ -2554,7 +2580,7 @@ Enter as: Surname, First Name
                     <div class="panel-body">
                         <div class="pricing-grid" id="quote-pricingGrid"></div>
                         <div class="toolbar">
-                            <button type="button" class="action-btn white" id="quote-addPricingLineBtn">Add Core Cost Row</button>
+                            <button type="button" class="action-btn" id="quote-addPricingLineBtn">Add Core Cost Row</button>
                         </div>
                         <div class="footer-note">Core costing should stay focused on move cost base.</div>
                     </div>
@@ -2568,7 +2594,7 @@ Enter as: Surname, First Name
                     <div class="panel-body">
                         <div class="pricing-grid" id="quote-additionalCostsGrid"></div>
                         <div class="toolbar">
-                            <button type="button" class="action-btn white" id="quote-addAdditionalCostLineBtn">Add Optional Service</button>
+                            <button type="button" class="action-btn" id="quote-addAdditionalCostLineBtn">Add Optional Service</button>
                         </div>
                     </div>
                 </div>
@@ -7862,6 +7888,9 @@ function updateQuoteCommercialDisplays(sequenceId) {
             ? `${quoteMoney(totals.grossMarginPct)}% margin on sell price${quotePricingSaved ? " · saved" : " · unsaved changes"}`
             : `Customer price minus total costs${quotePricingSaved ? " · saved" : " · unsaved changes"}`;
     }
+
+    renderQuoteCommercialSummary(sequenceId);
+    renderQuoteAdditionalBreakdown(sequenceId);
 }
 
 function renderQuoteTabShellOnly() {
@@ -7872,7 +7901,6 @@ function renderQuoteTabShellOnly() {
     const state = ensureQuoteSequenceState(sequenceId);
 
     renderQuoteSequenceSelect();
-renderQuotePricingContext(sequenceId);
 
     const customerInput = document.getElementById("quote-customerPriceInput");
     const notesInput = document.getElementById("quote-quoteNotesInput");
@@ -8003,7 +8031,6 @@ function bindQuoteShellEvents() {
     const customerInput = document.getElementById("quote-customerPriceInput");
     const notesInput = document.getElementById("quote-quoteNotesInput");
     const saveBtn = document.getElementById("quote-savePricingBtn");
-    const createBtn = document.getElementById("quote-createQuoteBtn");
 
     if (sequenceSelect) {
         sequenceSelect.onchange = function() {
@@ -8026,10 +8053,64 @@ function bindQuoteShellEvents() {
     if (saveBtn) {
         saveBtn.onclick = handleQuoteSavePricing;
     }
+}
+function renderQuoteCommercialSummary(sequenceId) {
+    const target = document.getElementById("quote-commercialSummaryCard");
+    if (!target) return;
 
-    if (createBtn) {
-        createBtn.onclick = handleQuoteCreateQuote;
+    const totals = getQuoteCommercialTotals(sequenceId);
+
+    target.innerHTML = `
+        <div class="grid grid-cols-2 gap-3">
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Total Cost Base</div>
+                <div class="listed-stat-value">${quoteMoney(totals.totalCostBase)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Sell Price</div>
+                <div class="listed-stat-value">${quoteMoney(totals.customerPrice)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Gross Margin £</div>
+                <div class="listed-stat-value">${quoteMoney(totals.grossMargin)}</div>
+            </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Gross Margin %</div>
+                <div class="listed-stat-value">${quoteMoney(totals.grossMarginPct)}%</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderQuoteAdditionalBreakdown(sequenceId) {
+    const target = document.getElementById("quote-additionalCostsBreakdownCard");
+    if (!target) return;
+
+    const lines = getQuoteAdditionalCostLines(sequenceId).filter(function(line) {
+        return !!line.label;
+    });
+
+    if (!lines.length) {
+        target.innerHTML = `
+            <div class="document-block">
+                <div class="document-heading">Optional Additional Cost Services</div>
+                <div class="document-empty">No optional services added</div>
+            </div>
+        `;
+        return;
     }
+
+    target.innerHTML = `
+        <div class="document-block">
+            <div class="document-heading">Optional Additional Cost Services</div>
+            <div class="document-lines">
+                ${lines.map(function(line) {
+                    const label = line.customLabel || (line.label === "Custom" ? "Custom" : line.label);
+                    return `<div class="document-line">• ${escapeHtml(label)} — ${quoteMoney(calcQuoteLineTotal(line))}</div>`;
+                }).join("")}
+            </div>
+        </div>
+    `;
 }
 
 function renderQuoteTab() {

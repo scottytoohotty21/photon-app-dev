@@ -2523,39 +2523,27 @@ Enter as: Surname, First Name
 
         <div class="quote-bottom-layout">
             <div class="quote-stack">
-                <div class="panel">
-                    <div class="panel-head">
-                        <div class="panel-title">Scope Snapshot</div>
-                        <div class="panel-subtitle">Compact commercial view only</div>
-                    </div>
-                    <div class="panel-body">
-                        <div id="quote-scopeSnapshotCard"></div>
-                    </div>
-                </div>
+    <div class="panel">
+        <div class="panel-head">
+            <div class="panel-title">Pricing Context</div>
+            <div class="panel-subtitle">Light operational reference for pricing only</div>
+        </div>
+        <div class="panel-body">
+            <div id="quote-pricingContextCard"></div>
+        </div>
+    </div>
 
-                <div class="panel">
-                    <div class="panel-head">
-                        <div class="panel-title">Quotation Notes / Assumptions</div>
-                        <div class="panel-subtitle">Customer-facing wording and exclusions</div>
-                    </div>
-                    <div class="panel-body">
-                        <label class="mini-label">Quote Notes</label>
-                        <textarea id="quote-quoteNotesInput" class="field" placeholder="Example: Price assumes clear access, standard carry distances, and excludes specialist trades unless listed below."></textarea>
-                    </div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-head">
-                        <div class="panel-title">Commercial Summary</div>
-                        <div class="panel-subtitle">Cost base, sell price and gross margin</div>
-                    </div>
-                    <div class="panel-body">
-                        <div id="quote-commercialSummaryCard"></div>
-                        <div style="height:16px"></div>
-                        <div id="quote-additionalCostsBreakdownCard"></div>
-                    </div>
-                </div>
-            </div>
+    <div class="panel">
+        <div class="panel-head">
+            <div class="panel-title">Quotation Notes / Assumptions</div>
+            <div class="panel-subtitle">Customer-facing wording and exclusions</div>
+        </div>
+        <div class="panel-body">
+            <label class="mini-label">Quote Notes</label>
+            <textarea id="quote-quoteNotesInput" class="field" placeholder="Example: Price assumes clear access, standard carry distances, and excludes specialist trades unless listed below."></textarea>
+        </div>
+    </div>
+</div>
 
             <div class="quote-stack">
                 <div class="panel">
@@ -7812,8 +7800,8 @@ function renderQuoteSequenceSelect() {
     }).join("");
 }
 
-function renderQuoteScopeSnapshot(sequenceId) {
-    const target = document.getElementById("quote-scopeSnapshotCard");
+function renderQuotePricingContext(sequenceId) {
+    const target = document.getElementById("quote-pricingContextCard");
     if (!target) return;
 
     const snap = buildQuoteScopeSnapshot(sequenceId);
@@ -7824,97 +7812,36 @@ function renderQuoteScopeSnapshot(sequenceId) {
                 <div class="listed-stat-label">Move Type</div>
                 <div class="listed-stat-value" style="font-size:14px;">${escapeHtml(snap.moveType)}</div>
             </div>
+
             <div class="listed-stat-card">
                 <div class="listed-stat-label">Packing Type</div>
                 <div class="listed-stat-value" style="font-size:14px;">${escapeHtml(snap.packingType)}</div>
             </div>
+
             <div class="listed-stat-card">
                 <div class="listed-stat-label">Included Volume</div>
                 <div class="listed-stat-value">${snap.includedVolume}</div>
                 <div class="listed-stat-sub">Furniture cuft</div>
             </div>
+
             <div class="listed-stat-card">
                 <div class="listed-stat-label">Cartons Total</div>
                 <div class="listed-stat-value">${snap.cartonsTotal}</div>
                 <div class="listed-stat-sub">All carton types</div>
             </div>
-            <div class="listed-stat-card">
+
+            <div class="listed-stat-card col-span-2">
                 <div class="listed-stat-label">Export Wrap</div>
                 <div class="listed-stat-value">${snap.exportWrapQty}</div>
                 <div class="listed-stat-sub">Current schedule value</div>
             </div>
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Flagged Specials</div>
-                <div class="listed-stat-value">${snap.specialCount}</div>
-                <div class="listed-stat-sub">Inventory flags / notes</div>
-            </div>
-            <div class="listed-stat-card col-span-2">
-                <div class="listed-stat-label">Excluded Items</div>
-                <div class="listed-stat-value">${snap.excludedCount}</div>
-                <div class="listed-stat-sub">Excluded from included move scope</div>
-            </div>
         </div>
     `;
 }
 
-function renderQuoteCommercialSummary(sequenceId) {
-    const target = document.getElementById("quote-commercialSummaryCard");
-    if (!target) return;
 
-    const totals = getQuoteCommercialTotals(sequenceId);
 
-    target.innerHTML = `
-        <div class="grid grid-cols-2 gap-3">
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Total Cost Base</div>
-                <div class="listed-stat-value">${quoteMoney(totals.totalCostBase)}</div>
-            </div>
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Sell Price</div>
-                <div class="listed-stat-value">${quoteMoney(totals.customerPrice)}</div>
-            </div>
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Gross Margin £</div>
-                <div class="listed-stat-value">${quoteMoney(totals.grossMargin)}</div>
-            </div>
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Gross Margin %</div>
-                <div class="listed-stat-value">${quoteMoney(totals.grossMarginPct)}%</div>
-            </div>
-        </div>
-    `;
-}
 
-function renderQuoteAdditionalBreakdown(sequenceId) {
-    const target = document.getElementById("quote-additionalCostsBreakdownCard");
-    if (!target) return;
-
-    const lines = getQuoteAdditionalCostLines(sequenceId).filter(function(line) {
-        return !!line.label;
-    });
-
-    if (!lines.length) {
-        target.innerHTML = `
-            <div class="document-block">
-                <div class="document-heading">Optional Additional Cost Services</div>
-                <div class="document-empty">No optional services added</div>
-            </div>
-        `;
-        return;
-    }
-
-    target.innerHTML = `
-        <div class="document-block">
-            <div class="document-heading">Optional Additional Cost Services</div>
-            <div class="document-lines">
-                ${lines.map(function(line) {
-                    const label = line.customLabel || (line.label === "Custom" ? "Custom" : line.label);
-                    return `<div class="document-line">• ${escapeHtml(label)} — ${quoteMoney(calcQuoteLineTotal(line))}</div>`;
-                }).join("")}
-            </div>
-        </div>
-    `;
-}
 
 function updateQuoteCommercialDisplays(sequenceId) {
     const totals = getQuoteCommercialTotals(sequenceId);
@@ -7935,9 +7862,6 @@ function updateQuoteCommercialDisplays(sequenceId) {
             ? `${quoteMoney(totals.grossMarginPct)}% margin on sell price${quotePricingSaved ? " · saved" : " · unsaved changes"}`
             : `Customer price minus total costs${quotePricingSaved ? " · saved" : " · unsaved changes"}`;
     }
-
-    renderQuoteCommercialSummary(sequenceId);
-    renderQuoteAdditionalBreakdown(sequenceId);
 }
 
 function renderQuoteTabShellOnly() {
@@ -7948,7 +7872,7 @@ function renderQuoteTabShellOnly() {
     const state = ensureQuoteSequenceState(sequenceId);
 
     renderQuoteSequenceSelect();
-    renderQuoteScopeSnapshot(sequenceId);
+renderQuotePricingContext(sequenceId);
 
     const customerInput = document.getElementById("quote-customerPriceInput");
     const notesInput = document.getElementById("quote-quoteNotesInput");

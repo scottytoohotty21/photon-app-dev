@@ -1699,7 +1699,66 @@ button {
 .schedule-row-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
 .schedule-row-title{font-size:11px;font-weight:900;text-transform:uppercase;color:var(--navy);}
 .schedule-remove{height:32px;border-radius:8px;border:1px solid var(--red-200);background:var(--red-50);color:var(--red-800);padding:0 10px;font-size:10px;font-weight:900;text-transform:uppercase;cursor:pointer;}
-.schedule-grid{display:grid;grid-template-columns:1.2fr 1.2fr .8fr .8fr;gap:10px;}
+.schedule-toggle-wrap{
+    display:flex;
+    align-items:center;
+    height:44px;
+}
+
+.schedule-toggle-switch{
+    position:relative;
+    display:inline-block;
+    width:54px;
+    height:30px;
+}
+
+.schedule-toggle-switch input{
+    opacity:0;
+    width:0;
+    height:0;
+}
+
+.schedule-toggle-slider{
+    position:absolute;
+    inset:0;
+    cursor:pointer;
+    background:#e2e8f0;
+    border:2px solid #cbd5e1;
+    border-radius:999px;
+    transition:.2s ease;
+}
+
+.schedule-toggle-slider:before{
+    content:"";
+    position:absolute;
+    width:22px;
+    height:22px;
+    left:2px;
+    top:2px;
+    background:#ffffff;
+    border-radius:50%;
+    box-shadow:0 2px 6px rgba(15,23,42,0.18);
+    transition:.2s ease;
+}
+
+.schedule-toggle-switch input:checked + .schedule-toggle-slider{
+    background:#eff6ff;
+    border-color:#3b82f6;
+}
+
+.schedule-toggle-switch input:checked + .schedule-toggle-slider:before{
+    transform:translateX(24px);
+    background:#3b82f6;
+}
+
+.schedule-toggle-switch input:focus + .schedule-toggle-slider{
+    box-shadow:0 0 0 3px rgba(59,130,246,0.12);
+}
+.schedule-grid{
+    display:grid;
+    grid-template-columns:1.2fr 1.1fr .75fr .75fr .75fr;
+    gap:10px;
+}
 .validation-list{display:grid;gap:8px;margin-top:12px;}
 .validation-item{border-radius:12px;padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;line-height:1.4;}
 .validation-ok{background:var(--green-50);border:1px solid var(--green-200);color:var(--green-800);}
@@ -7504,11 +7563,13 @@ function calcQuoteScheduleTotals(sequenceId) {
 
     rows.forEach(function(row) {
         const groupKey = String(row.groupId || row.id || "");
+
         if (!grouped[groupKey]) {
             grouped[groupKey] = {
                 vans: 0,
                 crew: 0,
-                nightsOut: 0
+                nightsOut: 0,
+                hasNightOut: false
             };
         }
 
@@ -7521,15 +7582,21 @@ function calcQuoteScheduleTotals(sequenceId) {
             String(row.task || "") === "Load and Travel" ||
             String(row.task || "") === "Deliver and Crew Return";
 
-        if (isNightOutTask) {
-            grouped[groupKey].nightsOut = Math.max(grouped[groupKey].nightsOut, men);
+        const isNightOutSelected = !!row.nightsOut;
+
+        if (isNightOutTask || isNightOutSelected) {
+            grouped[groupKey].hasNightOut = true;
         }
     });
 
     return Object.values(grouped).reduce(function(acc, day) {
         acc.vans += Number(day.vans || 0);
         acc.crew += Number(day.crew || 0);
-        acc.nightsOut += Number(day.nightsOut || 0);
+
+        if (day.hasNightOut) {
+            acc.nightsOut += Number(day.crew || 0);
+        }
+
         return acc;
     }, { vans: 0, crew: 0, nightsOut: 0 });
 }
@@ -8452,7 +8519,15 @@ function ensureSequenceScheduleShape(seq) {
 
 function getDefaultManualScheduleRows() {
     return [
-        { id: createId(), groupId: createId(), dayPart: "Full Day", task: "Pack", men: 2, hours: 8 }
+        {
+            id: createId(),
+            groupId: createId(),
+            dayPart: "Full Day",
+            task: "Pack",
+            men: 2,
+            hours: 8,
+            nightsOut: false
+        }
     ];
 }
 
@@ -8469,16 +8544,17 @@ function loadManualScheduleFromActiveSequence() {
         schedule.manualDays = getDefaultManualScheduleRows();
     }
 
-    manualSchedule = schedule.manualDays.map(function(day) {
-        return {
-            id: day.id || createId(),
-            groupId: day.groupId || createId(),
-            dayPart: day.dayPart || "Full Day",
-            task: day.task || "Pack",
-            men: Math.max(0, Number(day.men) || 0),
-            hours: Math.max(0, Number(day.hours) || 0)
-        };
-    });
+   manualSchedule = schedule.manualDays.map(function(day) {
+    return {
+        id: day.id || createId(),
+        groupId: day.groupId || createId(),
+        dayPart: day.dayPart || "Full Day",
+        task: day.task || "Pack",
+        men: Math.max(0, Number(day.men) || 0),
+        hours: Math.max(0, Number(day.hours) || 0),
+        nightsOut: !!day.nightsOut
+    };
+});
 }
 
 function saveManualScheduleToActiveSequence() {
@@ -8487,16 +8563,17 @@ function saveManualScheduleToActiveSequence() {
 
     const schedule = ensureSequenceScheduleShape(seq);
 
-    schedule.manualDays = manualSchedule.map(function(day) {
-        return {
-            id: day.id,
-            groupId: day.groupId,
-            dayPart: day.dayPart,
-            task: day.task,
-            men: Math.max(0, Number(day.men) || 0),
-            hours: Math.max(0, Number(day.hours) || 0)
-        };
-    });
+  schedule.manualDays = manualSchedule.map(function(day) {
+    return {
+        id: day.id,
+        groupId: day.groupId,
+        dayPart: day.dayPart,
+        task: day.task,
+        men: Math.max(0, Number(day.men) || 0),
+        hours: Math.max(0, Number(day.hours) || 0),
+        nightsOut: !!day.nightsOut
+    };
+});
 
     saveToDevice();
 }
@@ -8883,7 +8960,15 @@ function optionHtml(options, selected){
 
 function addScheduleDay(){
     const groupId = createId();
-    manualSchedule.push({ id: createId(), groupId, dayPart: "Full Day", task: "Load", men: 2, hours: 8 });
+    manualSchedule.push({
+        id: createId(),
+        groupId,
+        dayPart: "Full Day",
+        task: "Load",
+        men: 2,
+        hours: 8,
+        nightsOut: false
+    });
     saveManualScheduleToActiveSequence();
     renderScheduleCalculator();
 }
@@ -8903,13 +8988,14 @@ function removeScheduleDay(id){
 function ensurePmPair(row){
     const pairExists = manualSchedule.some(day => day.groupId === row.groupId && day.dayPart === "PM");
     if (!pairExists){
-        manualSchedule.push({
+                manualSchedule.push({
             id: createId(),
             groupId: row.groupId,
             dayPart: "PM",
             task: "Unload",
             men: row.men,
-            hours: 4
+            hours: 4,
+            nightsOut: false
         });
     }
 }
@@ -8933,9 +9019,15 @@ function normalizeGroup(groupId){
 function updateScheduleDay(id, field, value){
     manualSchedule = manualSchedule.map(day => {
         if (day.id !== id) return day;
+
         if (field === "men" || field === "hours") {
             return { ...day, [field]: Math.max(0, Number(value) || 0) };
         }
+
+        if (field === "nightsOut") {
+            return { ...day, nightsOut: !!value };
+        }
+
         return { ...day, [field]: value };
     });
 
@@ -8953,13 +9045,14 @@ function updateScheduleDay(id, field, value){
             updated.task = "Unload";
             const hasAm = manualSchedule.some(day => day.groupId === updated.groupId && day.dayPart === "AM");
             if (!hasAm){
-                manualSchedule.push({
+                                manualSchedule.push({
                     id: createId(),
                     groupId: updated.groupId,
                     dayPart: "AM",
                     task: "Load",
                     men: updated.men,
-                    hours: 4
+                    hours: 4,
+                    nightsOut: false
                 });
             }
         }
@@ -8999,7 +9092,7 @@ function renderSchedulePlanner(){
                     <div class="schedule-row-title">Day ${groupIndex + 1}${rows.length > 1 ? ` · ${day.dayPart}` : ""}</div>
                     ${rowIndex === 0 && manualSchedule.length > 1 ? `<button class="schedule-remove" onclick="removeScheduleDay('${day.id}')">Delete</button>` : ""}
                 </div>
-                <div class="schedule-grid">
+                                <div class="schedule-grid">
                     <div>
                         <label class="mini-label">Task</label>
                         <select class="field" onchange="updateScheduleDay('${day.id}','task',this.value)">
@@ -9021,6 +9114,19 @@ function renderSchedulePlanner(){
                     <div>
                         <label class="mini-label">Hours</label>
                         <input type="number" min="0" step="0.5" class="field" value="${day.hours}" oninput="updateScheduleDay('${day.id}','hours',this.value)" />
+                    </div>
+                    <div>
+                        <label class="mini-label">Night Out</label>
+                        <div class="schedule-toggle-wrap">
+                            <label class="schedule-toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    ${day.nightsOut ? 'checked' : ''}
+                                    onchange="updateScheduleDay('${day.id}','nightsOut', this.checked)"
+                                />
+                                <span class="schedule-toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>

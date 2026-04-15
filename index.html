@@ -1744,7 +1744,7 @@ button {
 
 .quote-bottom-layout{
     display:grid;
-    grid-template-columns:minmax(0,.48fr) minmax(0,.52fr);
+    grid-template-columns:minmax(0,.40fr) minmax(0,.60fr);
     gap:16px;
     align-items:start;
 }
@@ -1838,22 +1838,48 @@ button {
     text-overflow: ellipsis;
 }
 
-.quote-custom-label-wrap {
-    grid-column: span 3 / span 3;
+.quote-line-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.5fr) minmax(0,1.5fr) minmax(88px,.7fr) minmax(110px,.9fr) minmax(140px,1fr) 72px;
+    gap:10px;
+    align-items:end;
 }
 
-.quote-type-wrap {
-    grid-column: span 3 / span 3;
-}
-
+.quote-type-wrap,
+.quote-custom-label-wrap,
 .quote-qty-wrap,
-.quote-unit-wrap {
-    grid-column: span 2 / span 2;
+.quote-unit-wrap,
+.quote-total-wrap,
+.quote-del-wrap{
+    min-width:0;
 }
 
-.quote-total-wrap,
-.quote-del-wrap {
-    grid-column: span 1 / span 1;
+.quote-line-total {
+    background: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
+    font-weight: 900;
+}
+
+.quote-del-wrap .action-btn{
+    width:100%;
+    height:44px;
+    min-width:0;
+    padding:0 8px;
+}
+
+@media (max-width:1180px){
+    .quote-line-grid{
+        grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) minmax(82px,.7fr) minmax(100px,.9fr) minmax(125px,1fr) 64px;
+    }
+}
+
+@media (max-width:900px){
+    .quote-line-grid{
+        grid-template-columns:1fr 1fr;
+    }
 }
     </style>
 </head>
@@ -8209,7 +8235,7 @@ function renderQuotePricingGrid(sequenceId) {
 
                 return `
                     <div class="pricing-row ${isCustom ? "pricing-row-custom" : ""}">
-                        <div class="grid grid-cols-12 gap-2 items-end">
+                        <div class="quote-line-grid">
                             <div class="quote-type-wrap">
                                 <label class="mini-label">Cost Type</label>
                                 <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'core',true)">
@@ -8304,7 +8330,7 @@ function renderQuoteAdditionalCostsGrid(sequenceId) {
 
                 return `
                     <div class="pricing-row ${isCustom ? "pricing-row-custom" : ""}">
-                        <div class="grid grid-cols-12 gap-2 items-end">
+                        <div class="quote-line-grid">
                             <div class="quote-type-wrap">
                                 <label class="mini-label">Service Type</label>
                                 <select class="field" onchange="updateQuoteLine('${sequenceId}','${line.id}','label',this.value,'additional',true)">

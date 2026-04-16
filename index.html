@@ -6600,8 +6600,9 @@ rawMatches.forEach(function(raw) {
     saveToDevice();
 
 if (wantsCrate && !hadCrateBefore) {
+    const entryKey = listedFlagsEntryKey;
     closeListedFlagsModal();
-    openListedCrateModal(listedFlagsEntryKey);
+    openListedCrateModal(entryKey);
     return;
 }
 

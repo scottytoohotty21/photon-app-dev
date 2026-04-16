@@ -5352,19 +5352,21 @@ function saveMiscModal() {
     const floorName = currentJob && currentJob.inventory ? currentJob.inventory.activeFloor : "";
 
     const liveKey = getLiveInventoryGroupKey({
-        itemName: cleanName,
-        deliveryId: deliveryId,
-        roomName: roomName,
-        floorName: floorName,
-        unitVolume: unitVolume,
-        excluded: false,
-        dismantle: false,
-        expWrap: false,
-        note: "",
-        damage: "",
-        crated: false,
-        crateDims: null
-    });
+    itemName: cleanName,
+    deliveryId: deliveryId,
+    roomName: roomName,
+    floorName: floorName,
+    unitVolume: unitVolume,
+    excluded: false,
+    dismantle: false,
+    expWrap: false,
+    disconnect: false,
+    handyman: false,
+    note: "",
+    damage: "",
+    crated: false,
+    crateDims: null
+});
 
     lastAddedItemName = miscKey;
 
@@ -5420,19 +5422,20 @@ function saveMiscModal() {
     });
 
     lastAddedRawEntryId = rawEntryId;
-    currentItemVolume = unitVolume * qty;
-    recalculateTotalVolume();
 
-    updateInventoryDisplay(qty + " X " + cleanName.toUpperCase());
-    triggerInventoryPulse("current", "blue");
-    triggerInventoryPulse("total", "blue");
-    updateUndoButtonState();
-    renderActionButtonStates();
-    saveCalculatorFeedForActiveSequence();
+syncLiveInventoryFromRawForActiveSequence();
+recalculateTotalVolume();
+refreshCurrentInventorySelectionDisplay();
 
-    if (qtyInput) qtyInput.value = 1;
+triggerInventoryPulse("current", "blue");
+triggerInventoryPulse("total", "blue");
+updateUndoButtonState();
+renderActionButtonStates();
+saveCalculatorFeedForActiveSequence();
 
-    closeMiscModal();
+if (qtyInput) qtyInput.value = 1;
+
+closeMiscModal();
 }
 function addInventoryNote() {
     const rawEntry = getLastRawInventoryEntry();

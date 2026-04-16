@@ -6604,9 +6604,21 @@ function buildListedSummary(items) {
     let excludedCount = 0;
     let lineCount = items.length;
 
+    const excludedItems = [];
+    const exclusionNotes = [];
+
     items.forEach(function(entry) {
         if (entry.excluded) {
-            excludedCount += 1;
+            excludedCount += Number(entry.qty || 0);
+
+            const itemLabel = `${Number(entry.qty || 0)} x ${String(entry.itemName || "-").toUpperCase()}`;
+            excludedItems.push(itemLabel);
+
+            if (entry.note && String(entry.note).trim()) {
+                exclusionNotes.push(
+                    `${String(entry.itemName || "-").toUpperCase()}: ${String(entry.note).trim()}`
+                );
+            }
         } else {
             includedVolume += Number(entry.totalVolume || 0);
         }
@@ -6615,63 +6627,20 @@ function buildListedSummary(items) {
     return {
         includedVolume: includedVolume,
         excludedCount: excludedCount,
-        lineCount: lineCount
+        lineCount: lineCount,
+        excludedItems: excludedItems,
+        exclusionNotes: exclusionNotes
     };
 }
-function buildMaterialsSummary(items) {
-    const summary = {
-        apBoxes: 0,
-        cgBoxes: 0,
-        bookBoxes: 0,
-        linenBoxes: 0,
-        wrBoxes: 0,
+function buildResponsibilitiesSummary(summary) {
+    const excludedItems = Array.isArray(summary.excludedItems) ? summary.excludedItems : [];
+    const exclusionNotes = Array.isArray(summary.exclusionNotes) ? summary.exclusionNotes : [];
 
-        singleMattressBags: 0,
-        doubleMattressBags: 0,
-        kingMattressBags: 0,
-
-        armchairCovers: 0,
-        sofa2Covers: 0,
-        sofa3Covers: 0,
-        sofa4Covers: 0,
-
-        mirrorPicturePacks: 0,
-        wineDividers: 0
+    return {
+        hasContent: excludedItems.length > 0 || exclusionNotes.length > 0,
+        excludedItems: excludedItems,
+        exclusionNotes: exclusionNotes
     };
-
-    items.forEach(function(entry) {
-        if (entry.excluded) return;
-
-        const itemName = String(entry.itemName || "").toUpperCase().trim();
-        const qty = Number(entry.qty || 0);
-
-        // entered box totals
-        if (itemName === "AP BOX") summary.apBoxes += qty;
-        if (itemName === "CG BOX") summary.cgBoxes += qty;
-        if (itemName === "BOOK BOX") summary.bookBoxes += qty;
-        if (itemName === "LINEN BOX") summary.linenBoxes += qty;
-        if (itemName === "WR BOX") summary.wrBoxes += qty;
-
-        // auto materials from furniture
-        if (itemName === "BED (SINGLE)") summary.singleMattressBags += qty;
-        if (itemName === "BED (DOUBLE)") summary.doubleMattressBags += qty;
-        if (itemName === "BED (KING)") summary.kingMattressBags += qty;
-
-        if (itemName === "ARMCHAIR") summary.armchairCovers += qty;
-        if (itemName === "SOFA 2 SEAT") summary.sofa2Covers += qty;
-        if (itemName === "SOFA 3 SEAT") summary.sofa3Covers += qty;
-        if (itemName === "SOFA 4 SEAT") summary.sofa4Covers += qty;
-
-        // optional specials if these items exist in inventory later
-        if (itemName === "MIRROR / PICTURE PACK") summary.mirrorPicturePacks += qty;
-        if (itemName === "WINE DIVIDER") summary.wineDividers += qty;
-
-        // extra mattress rules
-        if (itemName === "BUNK BED") summary.singleMattressBags += (qty * 2);
-        if (itemName === "TRUNDLE BED") summary.singleMattressBags += (qty * 2);
-    });
-
-    return summary;
 }
 function renderListedSummary(summary, materials) {
     const topBar = document.getElementById("listed-summary-bar");
@@ -6683,68 +6652,70 @@ function renderListedSummary(summary, materials) {
 
     if (!footerBar) return;
 
+    const responsibilities = buildResponsibilitiesSummary(summary);
+
     footerBar.innerHTML = `
         <div class="signature-wrap">
-    <div class="signature-head">
-        <div>
-            <div class="signature-title">Customer Signature</div>
-            <div class="signature-subtitle">Sign with finger or stylus</div>
-        </div>
+            <div class="signature-head">
+                <div>
+                    <div class="signature-title">Customer Signature</div>
+                    <div class="signature-subtitle">Sign with finger or stylus</div>
+                </div>
 
-        <div class="signature-actions">
-            <button class="signature-btn clear" onclick="clearSignaturePad()">Clear</button>
-            <button class="signature-btn save" onclick="saveSignaturePad()">Save</button>
-        </div>
-    </div>
+                <div class="signature-actions">
+                    <button class="signature-btn clear" onclick="clearSignaturePad()">Clear</button>
+                    <button class="signature-btn save" onclick="saveSignaturePad()">Save</button>
+                </div>
+            </div>
 
-    <div class="signature-pad-shell">
-        <canvas id="signature-pad" class="signature-pad"></canvas>
-    </div>
+            <div class="signature-pad-shell">
+                <canvas id="signature-pad" class="signature-pad"></canvas>
+            </div>
 
-        <div class="signature-status-row">
-        <div class="signature-meta">
-            Signed:
-            <span id="signature-signed-at">
-                ${
-                    currentJob && currentJob.signature && currentJob.signature.signedAt
-                        ? new Date(currentJob.signature.signedAt).toLocaleString("en-GB")
-                        : "Not signed"
-                }
-            </span>
-        </div>
+            <div class="signature-status-row">
+                <div class="signature-meta">
+                    Signed:
+                    <span id="signature-signed-at">
+                        ${
+                            currentJob && currentJob.signature && currentJob.signature.signedAt
+                                ? new Date(currentJob.signature.signedAt).toLocaleString("en-GB")
+                                : "Not signed"
+                        }
+                    </span>
+                </div>
 
                 <div
-            id="signature-lock-badge"
-            class="signature-lock-badge"
-            style="${
-                currentJob && currentJob.signature && currentJob.signature.signedAt
-                    ? ""
-                    : "display:none;"
-            }"
-        >
-            <svg viewBox="0 0 24 24" class="signature-lock-icon" aria-hidden="true">
-                <path
-                    d="M8 10V7.8a4 4 0 1 1 8 0V10"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                />
-                <rect
-                    x="6"
-                    y="10"
-                    width="12"
-                    height="10"
-                    rx="2"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                />
-            </svg>
-            Locked
+                    id="signature-lock-badge"
+                    class="signature-lock-badge"
+                    style="${
+                        currentJob && currentJob.signature && currentJob.signature.signedAt
+                            ? ""
+                            : "display:none;"
+                    }"
+                >
+                    <svg viewBox="0 0 24 24" class="signature-lock-icon" aria-hidden="true">
+                        <path
+                            d="M8 10V7.8a4 4 0 1 1 8 0V10"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                        />
+                        <rect
+                            x="6"
+                            y="10"
+                            width="12"
+                            height="10"
+                            rx="2"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        />
+                    </svg>
+                    Locked
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
         <div class="listed-footer-stack">
             <div class="listed-stat-card">
@@ -6753,37 +6724,74 @@ function renderListedSummary(summary, materials) {
                 <div class="listed-stat-sub">Cuft counted</div>
             </div>
 
-           <div class="listed-stat-card">
-    <div class="listed-stat-label">Materials Summary</div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Exclusions & Customer Responsibilities</div>
+                ${
+                    responsibilities.hasContent
+                        ? `
+                        <div class="space-y-3 text-[10px] font-black text-slate-900 uppercase leading-5">
+                            <div>
+                                <div class="text-slate-400 pb-1">Excluded Items (${summary.excludedCount})</div>
+                                ${
+                                    responsibilities.excludedItems.length
+                                        ? responsibilities.excludedItems.map(function(item) {
+                                            return `<div>${escapeHtml(item)}</div>`;
+                                        }).join("")
+                                        : `<div class="text-slate-400 italic">None</div>`
+                                }
+                            </div>
 
-    <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5">
-        <div class="space-y-1">
-            <div class="text-slate-400 pb-1">Cartons</div>
-            <div>AP Boxes: ${materials.apBoxes}</div>
-            <div>CG Boxes: ${materials.cgBoxes}</div>
-            <div>Book Boxes: ${materials.bookBoxes}</div>
-            <div>Linen Boxes: ${materials.linenBoxes}</div>
-            <div>WR Boxes: ${materials.wrBoxes}</div>
+                            <div>
+                                <div class="text-slate-400 pb-1">Notes / Responsibilities</div>
+                                ${
+                                    responsibilities.exclusionNotes.length
+                                        ? responsibilities.exclusionNotes.map(function(note) {
+                                            return `<div>${escapeHtml(note)}</div>`;
+                                        }).join("")
+                                        : `<div class="text-slate-400 italic">None recorded</div>`
+                                }
+                            </div>
+                        </div>
+                        `
+                        : `
+                        <div class="text-[10px] font-black text-slate-400 uppercase italic">
+                            No exclusions or customer responsibility notes recorded
+                        </div>
+                        `
+                }
+            </div>
 
-            <div class="pt-2 text-slate-400">Mattress Bags</div>
-            <div>Single: ${materials.singleMattressBags}</div>
-            <div>Double: ${materials.doubleMattressBags}</div>
-            <div>King: ${materials.kingMattressBags}</div>
-        </div>
+            <div class="listed-stat-card">
+                <div class="listed-stat-label">Materials Summary</div>
 
-        <div class="space-y-1">
-            <div class="text-slate-400 pb-1">Sofa Covers</div>
-            <div>Armchair: ${materials.armchairCovers}</div>
-            <div>2-Seater: ${materials.sofa2Covers}</div>
-            <div>3-Seater: ${materials.sofa3Covers}</div>
-            <div>4-Seater: ${materials.sofa4Covers}</div>
+                <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5">
+                    <div class="space-y-1">
+                        <div class="text-slate-400 pb-1">Cartons</div>
+                        <div>AP Boxes: ${materials.apBoxes}</div>
+                        <div>CG Boxes: ${materials.cgBoxes}</div>
+                        <div>Book Boxes: ${materials.bookBoxes}</div>
+                        <div>Linen Boxes: ${materials.linenBoxes}</div>
+                        <div>WR Boxes: ${materials.wrBoxes}</div>
 
-            <div class="pt-2 text-slate-400">Special Packs</div>
-            <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
-            <div>Wine Dividers: ${materials.wineDividers}</div>
-        </div>
-    </div>
-</div>
+                        <div class="pt-2 text-slate-400">Mattress Bags</div>
+                        <div>Single: ${materials.singleMattressBags}</div>
+                        <div>Double: ${materials.doubleMattressBags}</div>
+                        <div>King: ${materials.kingMattressBags}</div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="text-slate-400 pb-1">Sofa Covers</div>
+                        <div>Armchair: ${materials.armchairCovers}</div>
+                        <div>2-Seater: ${materials.sofa2Covers}</div>
+                        <div>3-Seater: ${materials.sofa3Covers}</div>
+                        <div>4-Seater: ${materials.sofa4Covers}</div>
+
+                        <div class="pt-2 text-slate-400">Special Packs</div>
+                        <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
+                        <div>Wine Dividers: ${materials.wineDividers}</div>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
 
@@ -7378,6 +7386,39 @@ function getPrintableMaterialsHtml(materials) {
         </div>
     `;
 }
+function getPrintableResponsibilitiesHtml(summary) {
+    const responsibilities = buildResponsibilitiesSummary(summary);
+
+    if (!responsibilities.hasContent) {
+        return `<div class="pdf-small-note">No exclusions or customer responsibility notes recorded</div>`;
+    }
+
+    return `
+        <div class="pdf-materials-grid">
+            <div>
+                <div class="pdf-mini-head">Excluded Items (${summary.excludedCount})</div>
+                ${
+                    responsibilities.excludedItems.length
+                        ? responsibilities.excludedItems.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
+                        }).join("")
+                        : `<div>None</div>`
+                }
+            </div>
+
+            <div>
+                <div class="pdf-mini-head">Notes / Responsibilities</div>
+                ${
+                    responsibilities.exclusionNotes.length
+                        ? responsibilities.exclusionNotes.map(function(note) {
+                            return `<div>${escapeHtml(note)}</div>`;
+                        }).join("")
+                        : `<div>None recorded</div>`
+                }
+            </div>
+        </div>
+    `;
+}
 
 function printListedInventoryPdf() {
     if (!currentJob) return;
@@ -7704,15 +7745,20 @@ function printListedInventoryPdf() {
 
                 <div>
                     <div class="pdf-card" style="margin-bottom: 16px;">
-                        <div class="pdf-card-title">Included Volume</div>
-                        <div class="pdf-big-stat">${listedSummary.includedVolume}</div>
-                        <div class="pdf-small-note">Cuft counted</div>
-                    </div>
+    <div class="pdf-card-title">Included Volume</div>
+    <div class="pdf-big-stat">${listedSummary.includedVolume}</div>
+    <div class="pdf-small-note">Cuft counted</div>
+</div>
 
-                    <div class="pdf-card">
-                        <div class="pdf-card-title">Materials Summary</div>
-                        ${getPrintableMaterialsHtml(materialsSummary)}
-                    </div>
+<div class="pdf-card" style="margin-bottom: 16px;">
+    <div class="pdf-card-title">Exclusions & Customer Responsibilities</div>
+    ${getPrintableResponsibilitiesHtml(listedSummary)}
+</div>
+
+<div class="pdf-card">
+    <div class="pdf-card-title">Materials Summary</div>
+    ${getPrintableMaterialsHtml(materialsSummary)}
+</div>
                 </div>
             </div>
         </body>

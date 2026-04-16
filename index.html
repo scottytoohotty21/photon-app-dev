@@ -3833,20 +3833,23 @@ if (entry.expWrap) {
 }
 
 if (entry.dismantle) {
-    if (
-        itemName === "BED (SINGLE)" ||
-        itemName === "BED (CHILDS)" ||
-        itemName === "BED (DOUBLE)" ||
-        itemName === "BED (QUEENSIZE)" ||
-        itemName === "BED (SUPERKING)" ||
-        itemName === "COT"
-    ) {
+    const isBunkBed =
+        itemName.includes("BUNK");
+
+    const isStandardBed =
+        (
+            itemName.includes("BED") &&
+            !itemName.includes("SOFA BED") &&
+            !itemName.includes("DAY BED")
+        ) ||
+        itemName.includes("COT");
+
+    if (isBunkBed) {
+        bunkBedCount += entryQty;
+    } else if (isStandardBed) {
         bedCount += entryQty;
     }
-
-    if (itemName === "BED (BUNK BED)") {
-        bunkBedCount += entryQty;
-    }
+}
 }
 
 furnitureVol += totalVolume || (unitVolume * entryQty);

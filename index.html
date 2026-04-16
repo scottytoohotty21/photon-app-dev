@@ -5171,6 +5171,7 @@ function addVolume(amount) {
     if (qtyInput) qtyInput.value = 1;
     renderActionButtonStates();
     updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
 }
 function addInventoryItem(itemName) {
     let item = furnitureDB.find(function(i) {

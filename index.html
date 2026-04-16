@@ -5859,34 +5859,6 @@ function saveDamageModal() {
 
     closeDamageModal();
 }
-
-    saveToDevice();
-    renderActionButtonStates();
-
-    const tags = [];
-    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
-if (rawEntry.handyman) tags.push("[HANDYMAN]");
-    if (rawEntry.crated && rawEntry.crateDims) {
-        tags.push(
-            "[CRATE: " +
-            rawEntry.crateDims.l + " x " +
-            rawEntry.crateDims.w + " x " +
-            rawEntry.crateDims.h + " " +
-            rawEntry.crateDims.unit + "]"
-        );
-    }
-    if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
-    if (rawEntry.excluded) tags.push("[EXCLUDED]");
-    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
-
-   refreshCurrentInventorySelectionDisplay();
-triggerInventoryPulse("current", "blue");
-updateUndoButtonState();
-
-    closeDamageModal();
-}
 function updateLastItemQty(newQty) {
     // Inline qty editing no longer used.
 }

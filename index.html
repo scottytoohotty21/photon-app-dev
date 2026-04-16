@@ -3560,12 +3560,8 @@ function renderActionButtonStates() {
 }
 
 function toggleItemAction(actionName) {
-    const rawEntry = getLastRawInventoryEntry();
-    if (!rawEntry) return;
-
-  const liveItem = getLiveInventoryEntryForRaw(rawEntry.id);
-
-    if (!liveItem) return;
+   const rawEntry = getLastRawInventoryEntry();
+if (!rawEntry) return;
 
     if (actionName === "dismantle") {
         rawEntry.dismantle = !rawEntry.dismantle;
@@ -3587,32 +3583,38 @@ function toggleItemAction(actionName) {
         liveItem.handyman = !!rawEntry.handyman;
     }
 
-    if (actionName === "excluded") {
-        rawEntry.excluded = !rawEntry.excluded;
-        liveItem.excluded = !!rawEntry.excluded;
-    }
+    if (actionName === "dismantle") {
+    rawEntry.dismantle = !rawEntry.dismantle;
+}
 
-    saveToDevice();
-    recalculateTotalVolume();
-    renderActionButtonStates();
+if (actionName === "expWrap") {
+    rawEntry.expWrap = !rawEntry.expWrap;
+}
 
-    const tags = [];
-    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
-    if (rawEntry.handyman) tags.push("[HANDYMAN]");
-    if (rawEntry.excluded) tags.push("[EXCLUDED]");
+if (actionName === "disconnect") {
+    rawEntry.disconnect = !rawEntry.disconnect;
+}
 
-    const label = (rawEntry.itemName || "ITEM").toUpperCase();
-    const logText = tags.length ? (label + " " + tags.join(" ")) : (label + " ACTION CLEARED");
+if (actionName === "handyman") {
+    rawEntry.handyman = !rawEntry.handyman;
+}
 
-    currentItemVolume = rawEntry.excluded ? 0 : (rawEntry.unitVolume * rawEntry.qty);
+if (actionName === "excluded") {
+    rawEntry.excluded = !rawEntry.excluded;
+}
 
-    updateInventoryDisplay(logText);
-    triggerInventoryPulse("current", "blue");
-    triggerInventoryPulse("total", "blue");
-    triggerHaptic("light");
-    saveCalculatorFeedForActiveSequence();
+saveToDevice();
+
+/* force live inventory to rebuild from raw, same as tab switch does */
+syncLiveInventoryFromRawForActiveSequence();
+recalculateTotalVolume();
+refreshCurrentInventorySelectionDisplay();
+renderActionButtonStates();
+
+triggerInventoryPulse("current", "blue");
+triggerInventoryPulse("total", "blue");
+triggerHaptic("light");
+saveCalculatorFeedForActiveSequence();
 }
 
 function removeRawInventoryEntry(rawEntryId) {

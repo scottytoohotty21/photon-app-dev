@@ -3778,82 +3778,80 @@ let bunkBedCount = 0;
     };
 
     rawItems.forEach(function(entry) {
-        if (entry.excluded) return;
+    if (entry.excluded) return;
 
-        const itemName = String(entry.itemName || "").toUpperCase().trim();
-        const entryQty = Number(entry.qty || 0);
-        const unitVolume = Number(entry.unitVolume || 0);
-        const totalVolume = Number(entry.totalVolume || 0);
+    const itemName = String(entry.itemName || "").toUpperCase().trim();
+    const entryQty = Number(entry.qty || 0);
+    const unitVolume = Number(entry.unitVolume || 0);
+    const totalVolume = Number(entry.totalVolume || 0);
 
-        if (itemName === "AP BOX") {
-            qty.ap += entryQty;
-            return;
-        }
-
-        if (itemName === "CG BOX") {
-            qty.cg += entryQty;
-            return;
-        }
-
-        if (itemName === "BOOK BOX") {
-            qty.books += entryQty;
-            return;
-        }
-
-        if (itemName === "LINEN BOX") {
-            qty.linen += entryQty;
-            return;
-        }
-
-        if (itemName === "WR BOX") {
-            qty.wr += entryQty;
-            return;
-        }
-
-        if (
-    entry.disconnect &&
-    (
-        itemName === "WASHING MACHINE" ||
-        itemName === "DISHWASHER"
-    )
-) {
-    disconnectApplianceCount += entryQty;
-}
-
-if (entry.dismantle) {
-    dismantleCount += entryQty;
-}
-
-if (entry.crated) {
-    cratingItems += entryQty;
-}
-
-if (entry.expWrap) {
-    exportWrapVol += totalVolume || (unitVolume * entryQty);
-}
-
-if (entry.dismantle) {
-    const isBunkBed =
-        itemName.includes("BUNK");
-
-    const isStandardBed =
-        (
-            itemName.includes("BED") &&
-            !itemName.includes("SOFA BED") &&
-            !itemName.includes("DAY BED")
-        ) ||
-        itemName.includes("COT");
-
-    if (isBunkBed) {
-        bunkBedCount += entryQty;
-    } else if (isStandardBed) {
-        bedCount += entryQty;
+    if (itemName === "AP BOX") {
+        qty.ap += entryQty;
+        return;
     }
-}
-}
 
-furnitureVol += totalVolume || (unitVolume * entryQty);
-    });
+    if (itemName === "CG BOX") {
+        qty.cg += entryQty;
+        return;
+    }
+
+    if (itemName === "BOOK BOX") {
+        qty.books += entryQty;
+        return;
+    }
+
+    if (itemName === "LINEN BOX") {
+        qty.linen += entryQty;
+        return;
+    }
+
+    if (itemName === "WR BOX") {
+        qty.wr += entryQty;
+        return;
+    }
+
+    if (
+        entry.disconnect &&
+        (
+            itemName === "WASHING MACHINE" ||
+            itemName === "DISHWASHER"
+        )
+    ) {
+        disconnectApplianceCount += entryQty;
+    }
+
+    if (entry.dismantle) {
+        dismantleCount += entryQty;
+    }
+
+    if (entry.crated) {
+        cratingItems += entryQty;
+    }
+
+    if (entry.expWrap) {
+        exportWrapVol += totalVolume || (unitVolume * entryQty);
+    }
+
+    if (entry.dismantle) {
+        const isBunkBed = itemName.includes("BUNK");
+
+        const isStandardBed =
+            (
+                itemName.includes("BED") &&
+                !itemName.includes("SOFA BED") &&
+                !itemName.includes("DAY BED")
+            ) ||
+            itemName.includes("COT");
+
+        if (isBunkBed) {
+            bunkBedCount += entryQty;
+        } else if (isStandardBed) {
+            bedCount += entryQty;
+        }
+    }
+
+    furnitureVol += totalVolume || (unitVolume * entryQty);
+});
 
     const seqIndex = currentJob.sequences.findIndex(function(seq) {
         return String(seq.id) === String(sequenceId);

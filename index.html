@@ -1673,6 +1673,11 @@ button {
     display: block;
     flex-shrink: 0;
 }
+.listed-footer-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
 /* --- INVENTORY SEARCH + SCROLL --- */
 .inventory-search-row {
     display: flex;
@@ -6599,6 +6604,57 @@ function mergeListedInventoryEntries(items) {
 
     return Object.values(mergedMap);
 }
+function buildMaterialsSummary(items) {
+    const summary = {
+        apBoxes: 0,
+        cgBoxes: 0,
+        bookBoxes: 0,
+        linenBoxes: 0,
+        wrBoxes: 0,
+
+        singleMattressBags: 0,
+        doubleMattressBags: 0,
+        kingMattressBags: 0,
+
+        armchairCovers: 0,
+        sofa2Covers: 0,
+        sofa3Covers: 0,
+        sofa4Covers: 0,
+
+        mirrorPicturePacks: 0,
+        wineDividers: 0
+    };
+
+    if (!Array.isArray(items)) return summary;
+
+    items.forEach(function(entry) {
+        if (!entry || entry.excluded) return;
+
+        const itemName = String(entry.itemName || "").trim().toUpperCase();
+        const qty = Number(entry.qty || 0);
+
+        if (itemName === "AP BOX") summary.apBoxes += qty;
+        else if (itemName === "CG BOX") summary.cgBoxes += qty;
+        else if (itemName === "BOOK BOX") summary.bookBoxes += qty;
+        else if (itemName === "LINEN BOX") summary.linenBoxes += qty;
+        else if (itemName === "WR BOX") summary.wrBoxes += qty;
+
+        // placeholders for future material logic
+        else if (itemName === "MATTRESS BAG SINGLE") summary.singleMattressBags += qty;
+        else if (itemName === "MATTRESS BAG DOUBLE") summary.doubleMattressBags += qty;
+        else if (itemName === "MATTRESS BAG KING") summary.kingMattressBags += qty;
+
+        else if (itemName === "SOFA COVER ARMCHAIR") summary.armchairCovers += qty;
+        else if (itemName === "SOFA COVER 2 SEAT") summary.sofa2Covers += qty;
+        else if (itemName === "SOFA COVER 3 SEAT") summary.sofa3Covers += qty;
+        else if (itemName === "SOFA COVER 4 SEAT") summary.sofa4Covers += qty;
+
+        else if (itemName === "MIRROR / PICTURE PACK") summary.mirrorPicturePacks += qty;
+        else if (itemName === "WINE DIVIDERS") summary.wineDividers += qty;
+    });
+
+    return summary;
+}
 function buildListedSummary(items) {
     let includedVolume = 0;
     let excludedCount = 0;
@@ -6908,15 +6964,21 @@ function renderListedInventory() {
     renderListedInventoryFilters(allItems);
 
     const filteredItems = filterListedInventoryItems(allItems);
-    const listedSummary = buildListedSummary(filteredItems);
-const materialsSummary = buildMaterialsSummary(filteredItems);
-renderListedSummary(listedSummary, materialsSummary);
 
     if (filteredItems.length === 0) {
         container.innerHTML = `<div class="p-12 text-center text-slate-400 font-bold italic uppercase">No inventory matches current view</div>`;
+        renderListedSummary(
+            buildListedSummary([]),
+            buildMaterialsSummary([])
+        );
         return;
     }
-window.__listedEntryMap = {};
+
+    const listedSummary = buildListedSummary(filteredItems);
+    const materialsSummary = buildMaterialsSummary(filteredItems);
+    renderListedSummary(listedSummary, materialsSummary);
+
+    window.__listedEntryMap = {};
     const groupedSections = groupInventoryItemsForListedView(filteredItems);
 
     if (groupedSections.length === 0) {
@@ -6927,59 +6989,60 @@ window.__listedEntryMap = {};
     container.innerHTML = groupedSections.map(function(section) {
         const roomBlocks = section.rooms.map(function(room) {
             const rows = room.entries.map(function(entry) {
-            const entryKey = getListedEntryMergeKey(entry);
-window.__listedEntryMap = window.__listedEntryMap || {};
-window.__listedEntryMap[entryKey] = entry;
+                const entryKey = getListedEntryMergeKey(entry);
+                window.__listedEntryMap = window.__listedEntryMap || {};
+                window.__listedEntryMap[entryKey] = entry;
+
                 const tags = [];
 
-if (entry.dismantle) tags.push("DISMANTLE");
-if (entry.expWrap) tags.push("EXP WRAP");
-if (entry.disconnect) tags.push("DISCONNECT");
-if (entry.handyman) tags.push("HANDYMAN");
-if (entry.crated) {
-    if (entry.crateDims) {
-        tags.push(
-            "CRATE: " +
-            entry.crateDims.l + " x " +
-            entry.crateDims.w + " x " +
-            entry.crateDims.h + " " +
-            entry.crateDims.unit
-        );
-    } else {
-        tags.push("CRATE");
-    }
-}
-if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
-if (entry.excluded) tags.push("EXCLUDED");
-if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
+                if (entry.dismantle) tags.push("DISMANTLE");
+                if (entry.expWrap) tags.push("EXP WRAP");
+                if (entry.disconnect) tags.push("DISCONNECT");
+                if (entry.handyman) tags.push("HANDYMAN");
+                if (entry.crated) {
+                    if (entry.crateDims) {
+                        tags.push(
+                            "CRATE: " +
+                            entry.crateDims.l + " x " +
+                            entry.crateDims.w + " x " +
+                            entry.crateDims.h + " " +
+                            entry.crateDims.unit
+                        );
+                    } else {
+                        tags.push("CRATE");
+                    }
+                }
+                if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
+                if (entry.excluded) tags.push("EXCLUDED");
+                if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
 
                 const tagText = tags.length ? ` [${tags.join("] [")}]` : "";
                 const isExcluded = !!entry.excluded;
 
                 return `
-    <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
-        <td class="py-2 pr-2 text-[10px] font-bold uppercase align-top break-words ${isExcluded ? 'text-slate-500 italic opacity-70' : 'text-slate-900'}">
-            ${entry.itemName || "-"}${tagText}
-        </td>
-        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">
-            ${entry.qty || 0}
-        </td>
-        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">
-            ${isExcluded ? '' : (entry.unitVolume || 0)}
-        </td>
-        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">
-            ${isExcluded ? '' : (entry.totalVolume || 0)}
-        </td>
-        <td class="py-2 pl-1 align-top">
-           <div class="listed-row-actions">
-    <button class="listed-action-btn" onclick="editListedEntryQty('${escapeHtml(entryKey)}')">Qty</button>
-    <button class="listed-action-btn" onclick="editListedEntryFlags('${escapeHtml(entryKey)}')">Flags</button>
-    <button class="listed-action-btn" onclick="editListedEntryNote('${escapeHtml(entryKey)}')">Note</button>
-    <button class="listed-action-btn delete" onclick="deleteListedEntry('${escapeHtml(entryKey)}')">×</button>
-</div>
-        </td>
-    </tr>
-`;
+                    <tr class="border-t border-slate-200 ${isExcluded ? 'bg-slate-50' : ''}">
+                        <td class="py-2 pr-2 text-[10px] font-bold uppercase align-top break-words ${isExcluded ? 'text-slate-500 italic opacity-70' : 'text-slate-900'}">
+                            ${entry.itemName || "-"}${tagText}
+                        </td>
+                        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-400 italic' : 'text-blue-600'}">
+                            ${entry.qty || 0}
+                        </td>
+                        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-300 italic' : 'text-slate-700'}">
+                            ${isExcluded ? '' : (entry.unitVolume || 0)}
+                        </td>
+                        <td class="py-2 px-1 text-[10px] font-black uppercase text-center align-top ${isExcluded ? 'text-slate-300 italic' : 'text-slate-900'}">
+                            ${isExcluded ? '' : (entry.totalVolume || 0)}
+                        </td>
+                        <td class="py-2 pl-1 align-top">
+                            <div class="listed-row-actions">
+                                <button class="listed-action-btn" onclick="editListedEntryQty('${escapeHtml(entryKey)}')">Qty</button>
+                                <button class="listed-action-btn" onclick="editListedEntryFlags('${escapeHtml(entryKey)}')">Flags</button>
+                                <button class="listed-action-btn" onclick="editListedEntryNote('${escapeHtml(entryKey)}')">Note</button>
+                                <button class="listed-action-btn delete" onclick="deleteListedEntry('${escapeHtml(entryKey)}')">×</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
             }).join("");
 
             return `
@@ -6992,22 +7055,22 @@ if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
                         <div class="listed-room-total">${room.totalVolume} CUFT</div>
                     </div>
 
-                                        <div class="p-4">
-    <table class="w-full table-fixed">
-        <thead>
-            <tr class="border-b border-slate-300">
-                <th class="w-[44%] text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
-                <th class="w-[10%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Qty</th>
-                <th class="w-[14%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
-                <th class="w-[16%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
-                <th class="w-[16%] text-center py-2 pl-1 text-[9px] font-black text-slate-400 uppercase">Edit</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${rows}
-        </tbody>
-    </table>
-</div>
+                    <div class="p-4">
+                        <table class="w-full table-fixed">
+                            <thead>
+                                <tr class="border-b border-slate-300">
+                                    <th class="w-[44%] text-left py-2 pr-2 text-[9px] font-black text-slate-400 uppercase">Item</th>
+                                    <th class="w-[10%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Qty</th>
+                                    <th class="w-[14%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Unit Vol</th>
+                                    <th class="w-[16%] text-center py-2 px-1 text-[9px] font-black text-slate-400 uppercase">Total Vol</th>
+                                    <th class="w-[16%] text-center py-2 pl-1 text-[9px] font-black text-slate-400 uppercase">Edit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
         }).join("");

@@ -3382,20 +3382,33 @@ function getLastRawInventoryEntry() {
     if (!lastAddedRawEntryId) return null;
     return findRawInventoryEntry(lastAddedRawEntryId);
 }
+function getLiveInventoryEntryForRaw(rawEntryId) {
+    const rawEntry = findRawInventoryEntry(rawEntryId);
+    if (!rawEntry) return null;
+
+    const liveKey = getLiveInventoryGroupKey(rawEntry);
+
+    return inventoryItems.find(function(i) {
+        return i.liveKey === liveKey;
+    }) || null;
+}
 
 function syncLiveItemFlagsFromRaw() {
     const rawEntry = getLastRawInventoryEntry();
-    if (!rawEntry || !lastAddedItemName) return;
+    if (!rawEntry) return;
 
-    const liveItem = inventoryItems.find(function(i) {
-        return i.item === lastAddedItemName;
-    });
-
+    const liveItem = getLiveInventoryEntryForRaw(rawEntry.id);
     if (!liveItem) return;
 
     liveItem.dismantle = !!rawEntry.dismantle;
     liveItem.expWrap = !!rawEntry.expWrap;
+    liveItem.disconnect = !!rawEntry.disconnect;
+    liveItem.handyman = !!rawEntry.handyman;
     liveItem.excluded = !!rawEntry.excluded;
+    liveItem.note = rawEntry.note || "";
+    liveItem.damage = rawEntry.damage || "";
+    liveItem.crated = !!rawEntry.crated;
+    liveItem.crateDims = rawEntry.crateDims || null;
 }
 
 function recalculateTotalVolume() {
@@ -3448,9 +3461,7 @@ function toggleItemAction(actionName) {
     const rawEntry = getLastRawInventoryEntry();
     if (!rawEntry) return;
 
-    const liveItem = inventoryItems.find(function(i) {
-        return i.item === lastAddedItemName;
-    });
+  const liveItem = getLiveInventoryEntryForRaw(rawEntry.id);
 
     if (!liveItem) return;
 
@@ -4270,12 +4281,13 @@ function saveSimpleInputModal() {
         return;
     }
 
-        if (simpleInputMode === "volume-override") {
-        if (!lastAddedItemName) return;
+           if (simpleInputMode === "volume-override") {
+        if (!lastAddedRawEntryId) return;
 
-        let item = inventoryItems.find(function(i) {
-            return i.item === lastAddedItemName;
-        });
+        const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
+        if (!rawEntry) return;
+
+        const item = getLiveInventoryEntryForRaw(lastAddedRawEntryId);
         if (!item) return;
 
         if (!rawValue) {
@@ -4292,37 +4304,40 @@ function saveSimpleInputModal() {
         setModalErrorText("simple-input-error-text", "");
 
         const previousVolume = item.volume;
-        item.volume = newVolume;
+        const previousRawVolume = rawEntry.unitVolume;
 
-        const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
-        let previousRawVolume = null;
+        rawEntry.unitVolume = newVolume;
+        rawEntry.totalVolume = newVolume * rawEntry.qty;
+        saveToDevice();
 
-        if (rawEntry) {
-            previousRawVolume = rawEntry.unitVolume;
-            rawEntry.unitVolume = newVolume;
-            rawEntry.totalVolume = newVolume * rawEntry.qty;
-            saveToDevice();
+        syncLiveInventoryFromRawForActiveSequence();
+
+        const refreshedRawEntry = findRawInventoryEntry(lastAddedRawEntryId);
+        const refreshedItem = getLiveInventoryEntryForRaw(lastAddedRawEntryId);
+
+        if (refreshedRawEntry && refreshedItem) {
+            currentItemVolume = refreshedRawEntry.excluded ? 0 : Number(refreshedRawEntry.totalVolume || 0);
+
+            inventoryHistory.push({
+                type: "volume-edit",
+                itemName: refreshedItem.item,
+                previousVolume: previousVolume,
+                newVolume: newVolume,
+                rawEntryId: lastAddedRawEntryId,
+                previousRawVolume: previousRawVolume
+            });
+
+            const labelText = refreshedItem.displayName || refreshedItem.item;
+            updateInventoryDisplay(
+                refreshedRawEntry.qty + " X " + String(labelText).toUpperCase() + " @ " + newVolume + " CUFT"
+            );
         }
-
-        currentItemVolume = item.excluded ? 0 : (item.volume * item.qty);
-        recalculateTotalVolume();
-
-        inventoryHistory.push({
-            type: "volume-edit",
-            itemName: item.item,
-            previousVolume: previousVolume,
-            newVolume: newVolume,
-            rawEntryId: lastAddedRawEntryId,
-            previousRawVolume: previousRawVolume
-        });
-
-        const labelText = item.displayName || item.item;
-        updateInventoryDisplay(item.qty + " X " + String(labelText).toUpperCase() + " @ " + newVolume + " CUFT");
 
         triggerInventoryPulse("current", "blue");
         triggerInventoryPulse("total", "blue");
         triggerHaptic("medium");
         updateUndoButtonState();
+        renderActionButtonStates();
         saveCalculatorFeedForActiveSequence();
 
         closeSimpleInputModal();
@@ -5741,14 +5756,12 @@ if (rawEntry.handyman) tags.push("[HANDYMAN]");
     saveCalculatorFeedForActiveSequence();
 }
 function openVolumeOverride() {
-    if (!lastAddedItemName) return;
+    if (!lastAddedRawEntryId) return;
 
-    let item = inventoryItems.find(function(i) {
-        return i.item === lastAddedItemName;
-    });
-    if (!item) return;
+    const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
+    if (!rawEntry) return;
 
-    const currentVolume = parseFloat(item.volume) || 0;
+    const currentVolume = parseFloat(rawEntry.unitVolume) || 0;
 
     openSimpleInputModal({
         mode: "volume-override",

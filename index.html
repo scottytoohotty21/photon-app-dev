@@ -6633,22 +6633,25 @@ function buildMaterialsSummary(items) {
         const itemName = String(entry.itemName || "").trim().toUpperCase();
         const qty = Number(entry.qty || 0);
 
+        // carton items
         if (itemName === "AP BOX") summary.apBoxes += qty;
         else if (itemName === "CG BOX") summary.cgBoxes += qty;
         else if (itemName === "BOOK BOX") summary.bookBoxes += qty;
         else if (itemName === "LINEN BOX") summary.linenBoxes += qty;
         else if (itemName === "WR BOX") summary.wrBoxes += qty;
 
-        // placeholders for future material logic
-        else if (itemName === "MATTRESS BAG SINGLE") summary.singleMattressBags += qty;
-        else if (itemName === "MATTRESS BAG DOUBLE") summary.doubleMattressBags += qty;
-        else if (itemName === "MATTRESS BAG KING") summary.kingMattressBags += qty;
+        // derived mattress bag requirements from beds
+        else if (itemName === "BED (SINGLE)") summary.singleMattressBags += qty;
+        else if (itemName === "BED (DOUBLE)") summary.doubleMattressBags += qty;
+        else if (itemName === "BED (KING)") summary.kingMattressBags += qty;
 
-        else if (itemName === "SOFA COVER ARMCHAIR") summary.armchairCovers += qty;
-        else if (itemName === "SOFA COVER 2 SEAT") summary.sofa2Covers += qty;
-        else if (itemName === "SOFA COVER 3 SEAT") summary.sofa3Covers += qty;
-        else if (itemName === "SOFA COVER 4 SEAT") summary.sofa4Covers += qty;
+        // derived sofa cover requirements from seating
+        else if (itemName === "ARMCHAIR") summary.armchairCovers += qty;
+        else if (itemName === "SOFA 2 SEAT") summary.sofa2Covers += qty;
+        else if (itemName === "SOFA 3 SEAT") summary.sofa3Covers += qty;
+        else if (itemName === "SOFA 4 SEAT") summary.sofa4Covers += qty;
 
+        // optional future direct material items
         else if (itemName === "MIRROR / PICTURE PACK") summary.mirrorPicturePacks += qty;
         else if (itemName === "WINE DIVIDERS") summary.wineDividers += qty;
     });

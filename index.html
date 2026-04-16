@@ -2114,17 +2114,14 @@ Enter as: Surname, First Name
 <div class="col-span-1 inventory-stat-col">
     <div class="inventory-stat-box">
         <div class="inventory-stat-mini">Item Qty</div>
-        <input
-            type="text"
-            id="inv-qty"
-            class="inventory-stat-input"
-            value="1"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            onclick="this.select()"
-            onfocus="this.select()"
-            oninput="updateLastItemQty(this.value)"
-        >
+      <input
+    type="text"
+    id="inv-qty"
+    class="inventory-stat-input"
+    value="1"
+    readonly
+    onclick="openQtyOverride()"
+>
     </div>
 </div>
 <div class="col-span-1 inventory-stat-col">
@@ -4410,6 +4407,59 @@ closeSimpleInputModal();
 return;
 }
 
+if (simpleInputMode === "qty-override") {
+    if (!lastAddedRawEntryId) return;
+
+    const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
+    if (!rawEntry) return;
+
+    if (!rawValue) {
+        setModalErrorText("simple-input-error-text", "Enter a valid quantity");
+        return;
+    }
+
+    const newQty = parseInt(rawValue, 10);
+    if (isNaN(newQty) || newQty < 1) {
+        setModalErrorText("simple-input-error-text", "Enter a valid quantity");
+        return;
+    }
+
+    setModalErrorText("simple-input-error-text", "");
+
+    const previousRawQty = Number(rawEntry.qty || 1);
+    if (previousRawQty === newQty) {
+        closeSimpleInputModal();
+        resetInventoryQtyInput();
+        return;
+    }
+
+    rawEntry.qty = newQty;
+    rawEntry.totalVolume = Number(rawEntry.unitVolume || 0) * newQty;
+
+    inventoryHistory.push({
+        type: "qty-edit",
+        itemName: rawEntry.itemName,
+        previousQty: previousRawQty,
+        newQty: newQty,
+        rawEntryId: rawEntry.id,
+        previousRawQty: previousRawQty
+    });
+
+    saveToDevice();
+    syncLiveInventoryFromRawForActiveSequence();
+    recalculateTotalVolume();
+    refreshCurrentInventorySelectionDisplay();
+
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("medium");
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
+
+    closeSimpleInputModal();
+    resetInventoryQtyInput();
+    return;
+}
     if (simpleInputMode === "listed-edit-note") {
         const entryKey = simpleInputMeta && simpleInputMeta.entryKey;
         const mergedEntry = window.__listedEntryMap && window.__listedEntryMap[entryKey];
@@ -5439,10 +5489,9 @@ if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
     if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
 
-    const label = (rawEntry.itemName || "ITEM").toUpperCase();
-    updateInventoryDisplay(label + " " + tags.join(" "));
-    triggerInventoryPulse("current", "blue");
-    updateUndoButtonState();
+   refreshCurrentInventorySelectionDisplay();
+triggerInventoryPulse("current", "blue");
+updateUndoButtonState();
 
     closeCrateModal();
 }
@@ -5510,10 +5559,9 @@ if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.excluded) tags.push("[EXCLUDED]");
     if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
 
-    const label = (rawEntry.itemName || "ITEM").toUpperCase();
-    updateInventoryDisplay(label + " " + tags.join(" "));
-    triggerInventoryPulse("current", "blue");
-    updateUndoButtonState();
+    refreshCurrentInventorySelectionDisplay();
+triggerInventoryPulse("current", "blue");
+updateUndoButtonState();
 
     closeNoteModal();
 }
@@ -5667,93 +5715,14 @@ if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.excluded) tags.push("[EXCLUDED]");
     if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
 
-    const label = (rawEntry.itemName || "ITEM").toUpperCase();
-    updateInventoryDisplay(label + " " + tags.join(" "));
-    triggerInventoryPulse("current", "blue");
-    updateUndoButtonState();
+   refreshCurrentInventorySelectionDisplay();
+triggerInventoryPulse("current", "blue");
+updateUndoButtonState();
 
     closeDamageModal();
 }
 function updateLastItemQty(newQty) {
-    const qtyInput = document.getElementById("inv-qty");
-    if (!qtyInput) return;
-
-    if (!lastAddedRawEntryId) {
-        qtyInput.value = "";
-        return;
-    }
-
-    const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
-    if (!rawEntry) {
-        qtyInput.value = "";
-        return;
-    }
-
-    const qty = getCleanInventoryQtyValue(newQty);
-    qtyInput.value = qty;
-
-    const previousRawQty = Number(rawEntry.qty || 1);
-    if (previousRawQty === qty) {
-        if (qtyResetTimer) clearTimeout(qtyResetTimer);
-        qtyResetTimer = setTimeout(function() {
-            resetInventoryQtyInput();
-        }, 550);
-        return;
-    }
-
-    rawEntry.qty = qty;
-    rawEntry.totalVolume = Number(rawEntry.unitVolume || 0) * qty;
-
-    inventoryHistory.push({
-        type: "qty-edit",
-        itemName: rawEntry.itemName,
-        previousQty: previousRawQty,
-        newQty: qty,
-        rawEntryId: rawEntry.id,
-        previousRawQty: previousRawQty
-    });
-
-    saveToDevice();
-
-    syncLiveInventoryFromRawForActiveSequence();
-
-    currentItemVolume = rawEntry.excluded ? 0 : Number(rawEntry.totalVolume || 0);
-
-    const tags = [];
-    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
-if (rawEntry.handyman) tags.push("[HANDYMAN]");
-    if (rawEntry.crated && rawEntry.crateDims) {
-        tags.push(
-            "[CRATE: " +
-            rawEntry.crateDims.l + " x " +
-            rawEntry.crateDims.w + " x " +
-            rawEntry.crateDims.h + " " +
-            rawEntry.crateDims.unit + "]"
-        );
-    }
-    if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
-    if (rawEntry.excluded) tags.push("[EXCLUDED]");
-    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
-
-    const label = (rawEntry.itemName || "ITEM").toUpperCase();
-    updateInventoryDisplay(qty + " X " + label + (tags.length ? " " + tags.join(" ") : ""));
-
-    triggerInventoryPulse("qty", "blue");
-    triggerInventoryPulse("total", "blue");
-
-    if (qtyResetTimer) {
-        clearTimeout(qtyResetTimer);
-    }
-
-    qtyResetTimer = setTimeout(function() {
-        resetInventoryQtyInput();
-    }, 550);
-
-    renderActionButtonStates();
-    updateUndoButtonState();
-    saveCalculatorFeedForActiveSequence();
+    // Inline qty editing no longer used.
 }
 function openVolumeOverride() {
     if (!lastAddedRawEntryId) return;
@@ -6798,6 +6767,69 @@ if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
 function resetInventoryQtyInput() {
     const qtyInput = document.getElementById("inv-qty");
     if (qtyInput) qtyInput.value = 1;
+}
+function openQtyOverride() {
+    if (!lastAddedRawEntryId) return;
+
+    const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
+    if (!rawEntry) return;
+
+    openSimpleInputModal({
+        mode: "qty-override",
+        title: "Override Quantity",
+        subtitle: "Set a new quantity for the selected item",
+        label: "Quantity",
+        placeholder: "e.g. 2",
+        value: String(rawEntry.qty || 1),
+        inputType: "number",
+        inputMode: "numeric"
+    });
+}
+
+function refreshCurrentInventorySelectionDisplay() {
+    if (!lastAddedRawEntryId) {
+        currentItemVolume = 0;
+        updateInventoryDisplay("No items added");
+        renderActionButtonStates();
+        return;
+    }
+
+    const rawEntry = findRawInventoryEntry(lastAddedRawEntryId);
+    if (!rawEntry) {
+        currentItemVolume = 0;
+        updateInventoryDisplay("No items added");
+        renderActionButtonStates();
+        return;
+    }
+
+    currentItemVolume = rawEntry.excluded ? 0 : Number(rawEntry.totalVolume || 0);
+
+    const tags = [];
+    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+    if (rawEntry.handyman) tags.push("[HANDYMAN]");
+    if (rawEntry.crated && rawEntry.crateDims) {
+        tags.push(
+            "[CRATE: " +
+            rawEntry.crateDims.l + " x " +
+            rawEntry.crateDims.w + " x " +
+            rawEntry.crateDims.h + " " +
+            rawEntry.crateDims.unit + "]"
+        );
+    }
+    if (rawEntry.damage) tags.push("[DAMAGE: " + String(rawEntry.damage).toUpperCase() + "]");
+    if (rawEntry.excluded) tags.push("[EXCLUDED]");
+    if (rawEntry.note) tags.push("[NOTE: " + String(rawEntry.note).toUpperCase() + "]");
+
+    const label = (rawEntry.itemName || "ITEM").toUpperCase();
+    const qty = Number(rawEntry.qty || 0);
+
+    updateInventoryDisplay(
+        qty + " X " + label + (tags.length ? " " + tags.join(" ") : "")
+    );
+
+    renderActionButtonStates();
 }
 
 function getCleanInventoryQtyValue(rawValue) {

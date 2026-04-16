@@ -1416,6 +1416,101 @@ button {
             font-weight: 900;
             text-transform: uppercase;
         }
+        /* --- LISTED FLAGS MODAL --- */
+.listed-flags-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 2400;
+}
+
+.listed-flags-panel {
+    width: 92%;
+    max-width: 420px;
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+}
+
+.listed-flags-title {
+    font-size: 16px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #0f172a;
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+.listed-flags-subtitle {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-align: center;
+    margin-top: 6px;
+    margin-bottom: 18px;
+    line-height: 1.45;
+    text-transform: none;
+}
+
+.listed-flags-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.listed-flag-btn {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    min-height: 52px;
+    padding: 10px 8px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #475569;
+    text-align: center;
+}
+
+.listed-flag-btn.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #2563eb;
+}
+
+.listed-flags-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.listed-flags-cancel-btn {
+    flex: 1;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.listed-flags-save-btn {
+    flex: 1;
+    background: #3b82f6;
+    color: white;
+    border: 1px solid #2563eb;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
 
         .modal-error-text {
             display: none;
@@ -2938,6 +3033,15 @@ let listedDeliveryFilter = "__all__";
 let listedTextFilter = "";
 let simpleInputMode = "";
 let simpleInputMeta = null;
+let listedFlagsEntryKey = "";
+let listedFlagsState = {
+    dismantle: false,
+    expWrap: false,
+    crated: false,
+    disconnect: false,
+    handyman: false,
+    excluded: false
+};
 let signaturePad = null;
 let signaturePadCtx = null;
 let signatureDrawing = false;
@@ -6293,6 +6397,112 @@ function editListedEntryNote(entryKey) {
         meta: { entryKey: entryKey }
     });
 }
+
+function openListedFlagsModal(entry) {
+    const overlay = document.getElementById("listed-flags-overlay");
+    if (!overlay || !entry) return;
+
+    listedFlagsState = {
+        dismantle: !!entry.dismantle,
+        expWrap: !!entry.expWrap,
+        crated: !!entry.crated,
+        disconnect: !!entry.disconnect,
+        handyman: !!entry.handyman,
+        excluded: !!entry.excluded
+    };
+
+    updateListedFlagsModalButtons();
+    overlay.style.display = "flex";
+}
+
+function closeListedFlagsModal() {
+    const overlay = document.getElementById("listed-flags-overlay");
+    if (overlay) overlay.style.display = "none";
+
+    listedFlagsEntryKey = "";
+    listedFlagsState = {
+        dismantle: false,
+        expWrap: false,
+        crated: false,
+        disconnect: false,
+        handyman: false,
+        excluded: false
+    };
+}
+
+function updateListedFlagsModalButtons() {
+    const map = {
+        dismantle: "listed-flag-dismantle",
+        expWrap: "listed-flag-expwrap",
+        crated: "listed-flag-crate",
+        disconnect: "listed-flag-disconnect",
+        handyman: "listed-flag-handyman",
+        excluded: "listed-flag-exclude"
+    };
+
+    Object.keys(map).forEach(function(key) {
+        const btn = document.getElementById(map[key]);
+        if (!btn) return;
+        btn.classList.toggle("active", !!listedFlagsState[key]);
+    });
+}
+
+function toggleListedFlag(flagName) {
+    if (!listedFlagsState.hasOwnProperty(flagName)) return;
+    listedFlagsState[flagName] = !listedFlagsState[flagName];
+    updateListedFlagsModalButtons();
+}
+
+function editListedEntryFlags(entryKey) {
+    const mergedEntry = window.__listedEntryMap && window.__listedEntryMap[entryKey];
+    if (!mergedEntry) return;
+
+    listedFlagsEntryKey = entryKey;
+    setInventoryReturnContextFromEntry(mergedEntry);
+    openListedFlagsModal(mergedEntry);
+}
+
+function saveListedFlagsModal() {
+    if (!listedFlagsEntryKey) return;
+
+    const mergedEntry = window.__listedEntryMap && window.__listedEntryMap[listedFlagsEntryKey];
+    if (!mergedEntry) {
+        closeListedFlagsModal();
+        return;
+    }
+
+    const rawMatches = getRawEntriesForListedEntry(mergedEntry);
+    if (!rawMatches.length) {
+        closeListedFlagsModal();
+        return;
+    }
+
+    rawMatches.forEach(function(raw) {
+        raw.dismantle = !!listedFlagsState.dismantle;
+        raw.expWrap = !!listedFlagsState.expWrap;
+        raw.crated = !!listedFlagsState.crated;
+        raw.disconnect = !!listedFlagsState.disconnect;
+        raw.handyman = !!listedFlagsState.handyman;
+        raw.excluded = !!listedFlagsState.excluded;
+
+        if (!raw.crated) {
+            raw.crateDims = null;
+        }
+    });
+
+    saveToDevice();
+
+    if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
+        rebuildLiveInventoryFromSequence(activeSeqId);
+    }
+
+    renderListedInventory();
+    renderActionButtonStates();
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
+    updateInventoryDisplay("LISTED FLAGS UPDATED");
+    closeListedFlagsModal();
+}
 function getListedEntryMergeKey(entry) {
     const crateText = entry.crated && entry.crateDims
         ? [
@@ -6674,14 +6884,18 @@ if (entry.dismantle) tags.push("DISMANTLE");
 if (entry.expWrap) tags.push("EXP WRAP");
 if (entry.disconnect) tags.push("DISCONNECT");
 if (entry.handyman) tags.push("HANDYMAN");
-if (entry.crated && entry.crateDims) {
-    tags.push(
-        "CRATE: " +
-        entry.crateDims.l + " x " +
-        entry.crateDims.w + " x " +
-        entry.crateDims.h + " " +
-        entry.crateDims.unit
-    );
+if (entry.crated) {
+    if (entry.crateDims) {
+        tags.push(
+            "CRATE: " +
+            entry.crateDims.l + " x " +
+            entry.crateDims.w + " x " +
+            entry.crateDims.h + " " +
+            entry.crateDims.unit
+        );
+    } else {
+        tags.push("CRATE");
+    }
 }
 if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
 if (entry.excluded) tags.push("EXCLUDED");
@@ -6705,11 +6919,12 @@ if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
             ${isExcluded ? '' : (entry.totalVolume || 0)}
         </td>
         <td class="py-2 pl-1 align-top">
-            <div class="listed-row-actions">
-                <button class="listed-action-btn" onclick="editListedEntryQty('${escapeHtml(entryKey)}')">Qty</button>
-                <button class="listed-action-btn" onclick="editListedEntryNote('${escapeHtml(entryKey)}')">Note</button>
-                <button class="listed-action-btn delete" onclick="deleteListedEntry('${escapeHtml(entryKey)}')">×</button>
-            </div>
+           <div class="listed-row-actions">
+    <button class="listed-action-btn" onclick="editListedEntryQty('${escapeHtml(entryKey)}')">Qty</button>
+    <button class="listed-action-btn" onclick="editListedEntryFlags('${escapeHtml(entryKey)}')">Flags</button>
+    <button class="listed-action-btn" onclick="editListedEntryNote('${escapeHtml(entryKey)}')">Note</button>
+    <button class="listed-action-btn delete" onclick="deleteListedEntry('${escapeHtml(entryKey)}')">×</button>
+</div>
         </td>
     </tr>
 `;
@@ -7010,15 +7225,19 @@ function getPrintableListedSections(items) {
 
                 if (entry.dismantle) tags.push("DISMANTLE");
                 if (entry.expWrap) tags.push("EXP WRAP");
-                if (entry.crated && entry.crateDims) {
-                    tags.push(
-                        "CRATE: " +
-                        entry.crateDims.l + " x " +
-                        entry.crateDims.w + " x " +
-                        entry.crateDims.h + " " +
-                        entry.crateDims.unit
-                    );
-                }
+                if (entry.crated) {
+    if (entry.crateDims) {
+        tags.push(
+            "CRATE: " +
+            entry.crateDims.l + " x " +
+            entry.crateDims.w + " x " +
+            entry.crateDims.h + " " +
+            entry.crateDims.unit
+        );
+    } else {
+        tags.push("CRATE");
+    }
+}
                 if (entry.damage) tags.push("DAMAGE: " + entry.damage.toUpperCase());
                 if (entry.excluded) tags.push("EXCLUDED");
                 if (entry.note) tags.push("NOTE: " + entry.note.toUpperCase());
@@ -9559,6 +9778,27 @@ window.onload = function () {
         <div class="simple-input-actions">
             <button type="button" class="simple-input-cancel-btn" onclick="closeSimpleInputModal()">Cancel</button>
             <button type="button" class="simple-input-save-btn" onclick="saveSimpleInputModal()">Save</button>
+        </div>
+    </div>
+</div>
+<!-- LISTED FLAGS MODAL -->
+<div id="listed-flags-overlay" class="listed-flags-overlay" onclick="closeListedFlagsModal()">
+    <div class="listed-flags-panel" onclick="event.stopPropagation()">
+        <div class="listed-flags-title">Edit Flags</div>
+        <div class="listed-flags-subtitle">Apply proper operational flags to this listed line</div>
+
+        <div class="listed-flags-grid">
+            <button type="button" id="listed-flag-dismantle" class="listed-flag-btn" onclick="toggleListedFlag('dismantle')">Dismantle</button>
+            <button type="button" id="listed-flag-expwrap" class="listed-flag-btn" onclick="toggleListedFlag('expWrap')">Export Wrap</button>
+            <button type="button" id="listed-flag-crate" class="listed-flag-btn" onclick="toggleListedFlag('crated')">Crate</button>
+            <button type="button" id="listed-flag-disconnect" class="listed-flag-btn" onclick="toggleListedFlag('disconnect')">Disconnect</button>
+            <button type="button" id="listed-flag-handyman" class="listed-flag-btn" onclick="toggleListedFlag('handyman')">Handyman</button>
+            <button type="button" id="listed-flag-exclude" class="listed-flag-btn" onclick="toggleListedFlag('excluded')">Exclude</button>
+        </div>
+
+        <div class="listed-flags-actions">
+            <button type="button" class="listed-flags-cancel-btn" onclick="closeListedFlagsModal()">Cancel</button>
+            <button type="button" class="listed-flags-save-btn" onclick="saveListedFlagsModal()">Save Flags</button>
         </div>
     </div>
 </div>

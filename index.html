@@ -3028,6 +3028,7 @@ let inventoryHistory = [];
 let qtyResetTimer = null;
 let selectedCrateUnit = "IN";
 let selectedDamageOption = "";
+let listedCrateEditEntryKey = "";
 let listedSequenceFilter = "__all__";
 let listedDeliveryFilter = "__all__";
 let listedTextFilter = "";
@@ -5505,6 +5506,7 @@ function closeCrateModal() {
     setModalErrorText("crate-error-text", "");
 
     selectedCrateUnit = "IN";
+    listedCrateEditEntryKey = "";
     setCrateUnit("IN");
 }
 
@@ -5519,6 +5521,11 @@ function setCrateUnit(unit) {
 }
 
 function saveCrateModal() {
+    if (listedCrateEditEntryKey) {
+        saveListedCrateModal();
+        return;
+    }
+
     const rawEntry = getLastRawInventoryEntry();
     if (!rawEntry) return;
     if (rawEntry.kind === "note") return;
@@ -5597,6 +5604,103 @@ if (rawEntry.handyman) tags.push("[HANDYMAN]");
 triggerInventoryPulse("current", "blue");
 updateUndoButtonState();
 
+    closeCrateModal();
+}
+function openListedCrateModal(entryKey) {
+    const mergedEntry = window.__listedEntryMap && window.__listedEntryMap[entryKey];
+    if (!mergedEntry) return;
+
+    setInventoryReturnContextFromEntry(mergedEntry);
+
+    const overlay = document.getElementById("crate-overlay");
+    const lengthInput = document.getElementById("crate-length");
+    const widthInput = document.getElementById("crate-width");
+    const heightInput = document.getElementById("crate-height");
+
+    if (!overlay || !lengthInput || !widthInput || !heightInput) return;
+
+    const existing = mergedEntry.crateDims || {};
+
+    listedCrateEditEntryKey = entryKey;
+    selectedCrateUnit = existing.unit || "IN";
+    setCrateUnit(selectedCrateUnit);
+
+    lengthInput.value = existing.l || "";
+    widthInput.value = existing.w || "";
+    heightInput.value = existing.h || "";
+
+    lengthInput.oninput = function () {
+        setModalErrorText("crate-error-text", "");
+    };
+    widthInput.oninput = function () {
+        setModalErrorText("crate-error-text", "");
+    };
+    heightInput.oninput = function () {
+        setModalErrorText("crate-error-text", "");
+    };
+
+    setModalErrorText("crate-error-text", "");
+    overlay.style.display = "flex";
+}
+
+function saveListedCrateModal() {
+    const mergedEntry = window.__listedEntryMap && window.__listedEntryMap[listedCrateEditEntryKey];
+    if (!mergedEntry) return;
+
+    const lengthInput = document.getElementById("crate-length");
+    const widthInput = document.getElementById("crate-width");
+    const heightInput = document.getElementById("crate-height");
+
+    if (!lengthInput || !widthInput || !heightInput) return;
+
+    const l = parseFloat(lengthInput.value);
+    const w = parseFloat(widthInput.value);
+    const h = parseFloat(heightInput.value);
+
+    if (
+        (!lengthInput.value || String(lengthInput.value).trim() === "") &&
+        (!widthInput.value || String(widthInput.value).trim() === "") &&
+        (!heightInput.value || String(heightInput.value).trim() === "")
+    ) {
+        setModalErrorText("crate-error-text", "Enter length, width and height");
+        return;
+    }
+
+    if (isNaN(l) || isNaN(w) || isNaN(h)) {
+        setModalErrorText("crate-error-text", "Enter valid crate dimensions");
+        return;
+    }
+
+    if (l <= 0 || w <= 0 || h <= 0) {
+        setModalErrorText("crate-error-text", "All dimensions must be greater than 0");
+        return;
+    }
+
+    setModalErrorText("crate-error-text", "");
+
+    const rawMatches = getRawEntriesForListedEntry(mergedEntry);
+    if (!rawMatches.length) return;
+
+    rawMatches.forEach(function(raw) {
+        raw.crated = true;
+        raw.crateDims = {
+            l: l,
+            w: w,
+            h: h,
+            unit: selectedCrateUnit
+        };
+    });
+
+    saveToDevice();
+
+    if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
+        rebuildLiveInventoryFromSequence(activeSeqId);
+    }
+
+    renderListedInventory();
+    renderActionButtonStates();
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
     closeCrateModal();
 }
 function closeNoteModal() {
@@ -6477,31 +6581,40 @@ function saveListedFlagsModal() {
         return;
     }
 
-    rawMatches.forEach(function(raw) {
-        raw.dismantle = !!listedFlagsState.dismantle;
-        raw.expWrap = !!listedFlagsState.expWrap;
-        raw.crated = !!listedFlagsState.crated;
-        raw.disconnect = !!listedFlagsState.disconnect;
-        raw.handyman = !!listedFlagsState.handyman;
-        raw.excluded = !!listedFlagsState.excluded;
+    const wantsCrate = !!listedFlagsState.crated;
+const hadCrateBefore = !!mergedEntry.crated;
 
-        if (!raw.crated) {
-            raw.crateDims = null;
-        }
-    });
+rawMatches.forEach(function(raw) {
+    raw.dismantle = !!listedFlagsState.dismantle;
+    raw.expWrap = !!listedFlagsState.expWrap;
+    raw.disconnect = !!listedFlagsState.disconnect;
+    raw.handyman = !!listedFlagsState.handyman;
+    raw.excluded = !!listedFlagsState.excluded;
+
+    if (!wantsCrate) {
+        raw.crated = false;
+        raw.crateDims = null;
+    }
+});
 
     saveToDevice();
 
-    if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
-        rebuildLiveInventoryFromSequence(activeSeqId);
-    }
-
-    renderListedInventory();
-    renderActionButtonStates();
-    updateUndoButtonState();
-    saveCalculatorFeedForActiveSequence();
-    updateInventoryDisplay("LISTED FLAGS UPDATED");
+if (wantsCrate && !hadCrateBefore) {
     closeListedFlagsModal();
+    openListedCrateModal(listedFlagsEntryKey);
+    return;
+}
+
+if (String(activeSeqId || "") === String(mergedEntry.sequenceId || "")) {
+    rebuildLiveInventoryFromSequence(activeSeqId);
+}
+
+renderListedInventory();
+renderActionButtonStates();
+updateUndoButtonState();
+saveCalculatorFeedForActiveSequence();
+updateInventoryDisplay("LISTED FLAGS UPDATED");
+closeListedFlagsModal();;
 }
 function getListedEntryMergeKey(entry) {
     const crateText = entry.crated && entry.crateDims

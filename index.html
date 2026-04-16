@@ -3560,61 +3560,34 @@ function renderActionButtonStates() {
 }
 
 function toggleItemAction(actionName) {
-   const rawEntry = getLastRawInventoryEntry();
-if (!rawEntry) return;
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
 
     if (actionName === "dismantle") {
         rawEntry.dismantle = !rawEntry.dismantle;
-        liveItem.dismantle = !!rawEntry.dismantle;
-    }
-
-    if (actionName === "expWrap") {
+    } else if (actionName === "expWrap") {
         rawEntry.expWrap = !rawEntry.expWrap;
-        liveItem.expWrap = !!rawEntry.expWrap;
-    }
-
-    if (actionName === "disconnect") {
+    } else if (actionName === "disconnect") {
         rawEntry.disconnect = !rawEntry.disconnect;
-        liveItem.disconnect = !!rawEntry.disconnect;
-    }
-
-    if (actionName === "handyman") {
+    } else if (actionName === "handyman") {
         rawEntry.handyman = !rawEntry.handyman;
-        liveItem.handyman = !!rawEntry.handyman;
+    } else if (actionName === "excluded") {
+        rawEntry.excluded = !rawEntry.excluded;
+    } else {
+        return;
     }
 
-    if (actionName === "dismantle") {
-    rawEntry.dismantle = !rawEntry.dismantle;
-}
+    saveToDevice();
+    syncLiveInventoryFromRawForActiveSequence();
+    recalculateTotalVolume();
+    refreshCurrentInventorySelectionDisplay();
+    renderActionButtonStates();
 
-if (actionName === "expWrap") {
-    rawEntry.expWrap = !rawEntry.expWrap;
-}
-
-if (actionName === "disconnect") {
-    rawEntry.disconnect = !rawEntry.disconnect;
-}
-
-if (actionName === "handyman") {
-    rawEntry.handyman = !rawEntry.handyman;
-}
-
-if (actionName === "excluded") {
-    rawEntry.excluded = !rawEntry.excluded;
-}
-
-saveToDevice();
-
-/* force live inventory to rebuild from raw, same as tab switch does */
-syncLiveInventoryFromRawForActiveSequence();
-recalculateTotalVolume();
-refreshCurrentInventorySelectionDisplay();
-renderActionButtonStates();
-
-triggerInventoryPulse("current", "blue");
-triggerInventoryPulse("total", "blue");
-triggerHaptic("light");
-saveCalculatorFeedForActiveSequence();
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    triggerHaptic("light");
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
 }
 
 function removeRawInventoryEntry(rawEntryId) {
@@ -3905,6 +3878,8 @@ function buildLiveInventoryKeyFromValues(data) {
         !!data.excluded,
         !!data.dismantle,
         !!data.expWrap,
+        !!data.disconnect,
+!!data.handyman,
         String(data.note || ""),
         String(data.damage || ""),
         !!data.crated,
@@ -5568,16 +5543,6 @@ function saveCrateModal() {
 
     setModalErrorText("crate-error-text", "");
 
-    const previousCrated = !!rawEntry.crated;
-    const previousDims = rawEntry.crateDims
-        ? {
-            l: rawEntry.crateDims.l,
-            w: rawEntry.crateDims.w,
-            h: rawEntry.crateDims.h,
-            unit: rawEntry.crateDims.unit
-        }
-        : null;
-
     rawEntry.crated = true;
     rawEntry.crateDims = {
         l: l,
@@ -5586,30 +5551,16 @@ function saveCrateModal() {
         unit: selectedCrateUnit
     };
 
-        saveToDevice();
+    saveToDevice();
+    syncLiveInventoryFromRawForActiveSequence();
+    recalculateTotalVolume();
+    refreshCurrentInventorySelectionDisplay();
     renderActionButtonStates();
 
-    const tags = [];
-    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
-if (rawEntry.handyman) tags.push("[HANDYMAN]");
-    if (rawEntry.excluded) tags.push("[EXCLUDED]");
-    if (rawEntry.crated && rawEntry.crateDims) {
-        tags.push(
-            "[CRATE: " +
-            rawEntry.crateDims.l + " x " +
-            rawEntry.crateDims.w + " x " +
-            rawEntry.crateDims.h + " " +
-            rawEntry.crateDims.unit + "]"
-        );
-    }
-    if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
-    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
-
-   refreshCurrentInventorySelectionDisplay();
-triggerInventoryPulse("current", "blue");
-updateUndoButtonState();
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
 
     closeCrateModal();
 }
@@ -5735,7 +5686,7 @@ function saveNoteModal() {
 
     setModalErrorText("note-error-text", "");
 
-        const previousNote = rawEntry.note || "";
+    const previousNote = rawEntry.note || "";
     rawEntry.note = cleanNote;
 
     const lastHistoryAction = inventoryHistory[inventoryHistory.length - 1];
@@ -5754,29 +5705,15 @@ function saveNoteModal() {
     }
 
     saveToDevice();
+    syncLiveInventoryFromRawForActiveSequence();
+    recalculateTotalVolume();
+    refreshCurrentInventorySelectionDisplay();
     renderActionButtonStates();
 
-    const tags = [];
-    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
-if (rawEntry.handyman) tags.push("[HANDYMAN]");
-    if (rawEntry.crated && rawEntry.crateDims) {
-        tags.push(
-            "[CRATE: " +
-            rawEntry.crateDims.l + " x " +
-            rawEntry.crateDims.w + " x " +
-            rawEntry.crateDims.h + " " +
-            rawEntry.crateDims.unit + "]"
-        );
-    }
-    if (rawEntry.damage) tags.push("[DAMAGE: " + rawEntry.damage.toUpperCase() + "]");
-    if (rawEntry.excluded) tags.push("[EXCLUDED]");
-    if (rawEntry.note) tags.push("[NOTE: " + rawEntry.note.toUpperCase() + "]");
-
-    refreshCurrentInventorySelectionDisplay();
-triggerInventoryPulse("current", "blue");
-updateUndoButtonState();
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
 
     closeNoteModal();
 }
@@ -5891,7 +5828,7 @@ function saveDamageModal() {
 
     setModalErrorText("damage-error-text", "");
 
-        const previousDamage = rawEntry.damage || "";
+    const previousDamage = rawEntry.damage || "";
     rawEntry.damage = finalDamage;
 
     const lastHistoryAction = inventoryHistory[inventoryHistory.length - 1];
@@ -5908,6 +5845,20 @@ function saveDamageModal() {
             newDamage: finalDamage
         });
     }
+
+    saveToDevice();
+    syncLiveInventoryFromRawForActiveSequence();
+    recalculateTotalVolume();
+    refreshCurrentInventorySelectionDisplay();
+    renderActionButtonStates();
+
+    triggerInventoryPulse("current", "blue");
+    triggerInventoryPulse("total", "blue");
+    updateUndoButtonState();
+    saveCalculatorFeedForActiveSequence();
+
+    closeDamageModal();
+}
 
     saveToDevice();
     renderActionButtonStates();

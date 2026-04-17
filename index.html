@@ -8214,7 +8214,13 @@ function getQuoteScheduleRows(sequenceId) {
         : null;
 
     if (!seq || !seq.schedule || !Array.isArray(seq.schedule.manualDays)) return [];
-    return seq.schedule.manualDays;
+
+    return seq.schedule.manualDays.map(function(day) {
+        return {
+            ...day,
+            vans: Math.max(0, Number(day.vans) || 1)
+        };
+    });
 }
 
 function calcQuoteScheduleTotals(sequenceId) {
@@ -8234,8 +8240,9 @@ function calcQuoteScheduleTotals(sequenceId) {
         }
 
         const men = Number(row.men || 0);
+        const vans = Number(row.vans || 0);
 
-        grouped[groupKey].vans = Math.max(grouped[groupKey].vans, men > 0 ? 1 : 0);
+        grouped[groupKey].vans = Math.max(grouped[groupKey].vans, vans);
         grouped[groupKey].crew = Math.max(grouped[groupKey].crew, men);
 
         const isNightOutTask =
@@ -9176,6 +9183,7 @@ function getDefaultManualScheduleRows() {
             dayPart: "Full Day",
             task: "Pack",
             men: 2,
+            vans: 1,
             hours: 8,
             nightsOut: false
         }
@@ -9195,14 +9203,17 @@ function loadManualScheduleFromActiveSequence() {
         schedule.manualDays = getDefaultManualScheduleRows();
     }
 
-   manualSchedule = schedule.manualDays.map(function(day) {
+manualSchedule = schedule.manualDays.map(function(day) {
+    const safeDayPart = day.dayPart || "Full Day";
+
     return {
         id: day.id || createId(),
         groupId: day.groupId || createId(),
-        dayPart: day.dayPart || "Full Day",
+        dayPart: safeDayPart,
         task: day.task || "Pack",
         men: Math.max(0, Number(day.men) || 0),
-        hours: Math.max(0, Number(day.hours) || 0),
+        vans: Math.max(0, Number(day.vans) || 1),
+        hours: safeDayPart === "Full Day" ? 8 : 4,
         nightsOut: !!day.nightsOut
     };
 });
@@ -9214,14 +9225,17 @@ function saveManualScheduleToActiveSequence() {
 
     const schedule = ensureSequenceScheduleShape(seq);
 
-  schedule.manualDays = manualSchedule.map(function(day) {
+ schedule.manualDays = manualSchedule.map(function(day) {
+    const safeDayPart = day.dayPart || "Full Day";
+
     return {
         id: day.id,
         groupId: day.groupId,
-        dayPart: day.dayPart,
+        dayPart: safeDayPart,
         task: day.task,
         men: Math.max(0, Number(day.men) || 0),
-        hours: Math.max(0, Number(day.hours) || 0),
+        vans: Math.max(0, Number(day.vans) || 0),
+        hours: safeDayPart === "Full Day" ? 8 : 4,
         nightsOut: !!day.nightsOut
     };
 });
@@ -9617,6 +9631,7 @@ function addScheduleDay(){
         dayPart: "Full Day",
         task: "Load",
         men: 2,
+        vans: 1,
         hours: 8,
         nightsOut: false
     });
@@ -9639,12 +9654,13 @@ function removeScheduleDay(id){
 function ensurePmPair(row){
     const pairExists = manualSchedule.some(day => day.groupId === row.groupId && day.dayPart === "PM");
     if (!pairExists){
-                manualSchedule.push({
+        manualSchedule.push({
             id: createId(),
             groupId: row.groupId,
             dayPart: "PM",
             task: "Unload",
             men: row.men,
+            vans: row.vans,
             hours: 4,
             nightsOut: false
         });
@@ -9671,12 +9687,17 @@ function updateScheduleDay(id, field, value){
     manualSchedule = manualSchedule.map(day => {
         if (day.id !== id) return day;
 
-        if (field === "men" || field === "hours") {
+        if (field === "men" || field === "vans") {
             return { ...day, [field]: Math.max(0, Number(value) || 0) };
         }
 
         if (field === "nightsOut") {
             return { ...day, nightsOut: !!value };
+        }
+
+        if (field === "dayPart") {
+            const nextHours = value === "Full Day" ? 8 : 4;
+            return { ...day, dayPart: value, hours: nextHours };
         }
 
         return { ...day, [field]: value };
@@ -9696,12 +9717,13 @@ function updateScheduleDay(id, field, value){
             updated.task = "Unload";
             const hasAm = manualSchedule.some(day => day.groupId === updated.groupId && day.dayPart === "AM");
             if (!hasAm){
-                                manualSchedule.push({
+                manualSchedule.push({
                     id: createId(),
                     groupId: updated.groupId,
                     dayPart: "AM",
                     task: "Load",
                     men: updated.men,
+                    vans: updated.vans,
                     hours: 4,
                     nightsOut: false
                 });
@@ -9709,7 +9731,11 @@ function updateScheduleDay(id, field, value){
         }
         if (value === "Full Day"){
             manualSchedule = manualSchedule.filter(day => day.groupId !== row.groupId || day.id === row.id);
-            manualSchedule = manualSchedule.map(day => day.id === row.id ? { ...day, dayPart: "Full Day", hours: 8, task: day.task === "Unload" ? "Load and Deliver" : day.task } : day);
+            manualSchedule = manualSchedule.map(day =>
+                day.id === row.id
+                    ? { ...day, dayPart: "Full Day", hours: 8, task: day.task === "Unload" ? "Load and Deliver" : day.task }
+                    : day
+            );
         }
         normalizeGroup(row.groupId);
     }
@@ -9744,42 +9770,44 @@ function renderSchedulePlanner(){
                     ${rowIndex === 0 && manualSchedule.length > 1 ? `<button class="schedule-remove" onclick="removeScheduleDay('${day.id}')">Delete</button>` : ""}
                 </div>
                                 <div class="schedule-grid">
-                    <div>
-                        <label class="mini-label">Task</label>
-                        <select class="field" onchange="updateScheduleDay('${day.id}','task',this.value)">
-                            ${optionHtml(TASK_OPTIONS, day.task)}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="mini-label">Day Part</label>
-                        <select class="field" onchange="updateScheduleDay('${day.id}','dayPart',this.value)">
-                            ${optionHtml(DAY_PARTS, day.dayPart)}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="mini-label">Men</label>
-                        <select class="field" onchange="updateScheduleDay('${day.id}','men',this.value)">
-                            ${optionHtml([1,2,3,4], day.men)}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="mini-label">Hours</label>
-                        <input type="number" min="0" step="0.5" class="field" value="${day.hours}" oninput="updateScheduleDay('${day.id}','hours',this.value)" />
-                    </div>
-                    <div>
-                        <label class="mini-label">Night Out</label>
-                        <div class="schedule-toggle-wrap">
-                            <label class="schedule-toggle-switch">
-                                <input
-                                    type="checkbox"
-                                    ${day.nightsOut ? 'checked' : ''}
-                                    onchange="updateScheduleDay('${day.id}','nightsOut', this.checked)"
-                                />
-                                <span class="schedule-toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+    <div>
+        <label class="mini-label">Task</label>
+        <select class="field" onchange="updateScheduleDay('${day.id}','task',this.value)">
+            ${optionHtml(TASK_OPTIONS, day.task)}
+        </select>
+    </div>
+    <div>
+        <label class="mini-label">Day Part</label>
+        <select class="field" onchange="updateScheduleDay('${day.id}','dayPart',this.value)">
+            ${optionHtml(DAY_PARTS, day.dayPart)}
+        </select>
+    </div>
+    <div>
+        <label class="mini-label">Men</label>
+        <select class="field" onchange="updateScheduleDay('${day.id}','men',this.value)">
+            ${optionHtml([1,2,3,4], day.men)}
+        </select>
+    </div>
+    <div>
+        <label class="mini-label">Vans</label>
+        <select class="field" onchange="updateScheduleDay('${day.id}','vans',this.value)">
+            ${optionHtml([0,1,2,3,4], day.vans)}
+        </select>
+    </div>
+    <div>
+        <label class="mini-label">Night Out</label>
+        <div class="schedule-toggle-wrap">
+            <label class="schedule-toggle-switch">
+                <input
+                    type="checkbox"
+                    ${day.nightsOut ? 'checked' : ''}
+                    onchange="updateScheduleDay('${day.id}','nightsOut', this.checked)"
+                />
+                <span class="schedule-toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+</div>
             </div>
         `).join("");
     }).join("");

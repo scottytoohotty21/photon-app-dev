@@ -6703,13 +6703,12 @@ function buildResponsibilitiesSummary(summary) {
 }
 function buildCrewInstructionsSummary(items) {
     const summary = {
-        dismantle: 0,
-        exportWrap: 0,
-        crate: 0,
-        disconnect: 0,
-        handyman: 0,
-        damage: 0,
-        noted: 0,
+        dismantle: [],
+        exportWrap: [],
+        crate: [],
+        disconnect: [],
+        handyman: [],
+        damage: [],
         notes: []
     };
 
@@ -6719,120 +6718,54 @@ function buildCrewInstructionsSummary(items) {
         if (!entry || entry.excluded) return;
 
         const qty = Number(entry.qty || 0);
-
-        if (entry.dismantle) summary.dismantle += qty;
-        if (entry.expWrap) summary.exportWrap += qty;
-        if (entry.crated) summary.crate += qty;
-        if (entry.disconnect) summary.disconnect += qty;
-        if (entry.handyman) summary.handyman += qty;
-        if (entry.damage) summary.damage += qty;
-        if (entry.note) summary.noted += qty;
-
-        if (entry.note && String(entry.note).trim()) {
-            summary.notes.push(
-                `${String(entry.itemName || "-").toUpperCase()}: ${String(entry.note).trim()}`
-            );
-        }
-    });
-
-    return summary;
-}
-function buildCrewResponsibilitiesSummary(items) {
-    const summary = {
-        dismantle: { totalQty: 0, items: [] },
-        disconnect: { totalQty: 0, items: [] },
-        handyman: { totalQty: 0, items: [] },
-        crates: { totalQty: 0, items: [] },
-        exportWrap: { totalQty: 0, totalVolume: 0, items: [] },
-        damage: { totalQty: 0, items: [] },
-        notes: { totalQty: 0, items: [] }
-    };
-
-    if (!Array.isArray(items)) return summary;
-
-    function pushGroupedItem(bucket, entry, extraText) {
         const itemName = String(entry.itemName || "-").toUpperCase();
-        const qty = Number(entry.qty || 0);
 
-        const existing = bucket.items.find(function(item) {
-            return (
-                item.itemName === itemName &&
-                String(item.extraText || "") === String(extraText || "")
-            );
-        });
-
-        if (existing) {
-            existing.qty += qty;
-        } else {
-            bucket.items.push({
-                itemName: itemName,
-                qty: qty,
-                extraText: extraText || ""
-            });
-        }
-    }
-
-    items.forEach(function(entry) {
-        if (!entry || entry.excluded) return;
-
-        const qty = Number(entry.qty || 0);
-        const totalVolume = Number(entry.totalVolume || 0);
+        const baseLine = `${qty} x ${itemName}`;
 
         if (entry.dismantle) {
-            summary.dismantle.totalQty += qty;
-            pushGroupedItem(summary.dismantle, entry);
-        }
-
-        if (entry.disconnect) {
-            summary.disconnect.totalQty += qty;
-            pushGroupedItem(summary.disconnect, entry);
-        }
-
-        if (entry.handyman) {
-            summary.handyman.totalQty += qty;
-            pushGroupedItem(summary.handyman, entry);
-        }
-
-        if (entry.crated) {
-            summary.crates.totalQty += qty;
-
-            let crateText = "";
-            if (entry.crateDims) {
-                crateText =
-                    String(entry.crateDims.l || "") + " x " +
-                    String(entry.crateDims.w || "") + " x " +
-                    String(entry.crateDims.h || "") + " " +
-                    String(entry.crateDims.unit || "");
-            }
-
-            pushGroupedItem(summary.crates, entry, crateText);
+            summary.dismantle.push(baseLine);
         }
 
         if (entry.expWrap) {
-            summary.exportWrap.totalQty += qty;
-            summary.exportWrap.totalVolume += totalVolume;
-            pushGroupedItem(summary.exportWrap, entry);
+            summary.exportWrap.push(baseLine);
         }
 
-        if (entry.damage && String(entry.damage).trim()) {
-            summary.damage.totalQty += qty;
-            pushGroupedItem(summary.damage, entry, String(entry.damage).trim());
+        if (entry.crated) {
+            if (entry.crateDims) {
+                summary.crate.push(
+                    `${baseLine} — ${entry.crateDims.l} x ${entry.crateDims.w} x ${entry.crateDims.h} ${entry.crateDims.unit}`
+                );
+            } else {
+                summary.crate.push(baseLine);
+            }
+        }
+
+        if (entry.disconnect) {
+            summary.disconnect.push(baseLine);
+        }
+
+        if (entry.handyman) {
+            summary.handyman.push(baseLine);
+        }
+
+        if (entry.damage) {
+            summary.damage.push(`${baseLine} — ${String(entry.damage).trim()}`);
         }
 
         if (entry.note && String(entry.note).trim()) {
-            summary.notes.totalQty += qty;
-            pushGroupedItem(summary.notes, entry, String(entry.note).trim());
+            summary.notes.push(`${baseLine} — ${String(entry.note).trim()}`);
         }
     });
 
     return summary;
 }
-function renderListedSummary(summary, materials, items) {
+
+function renderListedSummary(summary, materials, crewInstructions) {
     const footerBar = document.getElementById("listed-footer-summary");
     if (!footerBar) return;
 
     const responsibilities = buildResponsibilitiesSummary(summary);
-    const crew = buildCrewInstructionsSummary(items);
+    const crew = buildCrewInstructionsSummary(crewInstructions);
 
     footerBar.innerHTML = `
         <div class="signature-wrap">
@@ -6898,9 +6831,37 @@ function renderListedSummary(summary, materials, items) {
         </div>
 
         <div class="listed-stat-card">
-            <div class="listed-stat-label">Included Volume</div>
+            <div class="listed-stat-label">Included Volume & Materials Summary</div>
             <div class="listed-stat-value">${summary.includedVolume}</div>
             <div class="listed-stat-sub">Cuft counted</div>
+
+            <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5 mt-4">
+                <div class="space-y-1">
+                    <div class="text-slate-400 pb-1">Cartons</div>
+                    <div>AP Boxes: ${materials.apBoxes}</div>
+                    <div>CG Boxes: ${materials.cgBoxes}</div>
+                    <div>Book Boxes: ${materials.bookBoxes}</div>
+                    <div>Linen Boxes: ${materials.linenBoxes}</div>
+                    <div>WR Boxes: ${materials.wrBoxes}</div>
+
+                    <div class="pt-2 text-slate-400">Mattress Bags</div>
+                    <div>Single: ${materials.singleMattressBags}</div>
+                    <div>Double: ${materials.doubleMattressBags}</div>
+                    <div>King: ${materials.kingMattressBags}</div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="text-slate-400 pb-1">Sofa Covers</div>
+                    <div>Armchair: ${materials.armchairCovers}</div>
+                    <div>2-Seater: ${materials.sofa2Covers}</div>
+                    <div>3-Seater: ${materials.sofa3Covers}</div>
+                    <div>4-Seater: ${materials.sofa4Covers}</div>
+
+                    <div class="pt-2 text-slate-400">Special Packs</div>
+                    <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
+                    <div>Wine Dividers: ${materials.wineDividers}</div>
+                </div>
+            </div>
         </div>
 
         <div class="listed-stat-card">
@@ -6942,56 +6903,83 @@ function renderListedSummary(summary, materials, items) {
 
         <div class="listed-stat-card">
             <div class="listed-stat-label">Crew Instructions / Responsibilities</div>
-            <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-900 uppercase leading-5">
-                <div>Dismantle: ${crew.dismantle}</div>
-                <div>Export Wrap: ${crew.exportWrap}</div>
-                <div>Crate: ${crew.crate}</div>
-                <div>Disconnect: ${crew.disconnect}</div>
-                <div>Handyman: ${crew.handyman}</div>
-                <div>Damage: ${crew.damage}</div>
-                <div class="col-span-2">Noted Items: ${crew.noted}</div>
-            </div>
 
-            <div class="pt-3 text-[10px] font-black text-slate-900 uppercase leading-5">
-                <div class="text-slate-400 pb-1">Crew Notes</div>
-                ${
-                    crew.notes.length
-                        ? crew.notes.map(function(note) {
-                            return `<div>${escapeHtml(note)}</div>`;
-                        }).join("")
-                        : `<div class="text-slate-400 italic">No crew notes recorded</div>`
-                }
-            </div>
-        </div>
-
-        <div class="listed-stat-card col-span-2">
-            <div class="listed-stat-label">Materials Summary</div>
-
-            <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5">
-                <div class="space-y-1">
-                    <div class="text-slate-400 pb-1">Cartons</div>
-                    <div>AP Boxes: ${materials.apBoxes}</div>
-                    <div>CG Boxes: ${materials.cgBoxes}</div>
-                    <div>Book Boxes: ${materials.bookBoxes}</div>
-                    <div>Linen Boxes: ${materials.linenBoxes}</div>
-                    <div>WR Boxes: ${materials.wrBoxes}</div>
-
-                    <div class="pt-2 text-slate-400">Mattress Bags</div>
-                    <div>Single: ${materials.singleMattressBags}</div>
-                    <div>Double: ${materials.doubleMattressBags}</div>
-                    <div>King: ${materials.kingMattressBags}</div>
+            <div class="space-y-3 text-[10px] font-black text-slate-900 uppercase leading-5">
+                <div>
+                    <div class="text-slate-400 pb-1">Dismantle</div>
+                    ${
+                        crew.dismantle.length
+                            ? crew.dismantle.map(function(item) {
+                                return `<div>${escapeHtml(item)}</div>`;
+                            }).join("")
+                            : `<div class="text-slate-400 italic">None</div>`
+                    }
                 </div>
 
-                <div class="space-y-1">
-                    <div class="text-slate-400 pb-1">Sofa Covers</div>
-                    <div>Armchair: ${materials.armchairCovers}</div>
-                    <div>2-Seater: ${materials.sofa2Covers}</div>
-                    <div>3-Seater: ${materials.sofa3Covers}</div>
-                    <div>4-Seater: ${materials.sofa4Covers}</div>
+                <div>
+                    <div class="text-slate-400 pb-1">Export Wrap</div>
+                    ${
+                        crew.exportWrap.length
+                            ? crew.exportWrap.map(function(item) {
+                                return `<div>${escapeHtml(item)}</div>`;
+                            }).join("")
+                            : `<div class="text-slate-400 italic">None</div>`
+                    }
+                </div>
 
-                    <div class="pt-2 text-slate-400">Special Packs</div>
-                    <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
-                    <div>Wine Dividers: ${materials.wineDividers}</div>
+                <div>
+                    <div class="text-slate-400 pb-1">Crate</div>
+                    ${
+                        crew.crate.length
+                            ? crew.crate.map(function(item) {
+                                return `<div>${escapeHtml(item)}</div>`;
+                            }).join("")
+                            : `<div class="text-slate-400 italic">None</div>`
+                    }
+                </div>
+
+                <div>
+                    <div class="text-slate-400 pb-1">Disconnect</div>
+                    ${
+                        crew.disconnect.length
+                            ? crew.disconnect.map(function(item) {
+                                return `<div>${escapeHtml(item)}</div>`;
+                            }).join("")
+                            : `<div class="text-slate-400 italic">None</div>`
+                    }
+                </div>
+
+                <div>
+                    <div class="text-slate-400 pb-1">Handyman</div>
+                    ${
+                        crew.handyman.length
+                            ? crew.handyman.map(function(item) {
+                                return `<div>${escapeHtml(item)}</div>`;
+                            }).join("")
+                            : `<div class="text-slate-400 italic">None</div>`
+                    }
+                </div>
+
+                <div>
+                    <div class="text-slate-400 pb-1">Damage</div>
+                    ${
+                        crew.damage.length
+                            ? crew.damage.map(function(item) {
+                                return `<div>${escapeHtml(item)}</div>`;
+                            }).join("")
+                            : `<div class="text-slate-400 italic">None</div>`
+                    }
+                </div>
+
+                <div>
+                    <div class="text-slate-400 pb-1">Notes</div>
+                    ${
+                        crew.notes.length
+                            ? crew.notes.map(function(item) {
+                                return `<div>${escapeHtml(item)}</div>`;
+                            }).join("")
+                            : `<div class="text-slate-400 italic">None</div>`
+                    }
                 </div>
             </div>
         </div>
@@ -7122,7 +7110,6 @@ function renderListedInventory() {
 
     const listedSummary = buildListedSummary(filteredItems);
 const materialsSummary = buildMaterialsSummary(filteredItems);
-const crewResponsibilitiesSummary = buildCrewResponsibilitiesSummary(filteredItems);
 
 renderListedSummary(listedSummary, materialsSummary, filteredItems);
 
@@ -7634,27 +7621,85 @@ function getPrintableResponsibilitiesHtml(summary) {
 function getPrintableCrewInstructionsHtml(items) {
     const crew = buildCrewInstructionsSummary(items);
 
+    const hasContent =
+        crew.dismantle.length ||
+        crew.exportWrap.length ||
+        crew.crate.length ||
+        crew.disconnect.length ||
+        crew.handyman.length ||
+        crew.damage.length ||
+        crew.notes.length;
+
+    if (!hasContent) {
+        return `<div class="pdf-small-note">No crew instructions or responsibilities recorded</div>`;
+    }
+
     return `
         <div class="pdf-materials-grid">
             <div>
-                <div class="pdf-mini-head">Instruction Totals</div>
-                <div>Dismantle: ${crew.dismantle}</div>
-                <div>Export Wrap: ${crew.exportWrap}</div>
-                <div>Crate: ${crew.crate}</div>
-                <div>Disconnect: ${crew.disconnect}</div>
-                <div>Handyman: ${crew.handyman}</div>
-                <div>Damage: ${crew.damage}</div>
-                <div>Noted Items: ${crew.noted}</div>
+                <div class="pdf-mini-head">Dismantle</div>
+                ${
+                    crew.dismantle.length
+                        ? crew.dismantle.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
+                        }).join("")
+                        : `<div>None</div>`
+                }
+
+                <div class="pdf-mini-head space-top">Export Wrap</div>
+                ${
+                    crew.exportWrap.length
+                        ? crew.exportWrap.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
+                        }).join("")
+                        : `<div>None</div>`
+                }
+
+                <div class="pdf-mini-head space-top">Crate</div>
+                ${
+                    crew.crate.length
+                        ? crew.crate.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
+                        }).join("")
+                        : `<div>None</div>`
+                }
+
+                <div class="pdf-mini-head space-top">Disconnect</div>
+                ${
+                    crew.disconnect.length
+                        ? crew.disconnect.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
+                        }).join("")
+                        : `<div>None</div>`
+                }
             </div>
 
             <div>
-                <div class="pdf-mini-head">Crew Notes</div>
+                <div class="pdf-mini-head">Handyman</div>
+                ${
+                    crew.handyman.length
+                        ? crew.handyman.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
+                        }).join("")
+                        : `<div>None</div>`
+                }
+
+                <div class="pdf-mini-head space-top">Damage</div>
+                ${
+                    crew.damage.length
+                        ? crew.damage.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
+                        }).join("")
+                        : `<div>None</div>`
+                }
+
+                <div class="pdf-mini-head space-top">Notes</div>
                 ${
                     crew.notes.length
-                        ? crew.notes.map(function(note) {
-                            return `<div>${escapeHtml(note)}</div>`;
+                        ? crew.notes.map(function(item) {
+                            return `<div>${escapeHtml(item)}</div>`;
                         }).join("")
-                        : `<div>None recorded</div>`
+                        : `<div>None</div>`
                 }
             </div>
         </div>
@@ -7990,9 +8035,12 @@ function printListedInventoryPdf() {
     </div>
 
     <div class="pdf-card">
-        <div class="pdf-card-title">Included Volume</div>
+        <div class="pdf-card-title">Included Volume & Materials Summary</div>
         <div class="pdf-big-stat">${listedSummary.includedVolume}</div>
         <div class="pdf-small-note">Cuft counted</div>
+        <div style="margin-top:12px;">
+            ${getPrintableMaterialsHtml(materialsSummary)}
+        </div>
     </div>
 
     <div class="pdf-card">
@@ -8003,11 +8051,6 @@ function printListedInventoryPdf() {
     <div class="pdf-card">
         <div class="pdf-card-title">Crew Instructions / Responsibilities</div>
         ${crewSummaryHtml}
-    </div>
-
-    <div class="pdf-card pdf-card-full">
-        <div class="pdf-card-title">Materials Summary</div>
-        ${getPrintableMaterialsHtml(materialsSummary)}
     </div>
 </div>
         </body>

@@ -1799,6 +1799,34 @@ button {
 .schedule-row-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
 .schedule-row-title{font-size:11px;font-weight:900;text-transform:uppercase;color:var(--navy);}
 .schedule-remove{height:32px;border-radius:8px;border:1px solid var(--red-200);background:var(--red-50);color:var(--red-800);padding:0 10px;font-size:10px;font-weight:900;text-transform:uppercase;cursor:pointer;}
+.schedule-value-btn{
+    width:100%;
+    height:44px;
+    border-radius:10px;
+    border:1.5px solid var(--slate-300);
+    background:#fff;
+    color:var(--navy);
+    padding:0 12px;
+    font-size:14px;
+    font-weight:700;
+    text-align:center;
+    cursor:pointer;
+}
+
+.schedule-value-btn:active{
+    transform:scale(0.99);
+}
+
+.schedule-debug-line{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid var(--slate-200);
+    font-size:10px;
+    font-weight:800;
+    text-transform:uppercase;
+    color:var(--slate-400);
+    line-height:1.45;
+}
 .schedule-toggle-wrap{
     display:flex;
     align-items:center;
@@ -3049,6 +3077,7 @@ let listedFlagsState = {
     excluded: false
 };
 let signaturePad = null;
+let scheduleNumberEditMeta = null;
 let signaturePadCtx = null;
 let signatureDrawing = false;
 let signatureLastX = 0;
@@ -4217,6 +4246,25 @@ function clearInventorySearch() {
 
     renderInventoryButtons();
 }
+function openScheduleNumberModal(rowId, fieldName, currentValue) {
+    scheduleNumberEditMeta = {
+        rowId: rowId,
+        fieldName: fieldName
+    };
+
+    openSimpleInputModal({
+        mode: "schedule-number",
+        title: fieldName === "men" ? "Edit Crew" : "Edit Vans",
+        subtitle: fieldName === "men"
+            ? "Enter the crew required for this planner row"
+            : "Enter the vans required for this planner row",
+        label: fieldName === "men" ? "Crew" : "Vans",
+        placeholder: fieldName === "men" ? "e.g. 5" : "e.g. 2",
+        value: String(currentValue || 0),
+        inputType: "number",
+        inputMode: "numeric"
+    });
+}
 function openSimpleInputModal(config) {
     const overlay = document.getElementById("simple-input-overlay");
     const title = document.getElementById("simple-input-title");
@@ -4265,6 +4313,7 @@ function closeSimpleInputModal() {
     setModalErrorText("simple-input-error-text", "");
     simpleInputMode = "";
     simpleInputMeta = null;
+    scheduleNumberEditMeta = null;
 }
 
 function saveSimpleInputModal() {
@@ -4546,6 +4595,40 @@ if (simpleInputMode === "qty-override") {
 
     closeSimpleInputModal();
     resetInventoryQtyInput();
+    return;
+}
+if (simpleInputMode === "schedule-number") {
+    if (!scheduleNumberEditMeta || !scheduleNumberEditMeta.rowId || !scheduleNumberEditMeta.fieldName) {
+        closeSimpleInputModal();
+        return;
+    }
+
+    if (!rawValue) {
+        setModalErrorText("simple-input-error-text", "Enter a valid number");
+        return;
+    }
+
+    const newValue = parseInt(rawValue, 10);
+
+    if (isNaN(newValue) || newValue < 0) {
+        setModalErrorText("simple-input-error-text", "Enter a valid number");
+        return;
+    }
+
+    if (scheduleNumberEditMeta.fieldName === "men" && newValue < 1) {
+        setModalErrorText("simple-input-error-text", "Crew must be at least 1");
+        return;
+    }
+
+    setModalErrorText("simple-input-error-text", "");
+
+    updateScheduleDay(
+        scheduleNumberEditMeta.rowId,
+        scheduleNumberEditMeta.fieldName,
+        newValue
+    );
+
+    closeSimpleInputModal();
     return;
 }
     if (simpleInputMode === "listed-edit-note") {
@@ -9763,53 +9846,61 @@ function renderSchedulePlanner(){
             return order[a.dayPart] - order[b.dayPart];
         });
 
-        return rows.map((day, rowIndex) => `
-            <div class="schedule-row">
-                <div class="schedule-row-head">
-                    <div class="schedule-row-title">Day ${groupIndex + 1}${rows.length > 1 ? ` · ${day.dayPart}` : ""}</div>
-                    ${rowIndex === 0 && manualSchedule.length > 1 ? `<button class="schedule-remove" onclick="removeScheduleDay('${day.id}')">Delete</button>` : ""}
+       return rows.map((day, rowIndex) => `
+    <div class="schedule-row">
+        <div class="schedule-row-head">
+            <div class="schedule-row-title">Day ${groupIndex + 1}${rows.length > 1 ? ` · ${day.dayPart}` : ""}</div>
+            ${rowIndex === 0 && manualSchedule.length > 1 ? `<button class="schedule-remove" onclick="removeScheduleDay('${day.id}')">Delete</button>` : ""}
+        </div>
+        <div class="schedule-grid">
+            <div>
+                <label class="mini-label">Task</label>
+                <select class="field" onchange="updateScheduleDay('${day.id}','task',this.value)">
+                    ${optionHtml(TASK_OPTIONS, day.task)}
+                </select>
+            </div>
+            <div>
+                <label class="mini-label">Day Part</label>
+                <select class="field" onchange="updateScheduleDay('${day.id}','dayPart',this.value)">
+                    ${optionHtml(DAY_PARTS, day.dayPart)}
+                </select>
+            </div>
+            <div>
+                <label class="mini-label">Men</label>
+                <button
+                    type="button"
+                    class="schedule-value-btn"
+                    onclick="openScheduleNumberModal('${day.id}','men',${Number(day.men || 0)})"
+                >
+                    ${Number(day.men || 0)}
+                </button>
+            </div>
+            <div>
+                <label class="mini-label">Vans</label>
+                <button
+                    type="button"
+                    class="schedule-value-btn"
+                    onclick="openScheduleNumberModal('${day.id}','vans',${Number(day.vans || 0)})"
+                >
+                    ${Number(day.vans || 0)}
+                </button>
+            </div>
+            <div>
+                <label class="mini-label">Night Out</label>
+                <div class="schedule-toggle-wrap">
+                    <label class="schedule-toggle-switch">
+                        <input
+                            type="checkbox"
+                            ${day.nightsOut ? 'checked' : ''}
+                            onchange="updateScheduleDay('${day.id}','nightsOut', this.checked)"
+                        />
+                        <span class="schedule-toggle-slider"></span>
+                    </label>
                 </div>
-                                <div class="schedule-grid">
-    <div>
-        <label class="mini-label">Task</label>
-        <select class="field" onchange="updateScheduleDay('${day.id}','task',this.value)">
-            ${optionHtml(TASK_OPTIONS, day.task)}
-        </select>
-    </div>
-    <div>
-        <label class="mini-label">Day Part</label>
-        <select class="field" onchange="updateScheduleDay('${day.id}','dayPart',this.value)">
-            ${optionHtml(DAY_PARTS, day.dayPart)}
-        </select>
-    </div>
-    <div>
-        <label class="mini-label">Men</label>
-        <select class="field" onchange="updateScheduleDay('${day.id}','men',this.value)">
-            ${optionHtml([1,2,3,4], day.men)}
-        </select>
-    </div>
-    <div>
-        <label class="mini-label">Vans</label>
-        <select class="field" onchange="updateScheduleDay('${day.id}','vans',this.value)">
-            ${optionHtml([0,1,2,3,4], day.vans)}
-        </select>
-    </div>
-    <div>
-        <label class="mini-label">Night Out</label>
-        <div class="schedule-toggle-wrap">
-            <label class="schedule-toggle-switch">
-                <input
-                    type="checkbox"
-                    ${day.nightsOut ? 'checked' : ''}
-                    onchange="updateScheduleDay('${day.id}','nightsOut', this.checked)"
-                />
-                <span class="schedule-toggle-slider"></span>
-            </label>
+            </div>
         </div>
     </div>
-</div>
-            </div>
-        `).join("");
+`).join("");
     }).join("");
 }
 

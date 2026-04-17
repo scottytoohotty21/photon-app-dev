@@ -6701,6 +6701,42 @@ function buildResponsibilitiesSummary(summary) {
         exclusionNotes: exclusionNotes
     };
 }
+function buildCrewInstructionsSummary(items) {
+    const summary = {
+        dismantle: 0,
+        exportWrap: 0,
+        crate: 0,
+        disconnect: 0,
+        handyman: 0,
+        damage: 0,
+        noted: 0,
+        notes: []
+    };
+
+    if (!Array.isArray(items)) return summary;
+
+    items.forEach(function(entry) {
+        if (!entry || entry.excluded) return;
+
+        const qty = Number(entry.qty || 0);
+
+        if (entry.dismantle) summary.dismantle += qty;
+        if (entry.expWrap) summary.exportWrap += qty;
+        if (entry.crated) summary.crate += qty;
+        if (entry.disconnect) summary.disconnect += qty;
+        if (entry.handyman) summary.handyman += qty;
+        if (entry.damage) summary.damage += qty;
+        if (entry.note) summary.noted += qty;
+
+        if (entry.note && String(entry.note).trim()) {
+            summary.notes.push(
+                `${String(entry.itemName || "-").toUpperCase()}: ${String(entry.note).trim()}`
+            );
+        }
+    });
+
+    return summary;
+}
 function buildCrewResponsibilitiesSummary(items) {
     const summary = {
         dismantle: { totalQty: 0, items: [] },
@@ -6791,17 +6827,12 @@ function buildCrewResponsibilitiesSummary(items) {
 
     return summary;
 }
-function renderListedSummary(summary, materials, crewResponsibilities) {
-    const topBar = document.getElementById("listed-summary-bar");
+function renderListedSummary(summary, materials, items) {
     const footerBar = document.getElementById("listed-footer-summary");
-
-    if (topBar) {
-        topBar.innerHTML = "";
-    }
-
     if (!footerBar) return;
 
     const responsibilities = buildResponsibilitiesSummary(summary);
+    const crew = buildCrewInstructionsSummary(items);
 
     footerBar.innerHTML = `
         <div class="signature-wrap">
@@ -6866,192 +6897,101 @@ function renderListedSummary(summary, materials, crewResponsibilities) {
             </div>
         </div>
 
-        <div class="listed-footer-stack">
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Included Volume</div>
-                <div class="listed-stat-value">${summary.includedVolume}</div>
-                <div class="listed-stat-sub">Cuft counted</div>
+        <div class="listed-stat-card">
+            <div class="listed-stat-label">Included Volume</div>
+            <div class="listed-stat-value">${summary.includedVolume}</div>
+            <div class="listed-stat-sub">Cuft counted</div>
+        </div>
+
+        <div class="listed-stat-card">
+            <div class="listed-stat-label">Customer Responsibilities</div>
+            ${
+                responsibilities.hasContent
+                    ? `
+                    <div class="space-y-3 text-[10px] font-black text-slate-900 uppercase leading-5">
+                        <div>
+                            <div class="text-slate-400 pb-1">Excluded Items (${summary.excludedCount})</div>
+                            ${
+                                responsibilities.excludedItems.length
+                                    ? responsibilities.excludedItems.map(function(item) {
+                                        return `<div>${escapeHtml(item)}</div>`;
+                                    }).join("")
+                                    : `<div class="text-slate-400 italic">None</div>`
+                            }
+                        </div>
+
+                        <div>
+                            <div class="text-slate-400 pb-1">Notes / Responsibilities</div>
+                            ${
+                                responsibilities.exclusionNotes.length
+                                    ? responsibilities.exclusionNotes.map(function(note) {
+                                        return `<div>${escapeHtml(note)}</div>`;
+                                    }).join("")
+                                    : `<div class="text-slate-400 italic">None recorded</div>`
+                            }
+                        </div>
+                    </div>
+                    `
+                    : `
+                    <div class="text-[10px] font-black text-slate-400 uppercase italic">
+                        No exclusions or customer responsibility notes recorded
+                    </div>
+                    `
+            }
+        </div>
+
+        <div class="listed-stat-card">
+            <div class="listed-stat-label">Crew Instructions / Responsibilities</div>
+            <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-900 uppercase leading-5">
+                <div>Dismantle: ${crew.dismantle}</div>
+                <div>Export Wrap: ${crew.exportWrap}</div>
+                <div>Crate: ${crew.crate}</div>
+                <div>Disconnect: ${crew.disconnect}</div>
+                <div>Handyman: ${crew.handyman}</div>
+                <div>Damage: ${crew.damage}</div>
+                <div class="col-span-2">Noted Items: ${crew.noted}</div>
             </div>
-            <div class="listed-stat-card">
-    <div class="listed-stat-label">Crew Instructions / Responsibilities</div>
 
-    <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5">
-        ${
-            crewResponsibilities.dismantle.totalQty > 0
-                ? `
-                <div>
-                    <div class="text-slate-400 pb-1">Dismantle (${crewResponsibilities.dismantle.totalQty})</div>
-                    ${crewResponsibilities.dismantle.items.map(function(item) {
-                        return `<div>${item.qty} x ${escapeHtml(item.itemName)}</div>`;
-                    }).join("")}
-                </div>
-                `
-                : ``
-        }
-
-        ${
-            crewResponsibilities.disconnect.totalQty > 0
-                ? `
-                <div>
-                    <div class="text-slate-400 pb-1">Disconnect (${crewResponsibilities.disconnect.totalQty})</div>
-                    ${crewResponsibilities.disconnect.items.map(function(item) {
-                        return `<div>${item.qty} x ${escapeHtml(item.itemName)}</div>`;
-                    }).join("")}
-                </div>
-                `
-                : ``
-        }
-
-        ${
-            crewResponsibilities.handyman.totalQty > 0
-                ? `
-                <div>
-                    <div class="text-slate-400 pb-1">Handyman (${crewResponsibilities.handyman.totalQty})</div>
-                    ${crewResponsibilities.handyman.items.map(function(item) {
-                        return `<div>${item.qty} x ${escapeHtml(item.itemName)}</div>`;
-                    }).join("")}
-                </div>
-                `
-                : ``
-        }
-
-        ${
-            crewResponsibilities.crates.totalQty > 0
-                ? `
-                <div>
-                    <div class="text-slate-400 pb-1">Crates (${crewResponsibilities.crates.totalQty})</div>
-                    ${crewResponsibilities.crates.items.map(function(item) {
-                        return `<div>${item.qty} x ${escapeHtml(item.itemName)}${item.extraText ? ` — ${escapeHtml(item.extraText)}` : ``}</div>`;
-                    }).join("")}
-                </div>
-                `
-                : ``
-        }
-
-        ${
-            crewResponsibilities.exportWrap.totalQty > 0
-                ? `
-                <div>
-                    <div class="text-slate-400 pb-1">Export Wrap (${crewResponsibilities.exportWrap.totalQty})</div>
-                    <div>${crewResponsibilities.exportWrap.totalVolume} cuft flagged</div>
-                    ${crewResponsibilities.exportWrap.items.map(function(item) {
-                        return `<div>${item.qty} x ${escapeHtml(item.itemName)}</div>`;
-                    }).join("")}
-                </div>
-                `
-                : ``
-        }
-
-        ${
-            crewResponsibilities.damage.totalQty > 0
-                ? `
-                <div>
-                    <div class="text-slate-400 pb-1">Damage (${crewResponsibilities.damage.totalQty})</div>
-                    ${crewResponsibilities.damage.items.map(function(item) {
-                        return `<div>${item.qty} x ${escapeHtml(item.itemName)}${item.extraText ? ` — ${escapeHtml(item.extraText)}` : ``}</div>`;
-                    }).join("")}
-                </div>
-                `
-                : ``
-        }
-
-        ${
-            crewResponsibilities.notes.totalQty > 0
-                ? `
-                <div class="col-span-2">
-                    <div class="text-slate-400 pb-1">Notes (${crewResponsibilities.notes.totalQty})</div>
-                    ${crewResponsibilities.notes.items.map(function(item) {
-                        return `<div>${item.qty} x ${escapeHtml(item.itemName)}${item.extraText ? ` — ${escapeHtml(item.extraText)}` : ``}</div>`;
-                    }).join("")}
-                </div>
-                `
-                : ``
-        }
-
-        ${
-            crewResponsibilities.dismantle.totalQty === 0 &&
-            crewResponsibilities.disconnect.totalQty === 0 &&
-            crewResponsibilities.handyman.totalQty === 0 &&
-            crewResponsibilities.crates.totalQty === 0 &&
-            crewResponsibilities.exportWrap.totalQty === 0 &&
-            crewResponsibilities.damage.totalQty === 0 &&
-            crewResponsibilities.notes.totalQty === 0
-                ? `
-                <div class="col-span-2 text-slate-400 italic">
-                    No crew instructions recorded
-                </div>
-                `
-                : ``
-        }
-    </div>
-</div>
-
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Exclusions & Customer Responsibilities</div>
+            <div class="pt-3 text-[10px] font-black text-slate-900 uppercase leading-5">
+                <div class="text-slate-400 pb-1">Crew Notes</div>
                 ${
-                    responsibilities.hasContent
-                        ? `
-                        <div class="space-y-3 text-[10px] font-black text-slate-900 uppercase leading-5">
-                            <div>
-                                <div class="text-slate-400 pb-1">Excluded Items (${summary.excludedCount})</div>
-                                ${
-                                    responsibilities.excludedItems.length
-                                        ? responsibilities.excludedItems.map(function(item) {
-                                            return `<div>${escapeHtml(item)}</div>`;
-                                        }).join("")
-                                        : `<div class="text-slate-400 italic">None</div>`
-                                }
-                            </div>
-
-                            <div>
-                                <div class="text-slate-400 pb-1">Notes / Responsibilities</div>
-                                ${
-                                    responsibilities.exclusionNotes.length
-                                        ? responsibilities.exclusionNotes.map(function(note) {
-                                            return `<div>${escapeHtml(note)}</div>`;
-                                        }).join("")
-                                        : `<div class="text-slate-400 italic">None recorded</div>`
-                                }
-                            </div>
-                        </div>
-                        `
-                        : `
-                        <div class="text-[10px] font-black text-slate-400 uppercase italic">
-                            No exclusions or customer responsibility notes recorded
-                        </div>
-                        `
+                    crew.notes.length
+                        ? crew.notes.map(function(note) {
+                            return `<div>${escapeHtml(note)}</div>`;
+                        }).join("")
+                        : `<div class="text-slate-400 italic">No crew notes recorded</div>`
                 }
             </div>
+        </div>
 
-            <div class="listed-stat-card">
-                <div class="listed-stat-label">Materials Summary</div>
+        <div class="listed-stat-card col-span-2">
+            <div class="listed-stat-label">Materials Summary</div>
 
-                <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5">
-                    <div class="space-y-1">
-                        <div class="text-slate-400 pb-1">Cartons</div>
-                        <div>AP Boxes: ${materials.apBoxes}</div>
-                        <div>CG Boxes: ${materials.cgBoxes}</div>
-                        <div>Book Boxes: ${materials.bookBoxes}</div>
-                        <div>Linen Boxes: ${materials.linenBoxes}</div>
-                        <div>WR Boxes: ${materials.wrBoxes}</div>
+            <div class="grid grid-cols-2 gap-4 text-[10px] font-black text-slate-900 uppercase leading-5">
+                <div class="space-y-1">
+                    <div class="text-slate-400 pb-1">Cartons</div>
+                    <div>AP Boxes: ${materials.apBoxes}</div>
+                    <div>CG Boxes: ${materials.cgBoxes}</div>
+                    <div>Book Boxes: ${materials.bookBoxes}</div>
+                    <div>Linen Boxes: ${materials.linenBoxes}</div>
+                    <div>WR Boxes: ${materials.wrBoxes}</div>
 
-                        <div class="pt-2 text-slate-400">Mattress Bags</div>
-                        <div>Single: ${materials.singleMattressBags}</div>
-                        <div>Double: ${materials.doubleMattressBags}</div>
-                        <div>King: ${materials.kingMattressBags}</div>
-                    </div>
+                    <div class="pt-2 text-slate-400">Mattress Bags</div>
+                    <div>Single: ${materials.singleMattressBags}</div>
+                    <div>Double: ${materials.doubleMattressBags}</div>
+                    <div>King: ${materials.kingMattressBags}</div>
+                </div>
 
-                    <div class="space-y-1">
-                        <div class="text-slate-400 pb-1">Sofa Covers</div>
-                        <div>Armchair: ${materials.armchairCovers}</div>
-                        <div>2-Seater: ${materials.sofa2Covers}</div>
-                        <div>3-Seater: ${materials.sofa3Covers}</div>
-                        <div>4-Seater: ${materials.sofa4Covers}</div>
+                <div class="space-y-1">
+                    <div class="text-slate-400 pb-1">Sofa Covers</div>
+                    <div>Armchair: ${materials.armchairCovers}</div>
+                    <div>2-Seater: ${materials.sofa2Covers}</div>
+                    <div>3-Seater: ${materials.sofa3Covers}</div>
+                    <div>4-Seater: ${materials.sofa4Covers}</div>
 
-                        <div class="pt-2 text-slate-400">Special Packs</div>
-                        <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
-                        <div>Wine Dividers: ${materials.wineDividers}</div>
-                    </div>
+                    <div class="pt-2 text-slate-400">Special Packs</div>
+                    <div>Mirror / Picture: ${materials.mirrorPicturePacks}</div>
+                    <div>Wine Dividers: ${materials.wineDividers}</div>
                 </div>
             </div>
         </div>
@@ -7184,11 +7124,7 @@ function renderListedInventory() {
 const materialsSummary = buildMaterialsSummary(filteredItems);
 const crewResponsibilitiesSummary = buildCrewResponsibilitiesSummary(filteredItems);
 
-renderListedSummary(
-    listedSummary,
-    materialsSummary,
-    crewResponsibilitiesSummary
-);
+renderListedSummary(listedSummary, materialsSummary, filteredItems);
 
     window.__listedEntryMap = {};
     const groupedSections = groupInventoryItemsForListedView(filteredItems);
@@ -7695,6 +7631,35 @@ function getPrintableResponsibilitiesHtml(summary) {
     `;
 }
 
+function getPrintableCrewInstructionsHtml(items) {
+    const crew = buildCrewInstructionsSummary(items);
+
+    return `
+        <div class="pdf-materials-grid">
+            <div>
+                <div class="pdf-mini-head">Instruction Totals</div>
+                <div>Dismantle: ${crew.dismantle}</div>
+                <div>Export Wrap: ${crew.exportWrap}</div>
+                <div>Crate: ${crew.crate}</div>
+                <div>Disconnect: ${crew.disconnect}</div>
+                <div>Handyman: ${crew.handyman}</div>
+                <div>Damage: ${crew.damage}</div>
+                <div>Noted Items: ${crew.noted}</div>
+            </div>
+
+            <div>
+                <div class="pdf-mini-head">Crew Notes</div>
+                ${
+                    crew.notes.length
+                        ? crew.notes.map(function(note) {
+                            return `<div>${escapeHtml(note)}</div>`;
+                        }).join("")
+                        : `<div>None recorded</div>`
+                }
+            </div>
+        </div>
+    `;
+}
 function printListedInventoryPdf() {
     if (!currentJob) return;
 
@@ -7708,6 +7673,7 @@ function printListedInventoryPdf() {
 
     const listedSummary = buildListedSummary(filteredItems);
     const materialsSummary = buildMaterialsSummary(filteredItems);
+    const crewSummaryHtml = getPrintableCrewInstructionsHtml(filteredItems);
     const sectionsHtml = getPrintableListedSections(filteredItems);
 
     const customerName =
@@ -7908,12 +7874,17 @@ function printListedInventoryPdf() {
                 }
 
                 .pdf-footer-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                    margin-top: 24px;
-                    page-break-inside: avoid;
-                }
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 24px;
+    page-break-inside: avoid;
+    align-items: start;
+}
+
+.pdf-card-full {
+    grid-column: span 2;
+}
 
                 .pdf-card {
                     border: 1px solid #cbd5e1;
@@ -8012,30 +7983,33 @@ function printListedInventoryPdf() {
             ${sectionsHtml}
 
             <div class="pdf-footer-grid">
-                <div class="pdf-card">
-                    <div class="pdf-card-title">Customer Signature</div>
-                    ${signatureHtml}
-                    <div class="pdf-small-note" style="margin-top: 8px;">Signed: ${escapeHtml(signedAt)}</div>
-                </div>
+    <div class="pdf-card">
+        <div class="pdf-card-title">Customer Signature</div>
+        ${signatureHtml}
+        <div class="pdf-small-note" style="margin-top: 8px;">Signed: ${escapeHtml(signedAt)}</div>
+    </div>
 
-                <div>
-                    <div class="pdf-card" style="margin-bottom: 16px;">
-    <div class="pdf-card-title">Included Volume</div>
-    <div class="pdf-big-stat">${listedSummary.includedVolume}</div>
-    <div class="pdf-small-note">Cuft counted</div>
-</div>
+    <div class="pdf-card">
+        <div class="pdf-card-title">Included Volume</div>
+        <div class="pdf-big-stat">${listedSummary.includedVolume}</div>
+        <div class="pdf-small-note">Cuft counted</div>
+    </div>
 
-<div class="pdf-card" style="margin-bottom: 16px;">
-    <div class="pdf-card-title">Exclusions & Customer Responsibilities</div>
-    ${getPrintableResponsibilitiesHtml(listedSummary)}
-</div>
+    <div class="pdf-card">
+        <div class="pdf-card-title">Customer Responsibilities</div>
+        ${getPrintableResponsibilitiesHtml(listedSummary)}
+    </div>
 
-<div class="pdf-card">
-    <div class="pdf-card-title">Materials Summary</div>
-    ${getPrintableMaterialsHtml(materialsSummary)}
+    <div class="pdf-card">
+        <div class="pdf-card-title">Crew Instructions / Responsibilities</div>
+        ${crewSummaryHtml}
+    </div>
+
+    <div class="pdf-card pdf-card-full">
+        <div class="pdf-card-title">Materials Summary</div>
+        ${getPrintableMaterialsHtml(materialsSummary)}
+    </div>
 </div>
-                </div>
-            </div>
         </body>
         </html>
     `);

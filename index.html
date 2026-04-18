@@ -2776,8 +2776,12 @@ const furnitureDB = [
     {item:"Armchair", volume:20},
     {item:"Sofa 2 Seat", volume:35},
     {item:"Sofa 3 Seat", volume:50},
+    {item:"Sofa 4 Seat", volume:70},
     {item:"Bed (Single)", volume:40},
     {item:"Bed (Double)", volume:60},
+    {item:"Bed (Queensize)", volume:65},
+    {item:"Bed (Kingsize)", volume:70},
+    {item:"Bed (SuperKing)", volume:90},
     {item:"Fridge", volume:25},
     {item:"Garden Bench", volume:15},
     {item:"Chest Drawers", volume:45},
@@ -2811,13 +2815,17 @@ const furnitureDB = [
 ];
 
 const inventoryCategories = {
-    "Full List": [
+        "Full List": [
         "AC Unit",
         "Armchair",
         "Sofa 2 Seat",
         "Sofa 3 Seat",
+        "Sofa 4 Seat",
         "Bed (Single)",
         "Bed (Double)",
+        "Bed (Queensize)",
+        "Bed (Kingsize)",
+        "Bed (SuperKing)",
         "Fridge",
         "Garden Bench",
         "Chest Drawers",
@@ -2849,9 +2857,12 @@ const inventoryCategories = {
         "Welsh Dresser"
     ],
 
-    "Upstairs": [
+        "Upstairs": [
         "Bed (Single)",
         "Bed (Double)",
+        "Bed (Queensize)",
+        "Bed (Kingsize)",
+        "Bed (SuperKing)",
         "Chest Drawers",
         "Desk",
         "Bookcase",
@@ -2862,10 +2873,11 @@ const inventoryCategories = {
         "Dresser"
     ],
 
-    "Downstairs": [
+        "Downstairs": [
         "Armchair",
         "Sofa 2 Seat",
         "Sofa 3 Seat",
+        "Sofa 4 Seat",
         "Dining Table",
         "Dining Chair",
         "Desk",

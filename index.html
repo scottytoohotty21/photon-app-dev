@@ -955,6 +955,104 @@ button {
             font-weight: 900;
             text-transform: uppercase;
         }
+
+                /* --- BED MODAL --- */
+        .bed-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            align-items: center;
+            justify-content: center;
+            z-index: 2150;
+        }
+
+        .bed-panel {
+            width: 92%;
+            max-width: 420px;
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+        }
+
+        .bed-title {
+            font-size: 16px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #0f172a;
+            text-align: center;
+            letter-spacing: 0.02em;
+        }
+
+        .bed-subtitle {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            text-align: center;
+            margin-top: 6px;
+            margin-bottom: 18px;
+            line-height: 1.45;
+            text-transform: none;
+        }
+
+        .bed-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .bed-option-btn {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            min-height: 52px;
+            padding: 10px 8px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #475569;
+            text-align: center;
+        }
+
+        .bed-option-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .bed-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .bed-cancel-btn {
+            flex: 1;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .bed-save-btn {
+            flex: 1;
+            background: #3b82f6;
+            color: white;
+            border: 1px solid #2563eb;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
         /* --- NOTE MODAL --- */
 .note-overlay {
     display: none;
@@ -3073,6 +3171,7 @@ let inventoryHistory = [];
 let qtyResetTimer = null;
 let selectedCrateUnit = "IN";
 let selectedDamageOption = "";
+let selectedBedOption = "";
 let listedCrateEditEntryKey = "";
 let listedSequenceFilter = "__all__";
 let listedDeliveryFilter = "__all__";
@@ -3482,26 +3581,27 @@ function handleInventoryDeliveryChange(value) {
 
 function buildRawInventoryEntry(entryData) {
     return {
-        id: "raw_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
-        sequenceId: entryData.sequenceId || "",
-        deliveryId: entryData.deliveryId || "",
-        roomName: entryData.roomName || "",
-        floorName: entryData.floorName || "",
-        itemName: entryData.itemName || "",
-        qty: entryData.qty || 1,
-        unitVolume: entryData.unitVolume || 0,
-        totalVolume: entryData.totalVolume || 0,
-        kind: entryData.kind || "item",
-        dismantle: !!entryData.dismantle,
-        expWrap: !!entryData.expWrap,
-        disconnect: !!entryData.disconnect,
-        handyman: !!entryData.handyman,
-        excluded: !!entryData.excluded,
-        note: entryData.note || "",
-        crated: !!entryData.crated,
-        crateDims: entryData.crateDims || null,
-        damage: entryData.damage || ""
-    };
+    id: "raw_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+    sequenceId: entryData.sequenceId || "",
+    deliveryId: entryData.deliveryId || "",
+    roomName: entryData.roomName || "",
+    floorName: entryData.floorName || "",
+    itemName: entryData.itemName || "",
+    qty: entryData.qty || 1,
+    unitVolume: entryData.unitVolume || 0,
+    totalVolume: entryData.totalVolume || 0,
+    kind: entryData.kind || "item",
+    dismantle: !!entryData.dismantle,
+    expWrap: !!entryData.expWrap,
+    disconnect: !!entryData.disconnect,
+    handyman: !!entryData.handyman,
+    excluded: !!entryData.excluded,
+    note: entryData.note || "",
+    crated: !!entryData.crated,
+    crateDims: entryData.crateDims || null,
+    damage: entryData.damage || "",
+    bedType: entryData.bedType || ""
+};
 }
 
 
@@ -3696,10 +3796,11 @@ function syncInventoryDisplayFromSequence(sequenceId) {
     }, 0);
 
     const tags = [];
-    if (lastRaw.dismantle) tags.push("[DISMANTLE]");
-    if (lastRaw.expWrap) tags.push("[EXP WRAP]");
-    if (lastRaw.disconnect) tags.push("[DISCONNECT]");
-    if (lastRaw.handyman) tags.push("[HANDYMAN]");
+if (lastRaw.bedType) tags.push("[BED: " + String(lastRaw.bedType).toUpperCase() + "]");
+if (lastRaw.dismantle) tags.push("[DISMANTLE]");
+if (lastRaw.expWrap) tags.push("[EXP WRAP]");
+if (lastRaw.disconnect) tags.push("[DISCONNECT]");
+if (lastRaw.handyman) tags.push("[HANDYMAN]");
     if (lastRaw.crated && lastRaw.crateDims) {
         tags.push(
             "[CRATE: " +
@@ -3927,8 +4028,9 @@ function buildLiveInventoryKeyFromValues(data) {
         !!data.disconnect,
 !!data.handyman,
         String(data.note || ""),
-        String(data.damage || ""),
-        !!data.crated,
+String(data.damage || ""),
+String(data.bedType || ""),
+!!data.crated,
         data.crateDims
             ? [
                 data.crateDims.l || "",
@@ -3952,8 +4054,9 @@ function getLiveInventoryGroupKey(entry) {
         !!entry.disconnect,
         !!entry.handyman,
         String(entry.note || ""),
-        String(entry.damage || ""),
-        !!entry.crated,
+String(entry.damage || ""),
+String(entry.bedType || ""),
+!!entry.crated,
         entry.crateDims
             ? [
                 entry.crateDims.l || "",
@@ -3995,24 +4098,25 @@ function rebuildLiveInventoryFromSequence(sequenceId) {
             existing.qty += qty;
         } else {
             inventoryItems.push({
-                liveKey: liveKey,
-                item: entry.itemName,
-                displayName: entry.itemName,
-                volume: unitVolume,
-                qty: qty,
-                dismantle: !!entry.dismantle,
-                expWrap: !!entry.expWrap,
-                disconnect: !!entry.disconnect,
-                handyman: !!entry.handyman,
-                excluded: !!entry.excluded,
-                roomName: entry.roomName || "",
-                floorName: entry.floorName || "",
-                deliveryId: entry.deliveryId || "",
-                note: entry.note || "",
-                damage: entry.damage || "",
-                crated: !!entry.crated,
-                crateDims: entry.crateDims || null
-            });
+    liveKey: liveKey,
+    item: entry.itemName,
+    displayName: entry.itemName,
+    volume: unitVolume,
+    qty: qty,
+    dismantle: !!entry.dismantle,
+    expWrap: !!entry.expWrap,
+    disconnect: !!entry.disconnect,
+    handyman: !!entry.handyman,
+    excluded: !!entry.excluded,
+    roomName: entry.roomName || "",
+    floorName: entry.floorName || "",
+    deliveryId: entry.deliveryId || "",
+    note: entry.note || "",
+    damage: entry.damage || "",
+    bedType: entry.bedType || "",
+    crated: !!entry.crated,
+    crateDims: entry.crateDims || null
+});
         }
     });
 
@@ -5250,6 +5354,21 @@ function addVolume(amount) {
     updateUndoButtonState();
     saveCalculatorFeedForActiveSequence();
 }
+function isBedInventoryItem(itemName) {
+    const name = String(itemName || "").trim();
+    return [
+        "Bed (Single)",
+        "Bed (Double)",
+        "Bed (Queensize)",
+        "Bed (Kingsize)",
+        "Bed (SuperKing)"
+    ].includes(name);
+}
+
+function isBedRawEntry(rawEntry) {
+    if (!rawEntry) return false;
+    return isBedInventoryItem(rawEntry.itemName);
+}
 function addInventoryItem(itemName) {
     let item = furnitureDB.find(function(i) {
         return i.item === itemName;
@@ -5338,9 +5457,13 @@ function addInventoryItem(itemName) {
     pulseInventoryButton(clickedBtn);
 
     if (qtyInput) qtyInput.value = 1;
-    renderActionButtonStates();
-    updateUndoButtonState();
-    saveCalculatorFeedForActiveSequence();
+renderActionButtonStates();
+updateUndoButtonState();
+saveCalculatorFeedForActiveSequence();
+
+if (isBedInventoryItem(item.item)) {
+    addOrEditBedType();
+}
 }
 function addMiscItem() {
     const overlay = document.getElementById("misc-overlay");
@@ -5959,6 +6082,99 @@ function saveDamageModal() {
 
     closeDamageModal();
 }
+function addOrEditBedType() {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
+    if (!isBedRawEntry(rawEntry)) return;
+
+    selectedBedOption = "";
+
+    const overlay = document.getElementById("bed-overlay");
+    if (!overlay) return;
+
+    clearBedOptionButtons();
+
+    const currentBedType = String(rawEntry.bedType || "").trim();
+    if (currentBedType) {
+        selectedBedOption = currentBedType;
+        highlightBedOption(currentBedType);
+    }
+
+    setModalErrorText("bed-error-text", "");
+    overlay.style.display = "flex";
+}
+
+function closeBedModal() {
+    const overlay = document.getElementById("bed-overlay");
+    if (overlay) overlay.style.display = "none";
+
+    selectedBedOption = "";
+    clearBedOptionButtons();
+    setModalErrorText("bed-error-text", "");
+}
+
+function selectBedOption(option) {
+    if (selectedBedOption === option) {
+        selectedBedOption = "";
+        clearBedOptionButtons();
+        return;
+    }
+
+    selectedBedOption = option;
+    highlightBedOption(option);
+    setModalErrorText("bed-error-text", "");
+}
+
+function clearBedOptionButtons() {
+    [
+        "bed-option-frame",
+        "bed-option-ottoman",
+        "bed-option-divan",
+        "bed-option-electric"
+    ].forEach(function(id) {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove("active");
+    });
+}
+
+function highlightBedOption(option) {
+    clearBedOptionButtons();
+
+    const map = {
+        "Frame": "bed-option-frame",
+        "Ottoman": "bed-option-ottoman",
+        "Divan": "bed-option-divan",
+        "Electric Motor / TV": "bed-option-electric"
+    };
+
+    const btnId = map[option];
+    if (!btnId) return;
+
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add("active");
+}
+
+function saveBedModal() {
+    const rawEntry = getLastRawInventoryEntry();
+    if (!rawEntry) return;
+    if (!isBedRawEntry(rawEntry)) return;
+
+    if (!selectedBedOption) {
+        setModalErrorText("bed-error-text", "Select a bed type");
+        return;
+    }
+
+    rawEntry.bedType = selectedBedOption;
+
+    saveToDevice();
+    syncLiveInventoryFromRawForActiveSequence();
+    recalculateTotalVolume();
+    refreshCurrentInventorySelectionDisplay();
+    renderActionButtonStates();
+    saveCalculatorFeedForActiveSequence();
+
+    closeBedModal();
+}
 function updateLastItemQty(newQty) {
     // Inline qty editing no longer used.
 }
@@ -6455,8 +6671,9 @@ function getRawEntriesForListedEntry(entry) {
 !!raw.disconnect === !!entry.disconnect &&
 !!raw.handyman === !!entry.handyman &&
 String(raw.note || "") === String(entry.note || "") &&
-            String(raw.damage || "") === String(entry.damage || "") &&
-            !!raw.crated === !!entry.crated &&
+String(raw.damage || "") === String(entry.damage || "") &&
+String(raw.bedType || "") === String(entry.bedType || "") &&
+!!raw.crated === !!entry.crated &&
             rawCrateText === crateText
         );
     });
@@ -6669,9 +6886,10 @@ function getListedEntryMergeKey(entry) {
         !!entry.expWrap,
         !!entry.disconnect,
         !!entry.handyman,
-        entry.note || "",
-        entry.damage || "",
-        !!entry.crated,
+       entry.note || "",
+entry.damage || "",
+entry.bedType || "",
+!!entry.crated,
         crateText
     ].join("||");
 }
@@ -6737,8 +6955,10 @@ function buildMaterialsSummary(items) {
 
         // derived mattress bag requirements from beds
         else if (itemName === "BED (SINGLE)") summary.singleMattressBags += qty;
-        else if (itemName === "BED (DOUBLE)") summary.doubleMattressBags += qty;
-        else if (itemName === "BED (KING)") summary.kingMattressBags += qty;
+else if (itemName === "BED (DOUBLE)") summary.doubleMattressBags += qty;
+else if (itemName === "BED (QUEENSIZE)") summary.doubleMattressBags += qty;
+else if (itemName === "BED (KINGSIZE)") summary.kingMattressBags += qty;
+else if (itemName === "BED (SUPERKING)") summary.kingMattressBags += qty;
 
         // derived sofa cover requirements from seating
         else if (itemName === "ARMCHAIR") summary.armchairCovers += qty;
@@ -6798,14 +7018,15 @@ function buildResponsibilitiesSummary(summary) {
 }
 function buildCrewInstructionsSummary(items) {
     const summary = {
-        dismantle: [],
-        exportWrap: [],
-        crate: [],
-        disconnect: [],
-        handyman: [],
-        damage: [],
-        notes: []
-    };
+    dismantle: [],
+    exportWrap: [],
+    crate: [],
+    disconnect: [],
+    handyman: [],
+    damage: [],
+    notes: [],
+    beds: []
+};
 
     if (!Array.isArray(items)) return summary;
 
@@ -6815,7 +7036,13 @@ function buildCrewInstructionsSummary(items) {
         const qty = Number(entry.qty || 0);
         const itemName = String(entry.itemName || "-").toUpperCase();
 
-        const baseLine = `${qty} x ${itemName}`;
+        const bedSuffix = entry.bedType ? ` — ${String(entry.bedType).toUpperCase()}` : "";
+const baseLine = `${qty} x ${itemName}${bedSuffix}`;
+
+if (entry.bedType) {
+    summary.beds.push(baseLine);
+}
+
 
         if (entry.dismantle) {
             summary.dismantle.push(baseLine);
@@ -7000,6 +7227,16 @@ function renderListedSummary(summary, materials, crewInstructions) {
             <div class="listed-stat-label">Crew Instructions / Responsibilities</div>
 
             <div class="space-y-3 text-[10px] font-black text-slate-900 uppercase leading-5">
+                <div>
+    <div class="text-slate-400 pb-1">Beds</div>
+    ${
+        crew.beds.length
+            ? crew.beds.map(function(item) {
+                return `<div>${escapeHtml(item)}</div>`;
+            }).join("")
+            : `<div class="text-slate-400 italic">None</div>`
+    }
+</div>
                 <div>
                     <div class="text-slate-400 pb-1">Dismantle</div>
                     ${
@@ -7225,10 +7462,11 @@ renderListedSummary(listedSummary, materialsSummary, filteredItems);
 
                 const tags = [];
 
-                if (entry.dismantle) tags.push("DISMANTLE");
-                if (entry.expWrap) tags.push("EXP WRAP");
-                if (entry.disconnect) tags.push("DISCONNECT");
-                if (entry.handyman) tags.push("HANDYMAN");
+if (entry.bedType) tags.push("BED: " + String(entry.bedType).toUpperCase());
+if (entry.dismantle) tags.push("DISMANTLE");
+if (entry.expWrap) tags.push("EXP WRAP");
+if (entry.disconnect) tags.push("DISCONNECT");
+if (entry.handyman) tags.push("HANDYMAN");
                 if (entry.crated) {
                     if (entry.crateDims) {
                         tags.push(
@@ -7365,10 +7603,11 @@ function refreshCurrentInventorySelectionDisplay() {
     currentItemVolume = rawEntry.excluded ? 0 : Number(rawEntry.totalVolume || 0);
 
     const tags = [];
-    if (rawEntry.dismantle) tags.push("[DISMANTLE]");
-    if (rawEntry.expWrap) tags.push("[EXP WRAP]");
-    if (rawEntry.disconnect) tags.push("[DISCONNECT]");
-    if (rawEntry.handyman) tags.push("[HANDYMAN]");
+if (rawEntry.bedType) tags.push("[BED: " + String(rawEntry.bedType).toUpperCase() + "]");
+if (rawEntry.dismantle) tags.push("[DISMANTLE]");
+if (rawEntry.expWrap) tags.push("[EXP WRAP]");
+if (rawEntry.disconnect) tags.push("[DISCONNECT]");
+if (rawEntry.handyman) tags.push("[HANDYMAN]");
     if (rawEntry.crated && rawEntry.crateDims) {
         tags.push(
             "[CRATE: " +
@@ -7732,6 +7971,14 @@ function getPrintableCrewInstructionsHtml(items) {
     return `
         <div class="pdf-materials-grid">
             <div>
+               <div class="pdf-mini-head">Beds</div>
+${
+    crew.beds.length
+        ? crew.beds.map(function(item) {
+            return `<div>${escapeHtml(item)}</div>`;
+        }).join("")
+        : `<div>None</div>`
+}
                 <div class="pdf-mini-head">Dismantle</div>
                 ${
                     crew.dismantle.length
@@ -10149,6 +10396,27 @@ window.onload = function () {
     renderScheduleCalculator();
 };
 </script>
+<!-- BED MODAL -->
+<div id="bed-overlay" class="bed-overlay" onclick="closeBedModal()">
+    <div class="bed-panel" onclick="event.stopPropagation()">
+        <div class="bed-title">Bed Type</div>
+        <div class="bed-subtitle">Select the bed construction type for labour and notes</div>
+
+        <div class="bed-grid">
+            <button type="button" id="bed-option-frame" class="bed-option-btn" onclick="selectBedOption('Frame')">Frame</button>
+            <button type="button" id="bed-option-ottoman" class="bed-option-btn" onclick="selectBedOption('Ottoman')">Ottoman</button>
+            <button type="button" id="bed-option-divan" class="bed-option-btn" onclick="selectBedOption('Divan')">Divan</button>
+            <button type="button" id="bed-option-electric" class="bed-option-btn" onclick="selectBedOption('Electric Motor / TV')">Electric Motor / TV</button>
+        </div>
+
+        <div id="bed-error-text" class="modal-error-text"></div>
+
+        <div class="bed-actions">
+            <button type="button" class="bed-cancel-btn" onclick="closeBedModal()">Cancel</button>
+            <button type="button" class="bed-save-btn" onclick="saveBedModal()">Save Bed Type</button>
+        </div>
+    </div>
+</div>
 <!-- DAMAGE MODAL -->
 <div id="damage-overlay" class="damage-overlay" onclick="closeDamageModal()">
     <div class="damage-panel" onclick="event.stopPropagation()">

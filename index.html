@@ -3709,6 +3709,45 @@ function toggleItemAction(actionName) {
     const rawEntry = getLastRawInventoryEntry();
     if (!rawEntry) return;
 
+    const isElectricBed = isBedRawEntry(rawEntry) && isElectricBedType(rawEntry.bedType);
+
+    if (isElectricBed && actionName === "dismantle") {
+        rawEntry.dismantle = false;
+        rawEntry.handyman = true;
+
+        saveToDevice();
+        syncLiveInventoryFromRawForActiveSequence();
+        recalculateTotalVolume();
+        refreshCurrentInventorySelectionDisplay();
+        renderActionButtonStates();
+
+        updateInventoryDisplay("ELECTRIC MOTOR / TV BED [HANDYMAN REQUIRED]");
+        triggerInventoryPulse("current", "blue");
+        triggerInventoryPulse("total", "blue");
+        triggerHaptic("light");
+        updateUndoButtonState();
+        saveCalculatorFeedForActiveSequence();
+        return;
+    }
+
+    if (isElectricBed && actionName === "handyman") {
+        rawEntry.handyman = true;
+
+        saveToDevice();
+        syncLiveInventoryFromRawForActiveSequence();
+        recalculateTotalVolume();
+        refreshCurrentInventorySelectionDisplay();
+        renderActionButtonStates();
+
+        updateInventoryDisplay("ELECTRIC MOTOR / TV BED [HANDYMAN REQUIRED]");
+        triggerInventoryPulse("current", "blue");
+        triggerInventoryPulse("total", "blue");
+        triggerHaptic("light");
+        updateUndoButtonState();
+        saveCalculatorFeedForActiveSequence();
+        return;
+    }
+
     if (actionName === "dismantle") {
         rawEntry.dismantle = !rawEntry.dismantle;
     } else if (actionName === "expWrap") {
@@ -5369,6 +5408,9 @@ function isBedRawEntry(rawEntry) {
     if (!rawEntry) return false;
     return isBedInventoryItem(rawEntry.itemName);
 }
+function isElectricBedType(bedType) {
+    return String(bedType || "").trim() === "Electric Motor / TV";
+}
 function addInventoryItem(itemName) {
     let item = furnitureDB.find(function(i) {
         return i.item === itemName;
@@ -6165,6 +6207,11 @@ function saveBedModal() {
     }
 
     rawEntry.bedType = selectedBedOption;
+
+    if (isElectricBedType(selectedBedOption)) {
+        rawEntry.handyman = true;
+        rawEntry.dismantle = false;
+    }
 
     saveToDevice();
     syncLiveInventoryFromRawForActiveSequence();

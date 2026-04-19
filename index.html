@@ -2586,13 +2586,33 @@ Enter as: Surname, First Name
                     <div class="section-title">Special Labour Inputs</div>
                     <div class="grid-2">
                         <div>
-                            <label class="mini-label">Beds</label>
-                            <input id="svc_frame" type="number" min="0" class="field" value="0" readonly />
-                        </div>
-                        <div>
-                            <label class="mini-label">Bunk Beds</label>
-                           <input id="svc_bunk" type="number" min="0" class="field" value="0" readonly />
-                        </div>
+    <label class="mini-label">Frame Beds</label>
+    <input id="svc_frame" type="number" min="0" class="field" value="0" readonly />
+</div>
+<div>
+    <label class="mini-label">Ottoman Beds</label>
+    <input id="svc_ottoman" type="number" min="0" class="field" value="0" readonly />
+</div>
+<div>
+    <label class="mini-label">Divan Beds</label>
+    <input id="svc_divan" type="number" min="0" class="field" value="0" readonly />
+</div>
+<div>
+    <label class="mini-label">Electric / TV Beds</label>
+    <input id="svc_electric" type="number" min="0" class="field" value="0" readonly />
+</div>
+<div>
+    <label class="mini-label">Bunk Beds</label>
+    <input id="svc_bunk" type="number" min="0" class="field" value="0" readonly />
+</div>
+<div>
+    <label class="mini-label">Cots / Childs Beds</label>
+    <input id="svc_cot" type="number" min="0" class="field" value="0" readonly />
+</div>
+<div>
+    <label class="mini-label">Dining Tables</label>
+    <input id="svc_dining_table" type="number" min="0" class="field" value="0" readonly />
+</div>
                         <div>
                             <label class="mini-label">Custom Item Minutes (each side)</label>
                             <input id="svc_custom_minutes" type="number" min="0" class="field" value="0" oninput="handleScheduleInputChange()" />
@@ -3027,16 +3047,21 @@ function createEmptySequenceSchedule() {
         exportWrapVol: 0,
         manualDays: [],
         special: {
-    beds: 0,
-    bunkBeds: 0,
-    uprightPianos: 0,
-    grandPianos: 0,
-    grandfatherClocks: 0,
-    appliances: 0,
-    cratingItems: 0,
-    customItemMinutes: 0,
-    customItemNote: ""
-}
+            frameBeds: 0,
+            ottomanBeds: 0,
+            divanBeds: 0,
+            electricBeds: 0,
+            bunkBeds: 0,
+            cots: 0,
+            diningTables: 0,
+            uprightPianos: 0,
+            grandPianos: 0,
+            grandfatherClocks: 0,
+            appliances: 0,
+            cratingItems: 0,
+            customItemMinutes: 0,
+            customItemNote: ""
+        }
     };
 }
 function createEmptySequenceQuote() {
@@ -3257,15 +3282,20 @@ function saveInventoryContext() {
                 seq.schedule.special = createEmptySequenceSchedule().special;
             }
 
-           if (seq.schedule.special.beds === undefined) seq.schedule.special.beds = defaults.special.beds;
-            if (seq.schedule.special.bunkBeds === undefined) seq.schedule.special.bunkBeds = defaults.special.bunkBeds;
-            if (seq.schedule.special.uprightPianos === undefined) seq.schedule.special.uprightPianos = defaults.special.uprightPianos;
-            if (seq.schedule.special.grandPianos === undefined) seq.schedule.special.grandPianos = defaults.special.grandPianos;
-            if (seq.schedule.special.grandfatherClocks === undefined) seq.schedule.special.grandfatherClocks = defaults.special.grandfatherClocks;
-            if (seq.schedule.special.appliances === undefined) seq.schedule.special.appliances = defaults.special.appliances;
-            if (seq.schedule.special.cratingItems === undefined) seq.schedule.special.cratingItems = defaults.special.cratingItems;
-            if (seq.schedule.special.customItemMinutes === undefined) seq.schedule.special.customItemMinutes = defaults.special.customItemMinutes;
-            if (seq.schedule.special.customItemNote === undefined) seq.schedule.special.customItemNote = defaults.special.customItemNote;
+          if (seq.schedule.special.frameBeds === undefined) seq.schedule.special.frameBeds = defaults.special.frameBeds;
+if (seq.schedule.special.ottomanBeds === undefined) seq.schedule.special.ottomanBeds = defaults.special.ottomanBeds;
+if (seq.schedule.special.divanBeds === undefined) seq.schedule.special.divanBeds = defaults.special.divanBeds;
+if (seq.schedule.special.electricBeds === undefined) seq.schedule.special.electricBeds = defaults.special.electricBeds;
+if (seq.schedule.special.bunkBeds === undefined) seq.schedule.special.bunkBeds = defaults.special.bunkBeds;
+if (seq.schedule.special.cots === undefined) seq.schedule.special.cots = defaults.special.cots;
+if (seq.schedule.special.diningTables === undefined) seq.schedule.special.diningTables = defaults.special.diningTables;
+if (seq.schedule.special.uprightPianos === undefined) seq.schedule.special.uprightPianos = defaults.special.uprightPianos;
+if (seq.schedule.special.grandPianos === undefined) seq.schedule.special.grandPianos = defaults.special.grandPianos;
+if (seq.schedule.special.grandfatherClocks === undefined) seq.schedule.special.grandfatherClocks = defaults.special.grandfatherClocks;
+if (seq.schedule.special.appliances === undefined) seq.schedule.special.appliances = defaults.special.appliances;
+if (seq.schedule.special.cratingItems === undefined) seq.schedule.special.cratingItems = defaults.special.cratingItems;
+if (seq.schedule.special.customItemMinutes === undefined) seq.schedule.special.customItemMinutes = defaults.special.customItemMinutes;
+if (seq.schedule.special.customItemNote === undefined) seq.schedule.special.customItemNote = defaults.special.customItemNote;
         });
     });
 }
@@ -3928,13 +3958,18 @@ function buildCalculatorFeedForSequence(sequenceId) {
 
     const rawItems = getRawInventoryItemsForSequence(sequenceId);
 
-let furnitureVol = 0;
-let disconnectApplianceCount = 0;
-let dismantleCount = 0;
-let cratingItems = 0;
-let exportWrapVol = 0;
-let bedCount = 0;
-let bunkBedCount = 0;
+    let furnitureVol = 0;
+    let disconnectApplianceCount = 0;
+    let cratingItems = 0;
+    let exportWrapVol = 0;
+
+    let frameBedCount = 0;
+    let ottomanBedCount = 0;
+    let divanBedCount = 0;
+    let electricBedCount = 0;
+    let bunkBedCount = 0;
+    let cotCount = 0;
+    let diningTableCount = 0;
 
     const qty = {
         ap: 0,
@@ -3945,100 +3980,114 @@ let bunkBedCount = 0;
     };
 
     rawItems.forEach(function(entry) {
-    if (entry.excluded) return;
+        if (entry.excluded) return;
 
-    const itemName = String(entry.itemName || "").toUpperCase().trim();
-    const entryQty = Number(entry.qty || 0);
-    const unitVolume = Number(entry.unitVolume || 0);
-    const totalVolume = Number(entry.totalVolume || 0);
+        const itemName = String(entry.itemName || "").toUpperCase().trim();
+        const bedType = String(entry.bedType || "").trim();
+        const entryQty = Number(entry.qty || 0);
+        const unitVolume = Number(entry.unitVolume || 0);
+        const totalVolume = Number(entry.totalVolume || 0);
 
-    if (itemName === "AP BOX") {
-        qty.ap += entryQty;
-        return;
-    }
-
-    if (itemName === "CG BOX") {
-        qty.cg += entryQty;
-        return;
-    }
-
-    if (itemName === "BOOK BOX") {
-        qty.books += entryQty;
-        return;
-    }
-
-    if (itemName === "LINEN BOX") {
-        qty.linen += entryQty;
-        return;
-    }
-
-    if (itemName === "WR BOX") {
-        qty.wr += entryQty;
-        return;
-    }
-
-    if (
-        entry.disconnect &&
-        (
-            itemName === "WASHING MACHINE" ||
-            itemName === "DISHWASHER"
-        )
-    ) {
-        disconnectApplianceCount += entryQty;
-    }
-
-    if (entry.dismantle) {
-        dismantleCount += entryQty;
-    }
-
-    if (entry.crated) {
-        cratingItems += entryQty;
-    }
-
-    if (entry.expWrap) {
-        exportWrapVol += totalVolume || (unitVolume * entryQty);
-    }
-
-    if (entry.dismantle) {
-        const isBunkBed = itemName.includes("BUNK");
-
-        const isStandardBed =
-            (
-                itemName.includes("BED") &&
-                !itemName.includes("SOFA BED") &&
-                !itemName.includes("DAY BED")
-            ) ||
-            itemName.includes("COT");
-
-        if (isBunkBed) {
-            bunkBedCount += entryQty;
-        } else if (isStandardBed) {
-            bedCount += entryQty;
+        if (itemName === "AP BOX") {
+            qty.ap += entryQty;
+            return;
         }
-    }
 
-    furnitureVol += totalVolume || (unitVolume * entryQty);
-});
+        if (itemName === "CG BOX") {
+            qty.cg += entryQty;
+            return;
+        }
+
+        if (itemName === "BOOK BOX") {
+            qty.books += entryQty;
+            return;
+        }
+
+        if (itemName === "LINEN BOX") {
+            qty.linen += entryQty;
+            return;
+        }
+
+        if (itemName === "WR BOX") {
+            qty.wr += entryQty;
+            return;
+        }
+
+        if (
+            entry.disconnect &&
+            (
+                itemName === "WASHING MACHINE" ||
+                itemName === "DISHWASHER"
+            )
+        ) {
+            disconnectApplianceCount += entryQty;
+        }
+
+        if (entry.crated) {
+            cratingItems += entryQty;
+        }
+
+        if (entry.expWrap) {
+            exportWrapVol += totalVolume || (unitVolume * entryQty);
+        }
+
+        if (entry.dismantle) {
+            if (
+                itemName === "BED (SINGLE)" ||
+                itemName === "BED (DOUBLE)" ||
+                itemName === "BED (QUEENSIZE)" ||
+                itemName === "BED (KINGSIZE)" ||
+                itemName === "BED (SUPERKING)"
+            ) {
+                if (bedType === "Frame") frameBedCount += entryQty;
+                else if (bedType === "Ottoman") ottomanBedCount += entryQty;
+                else if (bedType === "Divan") divanBedCount += entryQty;
+                else if (bedType === "Electric Motor / TV") electricBedCount += entryQty;
+            }
+
+            if (itemName === "BUNK BED") {
+                bunkBedCount += entryQty;
+            }
+
+            if (itemName === "COT / CHILDS BED") {
+                cotCount += entryQty;
+            }
+
+            if (itemName === "DINING TABLE") {
+                diningTableCount += entryQty;
+            }
+        }
+
+        furnitureVol += totalVolume || (unitVolume * entryQty);
+    });
 
     const seqIndex = currentJob.sequences.findIndex(function(seq) {
         return String(seq.id) === String(sequenceId);
     });
 
-return {
-    jobId: currentJob.id,
-    sequenceId: sequence.id,
-    sequenceLabel: "Sequence " + (seqIndex + 1),
-    packOption: getSequencePackOptionForCalculator(sequence),
-    furnitureVol: Math.round(furnitureVol * 100) / 100,
-    qty: qty,
-    disconnectApplianceCount: disconnectApplianceCount,
-    dismantleCount: dismantleCount,
-    cratingItems: cratingItems,
-    exportWrapVol: Math.round(exportWrapVol * 100) / 100,
-    bedCount: bedCount,
-    bunkBedCount: bunkBedCount,
-    createdAt: new Date().toISOString()
-};
+    return {
+        jobId: currentJob.id,
+        sequenceId: sequence.id,
+        sequenceLabel: "Sequence " + (seqIndex + 1),
+        packOption: getSequencePackOptionForCalculator(sequence),
+        furnitureVol: Math.round(furnitureVol * 100) / 100,
+        qty: qty,
+        disconnectApplianceCount: disconnectApplianceCount,
+        cratingItems: cratingItems,
+        exportWrapVol: Math.round(exportWrapVol * 100) / 100,
+        special: {
+            frameBeds: frameBedCount,
+            ottomanBeds: ottomanBedCount,
+            divanBeds: divanBedCount,
+            electricBeds: electricBedCount,
+            bunkBeds: bunkBedCount,
+            cots: cotCount,
+            diningTables: diningTableCount,
+            cratingItems: cratingItems,
+            exportWrapVol: Math.round(exportWrapVol * 100) / 100
+        },
+        createdAt: new Date().toISOString()
+    };
 }
 
 function saveCalculatorFeedForActiveSequence() {
@@ -9669,8 +9718,15 @@ function loadScheduleInputsFromActiveSequence() {
     const loftVolEl = document.getElementById("loftVol");
     const loadRateEl = document.getElementById("loadRate");
     const unloadRateEl = document.getElementById("unloadRate");
+
     const svcFrameEl = document.getElementById("svc_frame");
+    const svcOttomanEl = document.getElementById("svc_ottoman");
+    const svcDivanEl = document.getElementById("svc_divan");
+    const svcElectricEl = document.getElementById("svc_electric");
     const svcBunkEl = document.getElementById("svc_bunk");
+    const svcCotEl = document.getElementById("svc_cot");
+    const svcDiningTableEl = document.getElementById("svc_dining_table");
+
     const svcCustomMinutesEl = document.getElementById("svc_custom_minutes");
     const svcCustomNoteEl = document.getElementById("svc_custom_note");
     const svcUprightEl = document.getElementById("svc_upright");
@@ -9686,8 +9742,14 @@ function loadScheduleInputsFromActiveSequence() {
     if (loadRateEl) loadRateEl.value = schedule.loadRate;
     if (unloadRateEl) unloadRateEl.value = schedule.unloadRate;
 
-    if (svcFrameEl) svcFrameEl.value = photonFeed.special?.beds || 0;
+    if (svcFrameEl) svcFrameEl.value = photonFeed.special?.frameBeds || 0;
+    if (svcOttomanEl) svcOttomanEl.value = photonFeed.special?.ottomanBeds || 0;
+    if (svcDivanEl) svcDivanEl.value = photonFeed.special?.divanBeds || 0;
+    if (svcElectricEl) svcElectricEl.value = photonFeed.special?.electricBeds || 0;
     if (svcBunkEl) svcBunkEl.value = photonFeed.special?.bunkBeds || 0;
+    if (svcCotEl) svcCotEl.value = photonFeed.special?.cots || 0;
+    if (svcDiningTableEl) svcDiningTableEl.value = photonFeed.special?.diningTables || 0;
+
     if (svcCustomMinutesEl) svcCustomMinutesEl.value = schedule.special.customItemMinutes;
     if (svcCustomNoteEl) svcCustomNoteEl.value = schedule.special.customItemNote;
     if (svcUprightEl) svcUprightEl.value = schedule.special.uprightPianos;
@@ -9870,11 +9932,11 @@ function getIncludedKeys(packOption){
     return ["ap", "cg", "books", "linen", "wr"];
 }
 
-function getState(){
+function getState() {
     const photonFeed = getPhotonFeed();
 
-   const disconnectApplianceCount = Number(photonFeed.disconnectApplianceCount || 0);
-const totalApplianceCount = disconnectApplianceCount;
+    const disconnectApplianceCount = Number(photonFeed.disconnectApplianceCount || 0);
+    const totalApplianceCount = disconnectApplianceCount;
 
     return {
         packOption: photonFeed.packOption || "none",
@@ -9895,22 +9957,26 @@ const totalApplianceCount = disconnectApplianceCount;
 
         boxVolumes: BOX_VOLUMES,
 
-     special: {
-    beds: num("svc_frame"),
-    bunk: num("svc_bunk"),
-    customMinutes: num("svc_custom_minutes"),
-    customNote: document.getElementById("svc_custom_note")
-        ? document.getElementById("svc_custom_note").value.trim()
-        : "",
-    upright: num("svc_upright"),
-    grand: num("svc_grand"),
-    clock: num("svc_clock"),
-   appliance: totalApplianceCount,
-manualApplianceCount: 0,
-disconnectApplianceCount: disconnectApplianceCount,
-    dismantle: Number(photonFeed.dismantleCount || 0),
-    crate: num("svc_crate")
-},
+        special: {
+            frameBeds: num("svc_frame"),
+            ottomanBeds: num("svc_ottoman"),
+            divanBeds: num("svc_divan"),
+            electricBeds: num("svc_electric"),
+            bunkBeds: num("svc_bunk"),
+            cots: num("svc_cot"),
+            diningTables: num("svc_dining_table"),
+            customMinutes: num("svc_custom_minutes"),
+            customNote: document.getElementById("svc_custom_note")
+                ? document.getElementById("svc_custom_note").value.trim()
+                : "",
+            upright: num("svc_upright"),
+            grand: num("svc_grand"),
+            clock: num("svc_clock"),
+            appliance: totalApplianceCount,
+            manualApplianceCount: 0,
+            disconnectApplianceCount: disconnectApplianceCount,
+            crate: num("svc_crate")
+        },
 
         exportWrapVol: num("exportWrapVol")
     };
@@ -9934,20 +10000,19 @@ function calcBoxVolume(state){
     }, 0);
 }
 
-function calcSpecialLabour(state){
-    const includedBeds = 2;
+function calcSpecialLabour(state) {
     const includedExportWrapVol = 50;
 
-    const extraBeds = Math.max(0, state.special.beds - includedBeds);
     const extraExportWrapVol = Math.max(0, state.exportWrapVol - includedExportWrapVol);
     const transitTotalMinutes = (state.transitHours * 60) + state.transitMinutes;
     const extraTransitMinutes = Math.max(0, transitTotalMinutes - 30);
 
-   const loadMinutes =
-    (extraBeds * 15) +
-    (state.special.dismantle * 15) +
-    (state.special.bunk * 30) +
-    (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
+    const loadMinutes =
+        (state.special.frameBeds * 15) +
+        (state.special.ottomanBeds * 30) +
+        (state.special.bunkBeds * 30) +
+        (state.special.diningTables * 15) +
+        (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
         (state.special.upright * 25) +
         (state.special.grand * 60) +
         (state.special.clock * 30) +
@@ -9957,8 +10022,10 @@ function calcSpecialLabour(state){
         ((extraExportWrapVol / 100) * 25);
 
     const unloadMinutes =
-        (extraBeds * 15) +
-        (state.special.bunk * 30) +
+        (state.special.frameBeds * 15) +
+        (state.special.ottomanBeds * 30) +
+        (state.special.bunkBeds * 30) +
+        (state.special.diningTables * 15) +
         (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
         (state.special.upright * 25) +
         (state.special.grand * 60) +
@@ -9975,9 +10042,13 @@ function calcSpecialLabour(state){
         unloadSideHours: round2(unloadMinutes / 60),
         extraTransitHours: round2(extraTransitMinutes / 60),
         breakdown: {
-           beds: round2((extraBeds * 30) / 60),
-dismantle: round2((state.special.dismantle * 15) / 60),
-bunk: round2((state.special.bunk * 60) / 60),
+            frameBeds: round2((state.special.frameBeds * 30) / 60),
+            ottomanBeds: round2((state.special.ottomanBeds * 60) / 60),
+            divanBeds: 0,
+            electricBeds: 0,
+            bunkBeds: round2((state.special.bunkBeds * 60) / 60),
+            cots: 0,
+            diningTables: round2((state.special.diningTables * 30) / 60),
             custom: round2(((state.special.customMinutes > 0 ? state.special.customMinutes * 2 : 0)) / 60),
             upright: round2((state.special.upright * 50) / 60),
             grand: round2((state.special.grand * 120) / 60),
@@ -9987,7 +10058,6 @@ bunk: round2((state.special.bunk * 60) / 60),
             loft: round2(((state.loftVol / 100) * 20) / 60),
             exportWrap: round2(((extraExportWrapVol / 100) * 25) / 60),
             transit: round2(extraTransitMinutes / 60),
-            includedBeds,
             includedExportWrapVol
         }
     };
@@ -10381,12 +10451,22 @@ const wrDisplay = document.getElementById("qty_wr_display");
 if (wrDisplay) wrDisplay.textContent = state.qty.wr;
 
 const svcFrameEl = document.getElementById("svc_frame");
+const svcOttomanEl = document.getElementById("svc_ottoman");
+const svcDivanEl = document.getElementById("svc_divan");
+const svcElectricEl = document.getElementById("svc_electric");
 const svcBunkEl = document.getElementById("svc_bunk");
+const svcCotEl = document.getElementById("svc_cot");
+const svcDiningTableEl = document.getElementById("svc_dining_table");
 const svcCrateEl = document.getElementById("svc_crate");
 const exportWrapVolEl = document.getElementById("exportWrapVol");
 
-if (svcFrameEl) svcFrameEl.value = state.special.beds;
-if (svcBunkEl) svcBunkEl.value = state.special.bunk;
+if (svcFrameEl) svcFrameEl.value = state.special.frameBeds;
+if (svcOttomanEl) svcOttomanEl.value = state.special.ottomanBeds;
+if (svcDivanEl) svcDivanEl.value = state.special.divanBeds;
+if (svcElectricEl) svcElectricEl.value = state.special.electricBeds;
+if (svcBunkEl) svcBunkEl.value = state.special.bunkBeds;
+if (svcCotEl) svcCotEl.value = state.special.cots;
+if (svcDiningTableEl) svcDiningTableEl.value = state.special.diningTables;
 if (svcCrateEl) svcCrateEl.value = state.special.crate;
 if (exportWrapVolEl) exportWrapVolEl.value = state.exportWrapVol;
 
@@ -10423,9 +10503,13 @@ const special = calcSpecialLabour(state);
        `Two standard beds and 50 cuft of export wrap are treated as already included before extra special time is added.`;
 
     document.getElementById("specialText").textContent =
- `Beds: ${special.breakdown.beds.toFixed(2)} hrs extra after first ${special.breakdown.includedBeds} included · ` +
-`Dismantles: ${special.breakdown.dismantle.toFixed(2)} hrs · ` +
-    `Bunk beds: ${special.breakdown.bunk.toFixed(2)} hrs · ` +
+    `Frame beds: ${special.breakdown.frameBeds.toFixed(2)} hrs · ` +
+    `Ottoman beds: ${special.breakdown.ottomanBeds.toFixed(2)} hrs · ` +
+    `Divan beds: ${special.breakdown.divanBeds.toFixed(2)} hrs · ` +
+    `Electric / TV beds: ${special.breakdown.electricBeds.toFixed(2)} hrs (handyman only) · ` +
+    `Bunk beds: ${special.breakdown.bunkBeds.toFixed(2)} hrs · ` +
+    `Cots / Childs beds: ${special.breakdown.cots.toFixed(2)} hrs (tracked only for now) · ` +
+    `Dining tables: ${special.breakdown.diningTables.toFixed(2)} hrs · ` +
     `${state.special.customNote ? state.special.customNote : "Custom item"}: ${special.breakdown.custom.toFixed(2)} hrs · ` +
     `Upright pianos: ${special.breakdown.upright.toFixed(2)} hrs · ` +
     `Baby / grand pianos: ${special.breakdown.grand.toFixed(2)} hrs · ` +

@@ -9823,12 +9823,17 @@ function getPhotonFeed() {
     },
     disconnectApplianceCount: Number(directFeed.disconnectApplianceCount || 0),
     dismantleCount: Number(directFeed.dismantleCount || 0),
-    special: {
-        beds: Number(directFeed.bedCount || 0),
-        bunkBeds: Number(directFeed.bunkBedCount || 0),
-        cratingItems: Number(directFeed.cratingItems || 0),
-        exportWrapVol: Number(directFeed.exportWrapVol || 0)
-    }
+ special: {
+    frameBeds: Number(directFeed.special?.frameBeds || 0),
+    ottomanBeds: Number(directFeed.special?.ottomanBeds || 0),
+    divanBeds: Number(directFeed.special?.divanBeds || 0),
+    electricBeds: Number(directFeed.special?.electricBeds || 0),
+    bunkBeds: Number(directFeed.special?.bunkBeds || 0),
+    cots: Number(directFeed.special?.cots || 0),
+    diningTables: Number(directFeed.special?.diningTables || 0),
+    cratingItems: Number(directFeed.special?.cratingItems || 0),
+    exportWrapVol: Number(directFeed.special?.exportWrapVol || 0)
+}
 };
         }
     }
@@ -9850,8 +9855,13 @@ function getPhotonFeed() {
         disconnectApplianceCount: 0,
 dismantleCount: 0,
 special: {
-    beds: 0,
+    frameBeds: 0,
+    ottomanBeds: 0,
+    divanBeds: 0,
+    electricBeds: 0,
     bunkBeds: 0,
+    cots: 0,
+    diningTables: 0,
     cratingItems: 0,
     exportWrapVol: 0
 }
@@ -9875,11 +9885,16 @@ special: {
     disconnectApplianceCount: Number(parsed.disconnectApplianceCount || 0),
     dismantleCount: Number(parsed.dismantleCount || 0),
     special: {
-        beds: Number(parsed.bedCount || 0),
-        bunkBeds: Number(parsed.bunkBedCount || 0),
-        cratingItems: Number(parsed.cratingItems || 0),
-        exportWrapVol: Number(parsed.exportWrapVol || 0)
-    }
+    frameBeds: Number(parsed.special?.frameBeds || 0),
+    ottomanBeds: Number(parsed.special?.ottomanBeds || 0),
+    divanBeds: Number(parsed.special?.divanBeds || 0),
+    electricBeds: Number(parsed.special?.electricBeds || 0),
+    bunkBeds: Number(parsed.special?.bunkBeds || 0),
+    cots: Number(parsed.special?.cots || 0),
+    diningTables: Number(parsed.special?.diningTables || 0),
+    cratingItems: Number(parsed.special?.cratingItems || 0),
+    exportWrapVol: Number(parsed.special?.exportWrapVol || 0)
+}
 };
     } catch (err) {
         return {
@@ -9896,8 +9911,13 @@ special: {
             disconnectApplianceCount: 0,
 dismantleCount: 0,
 special: {
-    beds: 0,
+    frameBeds: 0,
+    ottomanBeds: 0,
+    divanBeds: 0,
+    electricBeds: 0,
     bunkBeds: 0,
+    cots: 0,
+    diningTables: 0,
     cratingItems: 0,
     exportWrapVol: 0
 }

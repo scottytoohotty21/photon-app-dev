@@ -4049,9 +4049,13 @@ function buildCalculatorFeedForSequence(sequenceId) {
                 bunkBedCount += entryQty;
             }
 
-            if (itemName === "COT / CHILDS BED") {
-                cotCount += entryQty;
-            }
+           if (
+    itemName === "COT / CHILDS BED" ||
+    itemName === "COT / CHILD'S BED" ||
+    itemName === "COT"
+) {
+    cotCount += entryQty;
+}
 
             if (itemName === "DINING TABLE") {
                 diningTableCount += entryQty;
@@ -10031,6 +10035,7 @@ function calcSpecialLabour(state) {
         (state.special.frameBeds * 15) +
         (state.special.ottomanBeds * 30) +
         (state.special.bunkBeds * 30) +
+        (state.special.cots * 15) +
         (state.special.diningTables * 15) +
         (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
         (state.special.upright * 25) +
@@ -10045,6 +10050,7 @@ function calcSpecialLabour(state) {
         (state.special.frameBeds * 15) +
         (state.special.ottomanBeds * 30) +
         (state.special.bunkBeds * 30) +
+        (state.special.cots * 15) +
         (state.special.diningTables * 15) +
         (state.special.customMinutes > 0 ? state.special.customMinutes : 0) +
         (state.special.upright * 25) +
@@ -10067,7 +10073,7 @@ function calcSpecialLabour(state) {
             divanBeds: 0,
             electricBeds: 0,
             bunkBeds: round2((state.special.bunkBeds * 60) / 60),
-            cots: 0,
+            cots: round2((state.special.cots * 30) / 60),
             diningTables: round2((state.special.diningTables * 30) / 60),
             custom: round2(((state.special.customMinutes > 0 ? state.special.customMinutes * 2 : 0)) / 60),
             upright: round2((state.special.upright * 50) / 60),
@@ -10082,7 +10088,6 @@ function calcSpecialLabour(state) {
         }
     };
 }
-
 function calcLoading(totalVolume, loadRate, loadSideSpecialHours){
     const volumeHours = totalVolume / loadRate;
     const totalHours = volumeHours + loadSideSpecialHours;

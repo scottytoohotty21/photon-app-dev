@@ -23428,6 +23428,104 @@ function buildPlannerCoverageMeta(kind, rowCapacityHours, remainingBeforeHours, 
         remainingAfterCuft: remainingAfterCuft
     };
 }
+function buildPlannerNoteTimelineLines(day, taskMode, taskHours, state) {
+    ensureScheduleRowShape(day);
+
+    const bounds = getRowWindowBounds(day.dayPart, day.overtimeHours || 0);
+    const windowStart = bounds.start;
+    const completionCutoff = 13 * 60;
+    const isCompletionDay = String(day.completionWindow || "None") === "Completion Day";
+
+    const legs = Array.isArray(day.legs) ? day.legs : [];
+    const taskMinutes = Math.max(0, Math.round(Number(taskHours || 0) * 60));
+    const cleanMode = String(taskMode || "").trim();
+
+    const lines = [];
+    let cursor = windowStart;
+
+    function getWorkLabel() {
+        if (cleanMode === "pack") return "Pack";
+        if (cleanMode === "load") return "Load";
+        if (cleanMode === "unload") return "Unload";
+        if (cleanMode === "pack_load") return "Pack / Load";
+        if (cleanMode === "load_unload") return "Load / Unload";
+        return "Work";
+    }
+
+    function addWork() {
+        if (taskMinutes <= 0) return;
+
+        const isUnloadWork = cleanMode === "unload" || cleanMode === "load_unload";
+
+        if (isCompletionDay && isUnloadWork && cursor < completionCutoff) {
+            lines.push(
+                minutesToClock(cursor) + "–" +
+                minutesToClock(completionCutoff) +
+                " Wait: completion window starts at 13:00"
+            );
+
+            cursor = completionCutoff;
+        }
+
+        const taskStart = cursor;
+        const taskEnd = cursor + taskMinutes;
+
+        lines.push(
+            minutesToClock(taskStart) + "–" +
+            minutesToClock(taskEnd) +
+            " Work: " +
+            getWorkLabel()
+        );
+
+        cursor = taskEnd;
+    }
+
+    function addTravel(leg) {
+        if (!leg) return;
+
+        const legStart = cursor;
+        const legEnd = cursor + Math.max(0, Number(leg.minutes || 0));
+
+        lines.push(
+            minutesToClock(legStart) + "–" +
+            minutesToClock(legEnd) +
+            " Travel: " +
+            getScheduleLocationLabel(leg.from) +
+            " → " +
+            getScheduleLocationLabel(leg.to)
+        );
+
+        cursor = legEnd;
+    }
+
+    const firstLeg = legs[0] || null;
+    const firstLegFrom = firstLeg ? String(getScheduleLocationLabel(firstLeg.from) || "").toLowerCase() : "";
+    const firstLegTo = firstLeg ? String(getScheduleLocationLabel(firstLeg.to) || "").toLowerCase() : "";
+
+    const looksLikeReturnToDepot =
+        firstLeg &&
+        firstLegFrom.includes("delivery") &&
+        firstLegTo.includes("depot");
+
+    if (cleanMode === "unload" || looksLikeReturnToDepot) {
+        addWork();
+
+        legs.forEach(function(leg) {
+            addTravel(leg);
+        });
+    } else {
+        if (legs[0]) addTravel(legs[0]);
+        addWork();
+
+        for (let i = 1; i < legs.length; i++) {
+            addTravel(legs[i]);
+        }
+    }
+
+    lines.push("Finish: " + minutesToClock(cursor));
+
+    return lines;
+}
 function buildLoadDebugLine(day, taskMode, men, taskHours, equivalentLoadHours, state, plannerDayLabel, coverageMeta) {
     const loadingProfile = state && state.loadingProfile ? state.loadingProfile : {};
 
@@ -23566,11 +23664,12 @@ function buildLoadDebugLine(day, taskMode, men, taskHours, equivalentLoadHours, 
     ];
 
     return {
-        title: title,
-        allowed: allowed,
-        basedOn: basedOn,
-        checks: checks
-    };
+    title: title,
+    timeline: buildPlannerNoteTimelineLines(day, taskMode, taskHours, state),
+    allowed: allowed,
+    basedOn: basedOn,
+    checks: checks
+};
 }
 function calcScheduleValidation(packing, loading, unloading, special, state){
     const loadingProfile = getLoadingProfile(state.loadingVariant, state.loadingScenario);
@@ -24003,6 +24102,18 @@ function buildPlannerNotesCardHtml(noteItems) {
                                         return `
                                             <div class="planner-note-block">
                                                 <div class="planner-note-title">${escapeHtml(note.title || "Schedule Note")}</div>
+                                                ${
+    Array.isArray(note.timeline) && note.timeline.length
+        ? `
+            <div class="planner-note-group">
+                <div class="planner-note-group-title">Day Timeline</div>
+                ${note.timeline.map(function(line) {
+                    return `<div class="planner-note-line">• ${escapeHtml(line)}</div>`;
+                }).join("")}
+            </div>
+        `
+        : ""
+}
 
                                                 <div class="planner-note-group">
                                                     <div class="planner-note-group-title">Planner Assumption</div>

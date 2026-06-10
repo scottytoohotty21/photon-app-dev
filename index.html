@@ -22979,92 +22979,91 @@ function buildScheduleRowTimeBreakdown(day, state, totals) {
     const lines = [];
     let cursor = windowStart;
 
+    function addTravelLeg(leg) {
+        if (!leg) return;
+
+        const legStart = cursor;
+        const legEnd = cursor + Math.max(0, Number(leg.minutes || 0));
+
+        lines.push({
+            text:
+                minutesToClock(legStart) + "–" +
+                minutesToClock(legEnd) +
+                " Travel: " +
+                getScheduleLocationLabel(leg.from) +
+                " → " +
+                getScheduleLocationLabel(leg.to),
+            className: ""
+        });
+
+        cursor = legEnd;
+    }
+
+    function addTaskBlock(taskBlock) {
+        if (!taskBlock || taskBlock.minutes <= 0) return;
+
+        const isUnloadBlock = String(taskBlock.label || "").toLowerCase().includes("unload");
+
+        if (isCompletionDay && isUnloadBlock && cursor < completionCutoff) {
+            lines.push({
+                text:
+                    minutesToClock(cursor) + "–" +
+                    minutesToClock(completionCutoff) +
+                    " Wait: completion window starts at 13:00",
+                className: ""
+            });
+
+            cursor = completionCutoff;
+        }
+
+        const taskStart = cursor;
+        const taskEnd = cursor + Math.max(0, Number(taskBlock.minutes || 0));
+
+        lines.push({
+            text:
+                minutesToClock(taskStart) + "–" +
+                minutesToClock(taskEnd) +
+                " Work: " +
+                String(taskBlock.label || "").replace("Task: ", ""),
+            className: ""
+        });
+
+        cursor = taskEnd;
+    }
+
     lines.push({
         text: "Window: " + minutesToClock(windowStart) + "–" + minutesToClock(windowEnd),
         className: ""
     });
 
-    const maxSteps = Math.max(legs.length, taskBlocks.length);
+    const firstLeg = legs[0] || null;
+    const firstLegFrom = firstLeg ? String(getScheduleLocationLabel(firstLeg.from) || "").toLowerCase() : "";
+    const firstLegTo = firstLeg ? String(getScheduleLocationLabel(firstLeg.to) || "").toLowerCase() : "";
+    const firstTaskLabel = taskBlocks[0] ? String(taskBlocks[0].label || "").toLowerCase() : "";
 
-    for (let i = 0; i < maxSteps; i++) {
-        const leg = legs[i];
+    const looksLikeReturnToDepot =
+        firstLeg &&
+        firstLegFrom.includes("delivery") &&
+        firstLegTo.includes("depot");
 
-        if (leg) {
-            const legStart = cursor;
-            const legEnd = cursor + Math.max(0, Number(leg.minutes || 0));
+    const looksLikeDeliveryWork =
+        firstTaskLabel.includes("unload") ||
+        firstTaskLabel.includes("deliver");
 
-            lines.push({
-    text:
-        minutesToClock(legStart) + "–" + minutesToClock(legEnd) +
-        " Travel: " +
-        getScheduleLocationLabel(leg.from) + " → " +
-        getScheduleLocationLabel(leg.to),
-    className: ""
-});
+    if (looksLikeReturnToDepot && looksLikeDeliveryWork) {
+        taskBlocks.forEach(function(taskBlock) {
+            addTaskBlock(taskBlock);
+        });
 
-            cursor = legEnd;
-        }
+        legs.forEach(function(leg) {
+            addTravelLeg(leg);
+        });
+    } else {
+        const maxSteps = Math.max(legs.length, taskBlocks.length);
 
-        const taskBlock = taskBlocks[i];
-        if (taskBlock && taskBlock.minutes > 0) {
-            const isUnloadBlock = String(taskBlock.label || "").toLowerCase().includes("unload");
-
-            if (isCompletionDay && isUnloadBlock && cursor < completionCutoff) {
-                lines.push({
-                    text:
-                        "Wait: " +
-                        minutesToClock(cursor) + "–" + minutesToClock(completionCutoff),
-                    className: ""
-                });
-
-                cursor = completionCutoff;
-            }
-
-            const taskStart = cursor;
-            const taskEnd = cursor + taskBlock.minutes;
-
-            lines.push({
-    text:
-        minutesToClock(taskStart) + "–" + minutesToClock(taskEnd) +
-        " Work: " +
-        String(taskBlock.label || "").replace("Task: ", ""),
-    className: ""
-});
-
-            cursor = taskEnd;
-        }
-    }
-
-    if (taskBlocks.length > legs.length) {
-        for (let i = legs.length; i < taskBlocks.length; i++) {
-            const taskBlock = taskBlocks[i];
-            if (!taskBlock || taskBlock.minutes <= 0) continue;
-
-            const isUnloadBlock = String(taskBlock.label || "").toLowerCase().includes("unload");
-
-            if (isCompletionDay && isUnloadBlock && cursor < completionCutoff) {
-                lines.push({
-                    text:
-                        "Wait: " +
-                        minutesToClock(cursor) + "–" + minutesToClock(completionCutoff),
-                    className: ""
-                });
-
-                cursor = completionCutoff;
-            }
-
-            const taskStart = cursor;
-            const taskEnd = cursor + taskBlock.minutes;
-
-            lines.push({
-    text:
-        minutesToClock(taskStart) + "–" + minutesToClock(taskEnd) +
-        " Work: " +
-        String(taskBlock.label || "").replace("Task: ", ""),
-    className: ""
-});
-
-            cursor = taskEnd;
+        for (let i = 0; i < maxSteps; i++) {
+            addTravelLeg(legs[i]);
+            addTaskBlock(taskBlocks[i]);
         }
     }
 
@@ -23110,6 +23109,52 @@ function buildScheduleRowCompactTimeSummary(day, state, totals) {
     let cursor = windowStart;
     const parts = [];
 
+    function addTravelLeg(leg) {
+        if (!leg) return;
+
+        const legStart = cursor;
+        const legEnd = cursor + Math.max(0, Number(leg.minutes || 0));
+
+        parts.push(
+            minutesToClock(legStart) + "–" +
+            minutesToClock(legEnd) +
+            " Travel: " +
+            getScheduleLocationLabel(leg.from) +
+            " → " +
+            getScheduleLocationLabel(leg.to) + "."
+        );
+
+        cursor = legEnd;
+    }
+
+    function addTaskBlock(taskBlock) {
+        if (!taskBlock || taskBlock.minutes <= 0) return;
+
+        const isUnloadBlock = String(taskBlock.label || "").toLowerCase().includes("unload");
+
+        if (isCompletionDay && isUnloadBlock && cursor < completionCutoff) {
+            parts.push(
+                minutesToClock(cursor) + "–" +
+                minutesToClock(completionCutoff) +
+                " Wait: completion window starts at 13:00."
+            );
+
+            cursor = completionCutoff;
+        }
+
+        const taskStart = cursor;
+        const taskEnd = cursor + Math.max(0, Number(taskBlock.minutes || 0));
+
+        parts.push(
+            minutesToClock(taskStart) + "–" +
+            minutesToClock(taskEnd) +
+            " Work: " +
+            String(taskBlock.label || "").replace("Task: ", "") + "."
+        );
+
+        cursor = taskEnd;
+    }
+
     parts.push(
         "Travel applied: " + getRowLegHours(day).toFixed(2) + " hrs."
     );
@@ -23128,49 +23173,34 @@ function buildScheduleRowCompactTimeSummary(day, state, totals) {
         "Window " + minutesToClock(windowStart) + "–" + minutesToClock(windowEnd) + "."
     );
 
-    const maxSteps = Math.max(legs.length, taskBlocks.length);
+    const firstLeg = legs[0] || null;
+    const firstLegFrom = firstLeg ? String(getScheduleLocationLabel(firstLeg.from) || "").toLowerCase() : "";
+    const firstLegTo = firstLeg ? String(getScheduleLocationLabel(firstLeg.to) || "").toLowerCase() : "";
+    const firstTaskLabel = taskBlocks[0] ? String(taskBlocks[0].label || "").toLowerCase() : "";
 
-    for (let i = 0; i < maxSteps; i++) {
-        const leg = legs[i];
+    const looksLikeReturnToDepot =
+        firstLeg &&
+        firstLegFrom.includes("delivery") &&
+        firstLegTo.includes("depot");
 
-        if (leg) {
-            const legStart = cursor;
-            const legEnd = cursor + Math.max(0, Number(leg.minutes || 0));
+    const looksLikeDeliveryWork =
+        firstTaskLabel.includes("unload") ||
+        firstTaskLabel.includes("deliver");
 
-            parts.push(
-    minutesToClock(legStart) + "–" + minutesToClock(legEnd) +
-    " Travel: " +
-    getScheduleLocationLabel(leg.from) + " → " +
-    getScheduleLocationLabel(leg.to) + "."
-);
+    if (looksLikeReturnToDepot && looksLikeDeliveryWork) {
+        taskBlocks.forEach(function(taskBlock) {
+            addTaskBlock(taskBlock);
+        });
 
-            cursor = legEnd;
-        }
+        legs.forEach(function(leg) {
+            addTravelLeg(leg);
+        });
+    } else {
+        const maxSteps = Math.max(legs.length, taskBlocks.length);
 
-        const taskBlock = taskBlocks[i];
-
-        if (taskBlock && taskBlock.minutes > 0) {
-            const isUnloadBlock = String(taskBlock.label || "").toLowerCase().includes("unload");
-
-            if (isCompletionDay && isUnloadBlock && cursor < completionCutoff) {
-                parts.push(
-                    "Wait " +
-                    minutesToClock(cursor) + "–" + minutesToClock(completionCutoff) + "."
-                );
-
-                cursor = completionCutoff;
-            }
-
-            const taskStart = cursor;
-            const taskEnd = cursor + taskBlock.minutes;
-
-            parts.push(
-    minutesToClock(taskStart) + "–" + minutesToClock(taskEnd) +
-    " Work: " +
-    String(taskBlock.label || "").replace("Task: ", "") + "."
-);
-
-            cursor = taskEnd;
+        for (let i = 0; i < maxSteps; i++) {
+            addTravelLeg(legs[i]);
+            addTaskBlock(taskBlocks[i]);
         }
     }
 
